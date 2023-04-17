@@ -1,27 +1,15 @@
 package com.piedpiper.bolt.lexer;
 
+import lombok.RequiredArgsConstructor;
+import lombok.Data;
+import lombok.NonNull;
+
+@RequiredArgsConstructor
+@Data
 public class Token {
-    private String name;
-    private String value;
-
-    public Token(String name, String value) {
-        this.name = name;
-        this.value = value;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getValue() {
-        return value;
-    }
-
-    public void setValue(String value) {
-        this.value = value;
-    }
+    @NonNull
+    String name;
+    @NonNull
+    String value;
+    Integer lineNumber;
 }

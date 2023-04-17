@@ -133,4 +133,18 @@ public class TestLexer {
             assertEquals(expectedTokens.get(i).getValue(), tokens.get(i).getValue());
         }
     }
+
+    @Test
+    void analyzeLine_shouldIgnoreInlineComment() {
+        List<Token> tokens = lexer.analyzeLine("y++ // y+= 1");
+        List<Token> expectedTokens = List.of(
+            new Token("ID", "y"),
+            new Token("OP", "++")
+        );
+        assertEquals(2, tokens.size());
+        for (int i = 0; i < expectedTokens.size(); i++) {
+            assertEquals(expectedTokens.get(i).getName(), tokens.get(i).getName());
+            assertEquals(expectedTokens.get(i).getValue(), tokens.get(i).getValue());
+        }
+    }
 }

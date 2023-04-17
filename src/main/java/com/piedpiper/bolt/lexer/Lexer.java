@@ -2,10 +2,15 @@ package com.piedpiper.bolt.lexer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class Lexer {
     private LexerState state = LexerState.DEFAULT;
     private List<Token> tokens;
+    private final Map<String, Token> reservedWords = Map.of(
+        
+    );
     private final String numRegex = "[0-9]+(\\.[0-9]+)?";
     private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|:|\\?|\\+\\+|--|\\*\\*|==|&&|\\|\\||\\+=)";
     private final String identifierRegex = "[a-zA-Z]([a-zA-Z0-9_])*";
@@ -29,7 +34,7 @@ public class Lexer {
             }
         }
         for (Token token : tokens) {
-            System.out.println(token.getName() + " " + token.getValue());
+            System.out.println(token);
         }
         return tokens;
     }
@@ -45,6 +50,40 @@ public class Lexer {
     private boolean isLetter(char curr) {
         return String.valueOf(curr).matches("[a-zA-Z]");
     }
+
+    private Optional<Token> getReservedWord(StringBuilder identfier) {
+        // check if an identifier is a reserved word; return Optional.empty() if not
+        String id = identfier.toString();
+        if (reservedWords.containsKey(id)) {
+            return Optional.of(reservedWords.get(id));
+        }
+        return Optional.empty();
+    }
+
+    private void addIdentifierToken(List<Token> tokens, StringBuilder identifier) {
+        String id = identifier.toString();
+        if (id.matches(identifierRegex)) {
+            Optional<Token> reservedWord = getReservedWord(identifier);
+            if (reservedWord.isEmpty()) 
+                tokens.add(new Token("ID", id));
+            else
+                tokens.add(reservedWord.get());
+        }
+    }
+
+    private void addNumberToken(List<Token> tokens, StringBuilder number) {
+        String num = number.toString();
+        if (num.matches(numRegex)) 
+            tokens.add(new Token("NUMBER", num));
+    }
+
+    private void addOperatorToken(List<Token> tokens, StringBuilder operator) {
+        String op = operator.toString();
+        if (op.matches(operatorRegex))
+            tokens.add(new Token("OP", op));
+    }
+
+
 
     public List<Token> analyzeLine(String line) {
         List<Token> lineTokens = new ArrayList<>();
@@ -67,14 +106,16 @@ public class Lexer {
                 i = i + closingPosition + 2;
                 continue;
             }
+            if (currentSequence.toString().equals("//")) {
+                return lineTokens; // end the line at an inline comment
+            }
             if (state == LexerState.IN_NUMBER) {
                 if (isNumber(currentChar) || currentChar == '.') {
                     currentSequence.append(currentChar);
                 }
                 else {
                     clearState();
-                    if (currentSequence.toString().matches(numRegex))
-                        lineTokens.add(new Token("NUMBER", currentSequence.toString()));
+                    addNumberToken(lineTokens, currentSequence);
                     currentSequence = new StringBuilder(); // clear out the sequence
                 }
             }
@@ -88,8 +129,7 @@ public class Lexer {
                 }
                 else {
                     clearState();
-                    if (currentSequence.toString().matches(operatorRegex))
-                        lineTokens.add(new Token("OP", currentSequence.toString()));
+                    addOperatorToken(lineTokens, currentSequence);
                     currentSequence = new StringBuilder();
                 }
             }
@@ -104,8 +144,7 @@ public class Lexer {
                 }
                 else {
                     clearState();
-                    if (currentSequence.toString().matches(identifierRegex))
-                        lineTokens.add(new Token("ID", currentSequence.toString()));
+                    addIdentifierToken(lineTokens, currentSequence);
                     currentSequence = new StringBuilder();
                 }
             }
@@ -120,13 +159,20 @@ public class Lexer {
             i++;
         }
         // handle last character in string matching any of these patterns
-        if (currentSequence.toString().matches(numRegex)) 
-            lineTokens.add(new Token("NUMBER", currentSequence.toString()));
-        if (currentSequence.toString().matches(operatorRegex))
-            lineTokens.add(new Token("OP", currentSequence.toString()));
-        if (state == LexerState.IN_IDENTIFIER && currentSequence.toString().matches(identifierRegex)) {
-            lineTokens.add(new Token("ID", currentSequence.toString()));
+        switch(state) {
+            case IN_NUMBER:
+                addNumberToken(lineTokens, currentSequence);
+                break;
+            case IN_OPERATOR:
+                addOperatorToken(lineTokens, currentSequence);
+                break;
+            case IN_IDENTIFIER:
+                addIdentifierToken(lineTokens, currentSequence);
+                break;
+            case DEFAULT:
+                break;
         }
+        
         return lineTokens;
     }
 }
