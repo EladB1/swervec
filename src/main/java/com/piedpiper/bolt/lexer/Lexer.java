@@ -88,11 +88,12 @@ public class Lexer {
     public List<Token> analyzeLine(String line) {
         List<Token> lineTokens = new ArrayList<>();
         StringBuilder currentSequence = new StringBuilder();
-        char currentChar;
+        char currentChar, nextChar;
         int i = 0;
         int closingPosition;
-        while(i < line.length()) {
+        while(i < line.length() - 1) {
             currentChar = line.charAt(i);
+            nextChar = line.charAt(i+1); // look ahead to the next character
             if (currentChar == '"') {
                 // TODO: Handle escape string sequences
                 closingPosition = line.substring(i+1).indexOf('"'); // look for the closing quote
@@ -106,73 +107,116 @@ public class Lexer {
                 i = i + closingPosition + 2;
                 continue;
             }
-            if (currentSequence.toString().equals("//")) {
-                return lineTokens; // end the line at an inline comment
-            }
-            if (state == LexerState.IN_NUMBER) {
-                if (isNumber(currentChar) || currentChar == '.') {
-                    currentSequence.append(currentChar);
-                }
-                else {
-                    clearState();
-                    addNumberToken(lineTokens, currentSequence);
-                    currentSequence = new StringBuilder(); // clear out the sequence
-                }
-            }
-            if (isNumber(currentChar) && state != LexerState.IN_NUMBER) {
-                setState(LexerState.IN_NUMBER);
-                currentSequence.append(currentChar);
-            }
-            if (state == LexerState.IN_OPERATOR) {
-                if (isOperator(currentChar)) {
-                    currentSequence.append(currentChar);
-                }
-                else {
-                    clearState();
-                    addOperatorToken(lineTokens, currentSequence);
-                    currentSequence = new StringBuilder();
-                }
-            }
-            if (state != LexerState.IN_NUMBER && state != LexerState.IN_OPERATOR && isOperator(currentChar)) {
-                setState(LexerState.IN_OPERATOR);
-                currentSequence.append(currentChar);
-            }
-
-            if (state == LexerState.IN_IDENTIFIER) {
-                if (isLetter(currentChar) || isNumber(currentChar) || currentChar == '_') {
-                    currentSequence.append(currentChar);
-                }
-                else {
-                    clearState();
-                    addIdentifierToken(lineTokens, currentSequence);
-                    currentSequence = new StringBuilder();
-                }
-            }
-
-            if (state == LexerState.DEFAULT && isLetter(currentChar)) {
-                setState(LexerState.IN_IDENTIFIER);
-                currentSequence.append(currentChar);
-            }
-
             
-            
+            if (state == LexerState.DEFAULT) { // this needs to be outside the switch statement so it can set the state
+                if (isNumber(currentChar))
+                    setState(LexerState.IN_NUMBER);
+                else if (isOperator(currentChar))
+                    setState(LexerState.IN_OPERATOR);
+                else if (isLetter(currentChar))
+                    setState(LexerState.IN_IDENTIFIER);
+            }
+            switch(state) {
+                case IN_NUMBER:
+                    if (isNumber(currentChar) || currentChar == '.') {
+                        currentSequence.append(currentChar);
+                    }
+                    if (!isNumber(nextChar) && nextChar != '.') {
+                        clearState();
+                        addNumberToken(lineTokens, currentSequence);
+                        currentSequence = new StringBuilder(); // clear out the sequence
+                    }
+                    break;
+                case IN_OPERATOR:
+                    if (isOperator(currentChar)) {
+                        currentSequence.append(currentChar);
+                    }
+                    if (currentSequence.toString().equals("//")) {
+                        return lineTokens; // end the line at an inline comment
+                    }
+                    if (!isOperator(nextChar)) {
+                        clearState();
+                        addOperatorToken(lineTokens, currentSequence);
+                        currentSequence = new StringBuilder();
+                    }
+                    
+                    break;
+                case IN_IDENTIFIER:
+                    if (isLetter(currentChar) || isNumber(currentChar) || currentChar == '_') {
+                        currentSequence.append(currentChar);
+                    }
+                    if (!isLetter(nextChar) && !isNumber(nextChar) && nextChar != '_') {
+                        clearState();
+                        addIdentifierToken(lineTokens, currentSequence);
+                        currentSequence = new StringBuilder();
+                    }
+                    break;
+            }
             i++;
         }
-        // handle last character in string matching any of these patterns
+        // handle last two characters in string matching any of these patterns
+        currentChar = line.charAt(line.length() - 1);
+        StringBuilder nextSequence = new StringBuilder();
         switch(state) {
             case IN_NUMBER:
-                addNumberToken(lineTokens, currentSequence);
+                if (isNumber(currentChar)) {
+                    currentSequence.append(currentChar);
+                    addNumberToken(lineTokens, currentSequence);
+                }
+                else {
+                    nextSequence.append(currentChar);
+                    if (isLetter(currentChar) || isOperator(currentChar)) { // only add the current sequence if it's followed by a valid character
+                        addNumberToken(lineTokens, currentSequence);
+                    }
+                    if (isOperator(currentChar))
+                        addOperatorToken(lineTokens, nextSequence);
+                    else if (isLetter(currentChar))
+                        addIdentifierToken(lineTokens, nextSequence);
+                }
                 break;
             case IN_OPERATOR:
+            if (isOperator(currentChar)) {
+                currentSequence.append(currentChar);
                 addOperatorToken(lineTokens, currentSequence);
+            }
+            else {
+                nextSequence.append(currentChar);
+                if (isLetter(currentChar) || isNumber(currentChar)) { // only add the current sequence if it's followed by a valid character
+                    addOperatorToken(lineTokens, currentSequence);
+                }
+                if (isNumber(currentChar))
+                    addNumberToken(lineTokens, nextSequence);
+                else if (isLetter(currentChar))
+                    addIdentifierToken(lineTokens, nextSequence);
+            }
                 break;
             case IN_IDENTIFIER:
-                addIdentifierToken(lineTokens, currentSequence);
+            if (isLetter(currentChar) || isNumber(currentChar) || currentChar == '_') {
+                currentSequence.append(currentChar);
+                addNumberToken(lineTokens, currentSequence);
+            }
+            else {
+                nextSequence.append(currentChar);
+                if (isOperator(currentChar)) { // only add the current sequence if it's followed by a valid character
+                    addNumberToken(lineTokens, currentSequence);
+                }
+                if (isOperator(currentChar))
+                    addOperatorToken(lineTokens, nextSequence);
+            }
                 break;
             case DEFAULT:
+                if (isNumber(currentChar)) {
+                    addNumberToken(lineTokens, new StringBuilder(currentChar));
+                }
+                else if (isOperator(currentChar)) {
+                    addOperatorToken(lineTokens, new StringBuilder(currentChar));
+                }
+                else if (isLetter(currentChar)) {
+                    addIdentifierToken(lineTokens, new StringBuilder(currentChar));
+                }
                 break;
         }
-        
+            
         return lineTokens;
     }
 }
