@@ -1,0 +1,12 @@
+fn multiply(int x, float y): float {
+    return x * y;
+}
+
+// main is void so no need to annotate it with the return type
+fn main() {
+    const float pi = 3.14;
+    float y;
+    for (int x : 0..5) {
+        y = multiply(x, pi);
+    }
+}
