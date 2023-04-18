@@ -5,6 +5,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.piedpiper.error.SyntaxError;
+
+import lombok.SneakyThrows;
+
 public class Lexer {
     private LexerState state = LexerState.DEFAULT;
     private List<Token> tokens;
@@ -30,7 +34,8 @@ public class Lexer {
     public List<Token> lex(List<String> input) {
         if (!input.isEmpty()) {
             for (String line : input) {
-                tokens.addAll(analyzeLine(line));
+                if (!line.isEmpty())
+                    tokens.addAll(analyzeLine(line));
             }
         }
         for (Token token : tokens) {
@@ -49,6 +54,10 @@ public class Lexer {
 
     private boolean isLetter(char curr) {
         return String.valueOf(curr).matches("[a-zA-Z]");
+    }
+
+    private boolean isWhitespace(char curr) {
+        return String.valueOf(curr).matches("\\s");
     }
 
     private Optional<Token> getReservedWord(StringBuilder identfier) {
@@ -84,7 +93,7 @@ public class Lexer {
     }
 
 
-
+    @SneakyThrows
     public List<Token> analyzeLine(String line) {
         List<Token> lineTokens = new ArrayList<>();
         StringBuilder currentSequence = new StringBuilder();
@@ -98,7 +107,7 @@ public class Lexer {
                 // TODO: Handle escape string sequences
                 closingPosition = line.substring(i+1).indexOf('"'); // look for the closing quote
                 if (closingPosition < 0) // did not find the closing quote
-                    return lineTokens;
+                    throw new SyntaxError("Failed to find closing quote", 0, i);
                 for (int j = i; j <= i + closingPosition + 1; j++) {
                     currentSequence.append(line.charAt(j));
                 }
@@ -107,7 +116,10 @@ public class Lexer {
                 i = i + closingPosition + 2;
                 continue;
             }
-            
+            if (isWhitespace(currentChar)) {
+                i++;
+                continue;
+            }
             if (state == LexerState.DEFAULT) { // this needs to be outside the switch statement so it can set the state
                 if (isNumber(currentChar))
                     setState(LexerState.IN_NUMBER);

@@ -1,10 +1,13 @@
 package com.piedpiper.bolt.lexer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+
+import com.piedpiper.error.SyntaxError;
 
 public class TestLexer {
     private Lexer lexer = new Lexer();
@@ -63,6 +66,16 @@ public class TestLexer {
     }
 
     @Test
+    void analyzeLine_shouldRecognizeNumberDivision() {
+        List<Token> expectedTokens = List.of(
+            new Token("NUMBER", "144"), 
+            new Token("OP", "/"),
+            new Token("NUMBER", "12")
+        );
+        assertManyTokens("144/12", expectedTokens);
+    }
+
+    @Test
     void analyzeLine_shouldRecognizeNumberIncrement() {
         List<Token> expectedTokens = List.of(
             new Token("NUMBER", "5"), 
@@ -79,7 +92,7 @@ public class TestLexer {
 
     @Test
     void analyzeLine_shouldNotRecognizeIncompleteString() {
-        assertZeroTokens("\"Hello");
+        assertThrows(SyntaxError.class, () -> lexer.analyzeLine("\"Hello"));
     }
 
     @Test
