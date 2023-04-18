@@ -1,0 +1,9 @@
+string str = "someValue"
+int someInteger = 10
+const float PI = 3.14
+
+fn main() {
+    print(someValue)
+    float y = someInteger * PI + 1
+    print(y++)
+}
