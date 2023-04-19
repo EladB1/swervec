@@ -23,6 +23,10 @@ public class Lexer {
         tokens = new ArrayList<>();
     }
 
+    public List<Token> getTokens() {
+        return tokens;
+    }
+
     private void setState(final LexerState state) {
         this.state = state;
     }
@@ -32,15 +36,15 @@ public class Lexer {
     }
 
     public List<Token> lex(List<String> input) {
+        int lineNumber = 1;
         if (!input.isEmpty()) {
             for (String line : input) {
                 if (!line.isEmpty())
-                    tokens.addAll(analyzeLine(line));
+                    analyzeLine(line);
+                lineNumber++;
             }
         }
-        for (Token token : tokens) {
-            System.out.println(token);
-        }
+        System.out.println("Tokens: " + tokens);
         return tokens;
     }
 
@@ -60,19 +64,36 @@ public class Lexer {
         return String.valueOf(curr).matches("\\s");
     }
 
-    private Optional<Token> getReservedWord(StringBuilder identfier) {
+    private Optional<Token> getReservedWord(String identifier) {
         // check if an identifier is a reserved word; return Optional.empty() if not
-        String id = identfier.toString();
-        if (reservedWords.containsKey(id)) {
-            return Optional.of(reservedWords.get(id));
+        if (reservedWords.containsKey(identifier)) {
+            return Optional.of(reservedWords.get(identifier));
         }
         return Optional.empty();
     }
 
-    private void addIdentifierToken(List<Token> tokens, StringBuilder identifier) {
+
+    @SneakyThrows
+    private void addNumberToken(StringBuilder number) {
+        String num = number.toString();
+        if (num.matches(numRegex)) {
+            tokens.add(new Token("NUMBER", num));
+        }
+        else {
+            throw new SyntaxError("Found invalid number '" + num + "'");
+        }
+    }
+
+    private void addOperatorToken(StringBuilder operator) {
+        String op = operator.toString();
+        if (op.matches(operatorRegex))
+            tokens.add(new Token("OP", op));
+    }
+
+    private void addIdentifierToken(StringBuilder identifier) {
         String id = identifier.toString();
         if (id.matches(identifierRegex)) {
-            Optional<Token> reservedWord = getReservedWord(identifier);
+            Optional<Token> reservedWord = getReservedWord(id);
             if (reservedWord.isEmpty()) 
                 tokens.add(new Token("ID", id));
             else
@@ -80,40 +101,79 @@ public class Lexer {
         }
     }
 
-    private void addNumberToken(List<Token> tokens, StringBuilder number) {
-        String num = number.toString();
-        if (num.matches(numRegex)) 
-            tokens.add(new Token("NUMBER", num));
+    private StringBuilder handleNumberStateChar(char currentChar, char nextChar, StringBuilder sequence) {
+        boolean currIsNumber = isNumber(currentChar) || currentChar == '.';
+        boolean nextIsNumber = (isNumber(nextChar) || nextChar == '.') && nextChar != '\0';
+        if (currIsNumber) {
+            sequence.append(currentChar);
+        }
+        if (!nextIsNumber) {
+            clearState();
+            addNumberToken(sequence);
+            return new StringBuilder(); // clear out the sequence
+        }
+        if (nextChar == '\0') {
+            addNumberToken(sequence);
+        }
+        return sequence;
     }
 
-    private void addOperatorToken(List<Token> tokens, StringBuilder operator) {
-        String op = operator.toString();
-        if (op.matches(operatorRegex))
-            tokens.add(new Token("OP", op));
+    private StringBuilder handleOperatorStateChar(char currentChar, char nextChar, StringBuilder sequence) {
+        if (isOperator(currentChar)) {
+            sequence.append(currentChar);
+        }
+        if (sequence.toString().equals("//"))
+            return sequence;
+        if (!isOperator(nextChar) && nextChar != '\0') {
+            clearState();
+            addOperatorToken(sequence);
+            return new StringBuilder();
+        }
+        if (nextChar == '\0')
+            addOperatorToken(sequence);
+        return sequence;
     }
 
+    private StringBuilder handleIdentifierStateChar(char currentChar, char nextChar, StringBuilder sequence) {
+        boolean currIsID = isLetter(currentChar) || isNumber(currentChar) || currentChar == '_';
+        boolean nextIsID = (isLetter(nextChar) || isNumber(nextChar) || nextChar == '_') && nextChar != '\0';
+        if (currIsID) {
+            sequence.append(currentChar);
+        }
+        if (!nextIsID) {
+            clearState();
+            addIdentifierToken(sequence);
+            return new StringBuilder();
+        }
+        return sequence;
+    }
+
+    @SneakyThrows
+    private int enterStringStateAndMovePosition(String line, int index) {
+        // TODO: Handle escape string sequences
+        int relativeClosingPosition = line.substring(index + 1).indexOf('"');
+        if (relativeClosingPosition < 0) // did not find the closing quote
+            throw new SyntaxError("Failed to find closing quote", 0, index);
+        int absoluteClosingPosition = index + relativeClosingPosition + 1;
+        StringBuilder sequence = new StringBuilder();
+
+        for (int i = index; i <= absoluteClosingPosition; i++) {
+            sequence.append(line.charAt(i));
+        }
+        tokens.add(new Token("STRING", sequence.toString()));
+        return absoluteClosingPosition + 1; // Move to the position after the closing quotation mark
+    }
 
     @SneakyThrows
     public List<Token> analyzeLine(String line) {
-        List<Token> lineTokens = new ArrayList<>();
         StringBuilder currentSequence = new StringBuilder();
         char currentChar, nextChar;
         int i = 0;
-        int closingPosition;
-        while(i < line.length() - 1) {
+        while(i < line.length()) {
             currentChar = line.charAt(i);
-            nextChar = line.charAt(i+1); // look ahead to the next character
+            nextChar = i == line.length() - 1 ? '\0' : line.charAt(i+1); // look ahead to the next character and handle edge case if at the end
             if (currentChar == '"') {
-                // TODO: Handle escape string sequences
-                closingPosition = line.substring(i+1).indexOf('"'); // look for the closing quote
-                if (closingPosition < 0) // did not find the closing quote
-                    throw new SyntaxError("Failed to find closing quote", 0, i);
-                for (int j = i; j <= i + closingPosition + 1; j++) {
-                    currentSequence.append(line.charAt(j));
-                }
-                lineTokens.add(new Token("STRING", currentSequence.toString()));
-                currentSequence = new StringBuilder();
-                i = i + closingPosition + 2;
+                i = enterStringStateAndMovePosition(line, i);
                 continue;
             }
             if (isWhitespace(currentChar)) {
@@ -130,105 +190,22 @@ public class Lexer {
             }
             switch(state) {
                 case IN_NUMBER:
-                    if (isNumber(currentChar) || currentChar == '.') {
-                        currentSequence.append(currentChar);
-                    }
-                    if (!isNumber(nextChar) && nextChar != '.') {
-                        clearState();
-                        addNumberToken(lineTokens, currentSequence);
-                        currentSequence = new StringBuilder(); // clear out the sequence
-                    }
+                    currentSequence = handleNumberStateChar(currentChar, nextChar, currentSequence);
                     break;
                 case IN_OPERATOR:
-                    if (isOperator(currentChar)) {
-                        currentSequence.append(currentChar);
-                    }
+                    currentSequence = handleOperatorStateChar(currentChar, nextChar, currentSequence);
                     if (currentSequence.toString().equals("//")) {
-                        return lineTokens; // end the line at an inline comment
+                        return tokens; // end the line at an inline comment
                     }
-                    if (!isOperator(nextChar)) {
-                        clearState();
-                        addOperatorToken(lineTokens, currentSequence);
-                        currentSequence = new StringBuilder();
-                    }
-                    
                     break;
                 case IN_IDENTIFIER:
-                    if (isLetter(currentChar) || isNumber(currentChar) || currentChar == '_') {
-                        currentSequence.append(currentChar);
-                    }
-                    if (!isLetter(nextChar) && !isNumber(nextChar) && nextChar != '_') {
-                        clearState();
-                        addIdentifierToken(lineTokens, currentSequence);
-                        currentSequence = new StringBuilder();
-                    }
+                    currentSequence = handleIdentifierStateChar(currentChar, nextChar, currentSequence);
                     break;
+                case DEFAULT:
+                    break; // already did the work before the switch
             }
             i++;
         }
-        // handle last two characters in string matching any of these patterns
-        currentChar = line.charAt(line.length() - 1);
-        StringBuilder nextSequence = new StringBuilder();
-        switch(state) {
-            case IN_NUMBER:
-                if (isNumber(currentChar)) {
-                    currentSequence.append(currentChar);
-                    addNumberToken(lineTokens, currentSequence);
-                }
-                else {
-                    nextSequence.append(currentChar);
-                    if (isLetter(currentChar) || isOperator(currentChar)) { // only add the current sequence if it's followed by a valid character
-                        addNumberToken(lineTokens, currentSequence);
-                    }
-                    if (isOperator(currentChar))
-                        addOperatorToken(lineTokens, nextSequence);
-                    else if (isLetter(currentChar))
-                        addIdentifierToken(lineTokens, nextSequence);
-                }
-                break;
-            case IN_OPERATOR:
-            if (isOperator(currentChar)) {
-                currentSequence.append(currentChar);
-                addOperatorToken(lineTokens, currentSequence);
-            }
-            else {
-                nextSequence.append(currentChar);
-                if (isLetter(currentChar) || isNumber(currentChar)) { // only add the current sequence if it's followed by a valid character
-                    addOperatorToken(lineTokens, currentSequence);
-                }
-                if (isNumber(currentChar))
-                    addNumberToken(lineTokens, nextSequence);
-                else if (isLetter(currentChar))
-                    addIdentifierToken(lineTokens, nextSequence);
-            }
-                break;
-            case IN_IDENTIFIER:
-            if (isLetter(currentChar) || isNumber(currentChar) || currentChar == '_') {
-                currentSequence.append(currentChar);
-                addNumberToken(lineTokens, currentSequence);
-            }
-            else {
-                nextSequence.append(currentChar);
-                if (isOperator(currentChar)) { // only add the current sequence if it's followed by a valid character
-                    addNumberToken(lineTokens, currentSequence);
-                }
-                if (isOperator(currentChar))
-                    addOperatorToken(lineTokens, nextSequence);
-            }
-                break;
-            case DEFAULT:
-                if (isNumber(currentChar)) {
-                    addNumberToken(lineTokens, new StringBuilder(currentChar));
-                }
-                else if (isOperator(currentChar)) {
-                    addOperatorToken(lineTokens, new StringBuilder(currentChar));
-                }
-                else if (isLetter(currentChar)) {
-                    addIdentifierToken(lineTokens, new StringBuilder(currentChar));
-                }
-                break;
-        }
-            
-        return lineTokens;
+        return tokens;
     }
 }
