@@ -11,8 +11,8 @@ public class SyntaxError extends Exception {
     public SyntaxError(String message) {
         this.message = message;
     }
-    
-    public SyntaxError(String message, int lineNumber, int charNumber) {
-        this.message = message + " | line: " + lineNumber + ", index: " + charNumber;
+
+    public SyntaxError(String message, int lineNumber) {
+        this.message = lineNumber != 0 ? "Line " + lineNumber + "\n\t" + message : message;
     }
 }

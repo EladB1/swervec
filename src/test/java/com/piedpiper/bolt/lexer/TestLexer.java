@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.piedpiper.bolt.error.SyntaxError;
 
@@ -32,6 +34,14 @@ public class TestLexer {
         for (int i = 0; i < expectedTokens.size(); i++) {
             assertEquals(expectedTokens.get(i), tokens.get(i));
         }
+    }
+
+    private static Stream<Arguments> provideInvalidNumberParameters() {
+        return Stream.of(
+            Arguments.of("5.", "5."),
+            Arguments.of("15. + 3.9", "15."), 
+            Arguments.of("0..5", "0..5")
+        );
     }
 
     @Test
@@ -59,9 +69,11 @@ public class TestLexer {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"5.", "15. + 3.9", "0..5"})
-    void analyzeLine_shouldNotThrowErrorOnBrokenFloat(String input) {
-        assertThrows(SyntaxError.class, () -> lexer.analyzeLine(input));
+    @MethodSource("provideInvalidNumberParameters")
+    void analyzeLine_shouldNotThrowErrorOnBrokenFloat(String input, String badNumberFragment) {
+        SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine(input));
+        String expectedExceptionMessage = String.format("Found invalid number '%s'", badNumberFragment);
+        assertEquals(expectedExceptionMessage, error.getMessage());
     }
 
     @Test
@@ -101,7 +113,8 @@ public class TestLexer {
 
     @Test
     void analyzeLine_shouldNotRecognizeIncompleteString() {
-        assertThrows(SyntaxError.class, () -> lexer.analyzeLine("\"Hello"));
+        SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine("\"Hello"));
+        assertEquals("EOL while scanning string literal", error.getMessage());
     }
 
     @Test
@@ -177,5 +190,18 @@ public class TestLexer {
             new Token("OP", "++")
         );
         assertManyTokens("y++ // y+= 1", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldTakeLineNumber() {
+        List<Token> token = lexer.analyzeLine("main()", 5);
+        List<Token> expectedToken = List.of(new Token("ID", "main", 5));
+        assertEquals(expectedToken.get(0), token.get(0));
+    }
+
+    @Test
+    void analyzeLine_shouldUseLineNumberInError() {
+        SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine("\"", 321));
+        assertEquals("Line 321\n\tEOL while scanning string literal", error.getMessage());
     }
 }
