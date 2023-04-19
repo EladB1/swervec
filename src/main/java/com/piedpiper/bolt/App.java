@@ -1,5 +1,6 @@
 package com.piedpiper.bolt;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
@@ -17,19 +18,28 @@ public class App {
             return;
         }
         Path filePath = Paths.get(args[0]).toAbsolutePath();
-        if (Files.exists(filePath)) {
-            try {
-                List<String> lines = Files.readAllLines(filePath);
-                Lexer lexer = new Lexer();
-                List<Token> tokens = lexer.lex(lines);
-                System.out.println("Number of tokens: " + tokens.size());
-            } catch (AccessDeniedException exception) {
-                System.out.println("Access to file '" + filePath + "' was denied. Please check permissions.");
-            } catch (IOException exception) {
-                System.out.println("Failed to open file with error: " + exception.getClass());
-                exception.printStackTrace();
+        try {
+            if (Files.exists(filePath)) {
+  
+                    List<String> lines = Files.readAllLines(filePath);
+                    Lexer lexer = new Lexer();
+                    List<Token> tokens = lexer.lex(lines);
+                    System.out.println("Number of tokens: " + tokens.size());
             }
-        }
+            else {
+                throw new FileNotFoundException("Could not find file '" + filePath + "'");
+            }
+        } catch (AccessDeniedException exception) {
+            System.out.println("Access to file '" + filePath + "' was denied. Please check permissions.");
+            System.exit(1);
+        } catch (FileNotFoundException exception) {
+            System.out.println(exception.getMessage());
+            System.exit(1);
+        } catch (IOException exception) {
+            System.out.println("Failed to open file with error: " + exception.getClass());
+            exception.printStackTrace();
+            System.exit(1);
+        } 
         
     }
 }
