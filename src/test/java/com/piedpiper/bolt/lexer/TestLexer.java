@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import com.piedpiper.error.SyntaxError;
+import com.piedpiper.bolt.error.SyntaxError;
 
 public class TestLexer {
     private Lexer lexer = new Lexer();

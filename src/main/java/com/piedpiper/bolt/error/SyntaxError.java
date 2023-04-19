@@ -1,4 +1,4 @@
-package com.piedpiper.error;
+package com.piedpiper.bolt.error;
 
 import lombok.Getter;
 import lombok.With;
