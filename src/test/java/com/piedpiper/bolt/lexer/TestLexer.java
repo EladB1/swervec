@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.piedpiper.error.SyntaxError;
 
@@ -51,8 +53,15 @@ public class TestLexer {
     }
 
     @Test
-    void analyzeLine_shouldNotRecognizeBrokenFloat() {
-        assertZeroTokens("5.");
+    void analyzeLine_shouldSkipWhitespaceOnLastChar() {
+        Token token = new Token("NUMBER", "2");
+        assertOneToken("2 ", token);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"5.", "15. + 3.9", "0..5"})
+    void analyzeLine_shouldNotThrowErrorOnBrokenFloat(String input) {
+        assertThrows(SyntaxError.class, () -> lexer.analyzeLine(input));
     }
 
     @Test
@@ -114,6 +123,34 @@ public class TestLexer {
             new Token("NUMBER", "3.14")
         );
         assertManyTokens("const float PI = 3.14", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeComplexExpression() {
+        List<Token> expectedTokens = List.of(
+            new Token("ID", "float"),
+            new Token("ID", "y"),
+            new Token("OP", "="),
+            new Token("ID", "someInteger"),
+            new Token("OP", "*"),
+            new Token("ID", "PI"),
+            new Token("OP", "+"),
+            new Token("NUMBER", "1")
+        );
+        assertManyTokens("float y = someInteger * PI + 1", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeExpressionWithoutSpace() {
+        List<Token> expectedTokens = List.of(
+            new Token("ID", "int"),
+            new Token("ID", "y"),
+            new Token("OP", "="),
+            new Token("NUMBER", "2"),
+            new Token("OP", "+"),
+            new Token("NUMBER", "3")
+        );
+        assertManyTokens("int y=2+3", expectedTokens);
     }
 
     @Test 

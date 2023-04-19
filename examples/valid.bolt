@@ -6,4 +6,5 @@ fn main() {
     print(someValue)
     float y = someInteger * PI + 1
     print(y++)
+    someValue
 }

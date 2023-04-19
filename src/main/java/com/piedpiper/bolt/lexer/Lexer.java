@@ -23,6 +23,10 @@ public class Lexer {
         tokens = new ArrayList<>();
     }
 
+    public List<Token> getTokens() {
+        return tokens;
+    }
+
     private void setState(final LexerState state) {
         this.state = state;
     }
@@ -35,15 +39,12 @@ public class Lexer {
         int lineNumber = 1;
         if (!input.isEmpty()) {
             for (String line : input) {
-                System.out.println(lineNumber);
                 if (!line.isEmpty())
-                    tokens.addAll(analyzeLine(line));
+                    analyzeLine(line);
                 lineNumber++;
             }
         }
-        for (Token token : tokens) {
-            System.out.println(token);
-        }
+        System.out.println("Tokens: " + tokens);
         return tokens;
     }
 
@@ -75,8 +76,6 @@ public class Lexer {
     @SneakyThrows
     private void addNumberToken(StringBuilder number) {
         String num = number.toString();
-        System.out.println(num);
-        System.out.println(num.matches(numRegex));
         if (num.matches(numRegex)) {
             tokens.add(new Token("NUMBER", num));
         }
@@ -85,19 +84,10 @@ public class Lexer {
         }
     }
 
-    private void addNumberToken(char number) {
-        addNumberToken(new StringBuilder().append(number));
-    }
-
-
     private void addOperatorToken(StringBuilder operator) {
         String op = operator.toString();
         if (op.matches(operatorRegex))
             tokens.add(new Token("OP", op));
-    }
-
-    private void addOperatorToken(char operator) {
-        addOperatorToken(new StringBuilder().append(operator));
     }
 
     private void addIdentifierToken(StringBuilder identifier) {
@@ -111,16 +101,9 @@ public class Lexer {
         }
     }
 
-    private void addIdentifierToken(char identifier) {
-        // No one character keywords, so no need to check keywords
-        String id = String.valueOf(identifier);
-        if (id.matches(identifierRegex))
-            tokens.add(new Token("ID", id));
-    }
-
     private StringBuilder handleNumberStateChar(char currentChar, char nextChar, StringBuilder sequence) {
         boolean currIsNumber = isNumber(currentChar) || currentChar == '.';
-        boolean nextIsNumber = isNumber(nextChar) || nextChar == '.';
+        boolean nextIsNumber = (isNumber(nextChar) || nextChar == '.') && nextChar != '\0';
         if (currIsNumber) {
             sequence.append(currentChar);
         }
@@ -129,26 +112,10 @@ public class Lexer {
             addNumberToken(sequence);
             return new StringBuilder(); // clear out the sequence
         }
-        return sequence;
-    }
-
-    @SneakyThrows
-    private void handleLastCharNumberState(char lastChar, StringBuilder sequence) {        
-        if (isNumber(lastChar)) {
-            sequence.append(lastChar);
+        if (nextChar == '\0') {
             addNumberToken(sequence);
         }
-        if (lastChar == '.')
-            throw new SyntaxError("Unterminated floating point number");
-        else {
-            if (isLetter(lastChar) || isOperator(lastChar)) { // only add the current sequence if it's followed by a valid character
-                addNumberToken(sequence);
-            }
-            if (isOperator(lastChar))
-                addOperatorToken(lastChar);
-            else if (isLetter(lastChar))
-                addIdentifierToken(lastChar);
-        }
+        return sequence;
     }
 
     private StringBuilder handleOperatorStateChar(char currentChar, char nextChar, StringBuilder sequence) {
@@ -157,53 +124,28 @@ public class Lexer {
         }
         if (sequence.toString().equals("//"))
             return sequence;
-        if (!isOperator(nextChar)) {
+        if (!isOperator(nextChar) && nextChar != '\0') {
             clearState();
             addOperatorToken(sequence);
             return new StringBuilder();
         }
-        return sequence;
-    }
-
-    private void handleLastCharOperatorState(char lastChar, StringBuilder sequence) {
-        if (isOperator(lastChar)) {
-            sequence.append(lastChar);
+        if (nextChar == '\0')
             addOperatorToken(sequence);
-        }
-        else {
-            if (isLetter(lastChar) || isNumber(lastChar)) { // only add the current sequence if it's followed by a valid character
-                addOperatorToken(sequence);
-            }
-            if (isNumber(lastChar))
-                addNumberToken(lastChar);
-            else if (isLetter(lastChar))
-                addIdentifierToken(lastChar);
-        }
+        return sequence;
     }
 
     private StringBuilder handleIdentifierStateChar(char currentChar, char nextChar, StringBuilder sequence) {
-        if (isLetter(currentChar) || isNumber(currentChar) || currentChar == '_') {
+        boolean currIsID = isLetter(currentChar) || isNumber(currentChar) || currentChar == '_';
+        boolean nextIsID = (isLetter(nextChar) || isNumber(nextChar) || nextChar == '_') && nextChar != '\0';
+        if (currIsID) {
             sequence.append(currentChar);
         }
-        if (!isLetter(nextChar) && !isNumber(nextChar) && nextChar != '_') {
+        if (!nextIsID) {
             clearState();
             addIdentifierToken(sequence);
             return new StringBuilder();
         }
         return sequence;
-    }
-
-    private void handleLastCharIdentifierState(char lastChar, StringBuilder sequence) {
-        if (isLetter(lastChar) || isNumber(lastChar) || lastChar == '_') {
-            sequence.append(lastChar);
-            addIdentifierToken(sequence);
-        }
-        else {
-            if (isOperator(lastChar)) {
-                addIdentifierToken(sequence);
-                addOperatorToken(lastChar);
-            }
-        }
     }
 
     @SneakyThrows
@@ -227,9 +169,9 @@ public class Lexer {
         StringBuilder currentSequence = new StringBuilder();
         char currentChar, nextChar;
         int i = 0;
-        while(i < line.length() - 1) {
+        while(i < line.length()) {
             currentChar = line.charAt(i);
-            nextChar = line.charAt(i+1); // look ahead to the next character
+            nextChar = i == line.length() - 1 ? '\0' : line.charAt(i+1); // look ahead to the next character and handle edge case if at the end
             if (currentChar == '"') {
                 i = enterStringStateAndMovePosition(line, i);
                 continue;
@@ -264,32 +206,6 @@ public class Lexer {
             }
             i++;
         }
-        // handle last two characters in string matching any of these patterns
-        currentChar = line.charAt(line.length() - 1);
-        StringBuilder nextSequence = new StringBuilder();
-        switch(state) {
-            case IN_NUMBER:
-                handleLastCharNumberState(currentChar, currentSequence);
-                break;
-            case IN_OPERATOR:
-                handleLastCharOperatorState(currentChar, currentSequence);
-                break;
-            case IN_IDENTIFIER:
-                handleLastCharIdentifierState(currentChar, nextSequence);
-                break;
-            case DEFAULT:
-                if (isNumber(currentChar)) {
-                    addNumberToken(new StringBuilder(currentChar));
-                }
-                else if (isOperator(currentChar)) {
-                    addOperatorToken(new StringBuilder(currentChar));
-                }
-                else if (isLetter(currentChar)) {
-                    addIdentifierToken(new StringBuilder(currentChar));
-                }
-                break;
-        }
-        clearState(); // reset the state when finished
         return tokens;
     }
 }
