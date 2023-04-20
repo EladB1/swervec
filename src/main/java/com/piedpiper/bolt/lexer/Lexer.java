@@ -50,6 +50,7 @@ public class Lexer {
         setState(LexerState.DEFAULT);
     }
 
+    @SneakyThrows
     public List<Token> lex(List<String> input) {
         int lineNumber = 1;
         if (!input.isEmpty()) {
@@ -58,6 +59,9 @@ public class Lexer {
                     analyzeLine(line, lineNumber);
                 lineNumber++;
             }
+        }
+        if (state == LexerState.IN_MULTILINE_COMMENT) {
+            throw new SyntaxError("Unterminated multiline comment");
         }
         System.out.println("Tokens: " + tokens);
         return tokens;
@@ -140,6 +144,10 @@ public class Lexer {
         }
         if (sequence.toString().equals("//"))
             return sequence;
+        if (sequence.toString().equals("/*")) {
+            setState(LexerState.IN_MULTILINE_COMMENT);
+            return sequence;
+        }
         if (!isOperator(nextChar) && nextChar != '\0') {
             clearState();
             addOperatorToken(sequence, lineNumber);
@@ -218,9 +226,23 @@ public class Lexer {
                     if (currentSequence.toString().equals("//")) {
                         return tokens; // end the line at an inline comment
                     }
+                    if (currentSequence.toString().equals("/*")) {
+                        setState(LexerState.IN_MULTILINE_COMMENT);
+                        if (!line.contains("*/"))
+                            return tokens;
+                    }
                     break;
                 case IN_IDENTIFIER:
                     currentSequence = handleIdentifierStateChar(currentChar, nextChar, currentSequence, lineNumber);
+                    break;
+                case IN_MULTILINE_COMMENT:
+                    if (!line.contains("*/"))
+                        return tokens;
+                    i = line.indexOf("*/") + 1;
+                    if (i > 0) {
+                        clearState();
+                        continue;
+                    }
                     break;
                 case DEFAULT:
                     // handle any non-operator characters

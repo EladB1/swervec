@@ -4,5 +4,6 @@ public enum LexerState {
     DEFAULT,
     IN_NUMBER,
     IN_OPERATOR,
-    IN_IDENTIFIER
+    IN_IDENTIFIER,
+    IN_MULTILINE_COMMENT
 }

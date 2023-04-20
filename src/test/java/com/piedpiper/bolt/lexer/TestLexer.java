@@ -314,4 +314,29 @@ public class TestLexer {
         SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine("x = ~5", 10));
         assertEquals("Line 10\n\tUnrecognized character '~'", error.getMessage());
     }
+
+    @Test
+    void analyze_shouldIngoreMultilineComment() {
+        assertZeroTokens("/*This is a comment*/");
+    }
+
+    @Test
+    void analyze_shouldIngoreMultilineCommentButHandleToken() {
+        Token token = new Token("NUMBER", "5");
+        assertOneToken("/*This is a comment*/5", token);
+    }
+
+    @Test
+    void analyze_shouldIngoreMultilineCommentButHandleSeveralTokens() {
+        List<Token> expectedTokens = List.of(
+            new Token("ID", "y"),
+            new Token("OP", "="),
+            new Token("ID", "PI"),
+            new Token("OP", "*"),
+            new Token("ID", "radius"),
+            new Token("OP", "**"),
+            new Token("NUMBER", "2")
+        );
+        assertManyTokens("y = /*multiply(PI, radius ** 2)*/ PI * radius ** 2", expectedTokens);
+    }
 }

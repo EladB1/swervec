@@ -2,6 +2,12 @@ string str = "someValue"
 int someInteger = 10
 const float PI = 3.14
 
+/*
+  for () {
+    
+  }
+*/
+
 fn concat(string first, string second) : string {
     return first + second
 }
