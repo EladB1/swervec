@@ -59,7 +59,7 @@ public class TestLexer {
     @Test
     void analyzeLine_shouldOnlyRecognizeInteger() {
         Token token = new Token("NUMBER", "2");
-        assertOneToken("(2)", token);
+        assertOneToken(" 2\t", token);
     }
 
     @Test
@@ -118,19 +118,27 @@ public class TestLexer {
     }
 
     @Test
-    void analyzeLine_shouldRecognizeIdentifierAndInteger() {
+    void analyzeLine_shouldRecognizeFunctionCall() {
         List<Token> expectedTokens = List.of(
             new Token("ID", "print"),
-            new Token("NUMBER", "2")
+            new Token("LEFT_PAREN", "("),
+            new Token("NUMBER", "2"),
+            new Token("RIGHT_PAREN", ")")
         );
         assertManyTokens("print(2)", expectedTokens);
     }
 
     @Test
+    void analyzeLine_shouldReconizeKeyword() {
+        Token token = new Token("KW_FN", "fn");
+        assertOneToken("fn", token);
+    }
+
+    @Test
     void analyzeLine_shouldRecognizeExpression() {
         List<Token> expectedTokens = List.of(
-            new Token("ID", "const"),
-            new Token("ID", "float"),
+            new Token("KW_CONST", "const"),
+            new Token("KW_FLOAT", "float"),
             new Token("ID", "PI"),
             new Token("OP", "="),
             new Token("NUMBER", "3.14")
@@ -141,7 +149,7 @@ public class TestLexer {
     @Test
     void analyzeLine_shouldRecognizeComplexExpression() {
         List<Token> expectedTokens = List.of(
-            new Token("ID", "float"),
+            new Token("KW_FLOAT", "float"),
             new Token("ID", "y"),
             new Token("OP", "="),
             new Token("ID", "someInteger"),
@@ -156,7 +164,7 @@ public class TestLexer {
     @Test
     void analyzeLine_shouldRecognizeExpressionWithoutSpace() {
         List<Token> expectedTokens = List.of(
-            new Token("ID", "int"),
+            new Token("KW_INT", "int"),
             new Token("ID", "y"),
             new Token("OP", "="),
             new Token("NUMBER", "2"),
@@ -203,5 +211,107 @@ public class TestLexer {
     void analyzeLine_shouldUseLineNumberInError() {
         SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine("\"", 321));
         assertEquals("Line 321\n\tEOL while scanning string literal", error.getMessage());
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeIntegerAndParens() {
+        List<Token> expectedTokens = List.of(
+            new Token("LEFT_PAREN", "("),
+            new Token("NUMBER", "2"),
+            new Token("RIGHT_PAREN", ")")
+        );
+        assertManyTokens("(2)", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeBooleanAssignment() {
+        List<Token> expectedTokens = List.of(
+            new Token("KW_BOOL", "boolean"),
+            new Token("ID", "isFree"),
+            new Token("OP", "="),
+            new Token("ID", "state"),
+            new Token("OP", "=="),
+            new Token("STRING", "\"free\"")
+        );
+        assertManyTokens("boolean isFree = state == \"free\"", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeVoidFunctionDefinition() {
+        List<Token> expectedTokens = List.of(
+            new Token("KW_FN", "fn"),
+            new Token("ID", "reverse"),
+            new Token("LEFT_PAREN", "("),
+            new Token("KW_STR", "string"),
+            new Token("ID", "param"),
+            new Token("RIGHT_PAREN", ")"),
+            new Token("LEFT_CB", "{")
+        );
+        assertManyTokens("fn reverse(string param) {", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeReturningFunctionDefinition() {
+        List<Token> expectedTokens = List.of(
+            new Token("KW_FN", "fn"),
+            new Token("ID", "concat"),
+            new Token("LEFT_PAREN", "("),
+            new Token("KW_STR", "string"),
+            new Token("ID", "first"),
+            new Token("COMMA", ","),
+            new Token("KW_STR", "string"),
+            new Token("ID", "second"),
+            new Token("RIGHT_PAREN", ")"),
+            new Token("COLON", ":"),
+            new Token("KW_STR", "string"),
+            new Token("LEFT_CB", "{")
+        );
+        assertManyTokens("fn concat(string first, string second) : string {", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeEmptyIf() {
+        List<Token> expectedTokens = List.of(
+            new Token("KW_IF", "if"),
+            new Token("LEFT_PAREN", "("),
+            new Token("ID", "x"),
+            new Token("OP", "<"),
+            new Token("NUMBER", "5"),
+            new Token("RIGHT_PAREN", ")"),
+            new Token("LEFT_CB", "{"),
+            new Token("RIGHT_CB", "}")
+        );
+        assertManyTokens("if (x < 5) {}", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeElseIf() {
+        List<Token> expectedTokens = List.of(
+            new Token("KW_ELSE", "else"),
+            new Token("KW_IF", "if"),
+            new Token("LEFT_PAREN", "("),
+            new Token("ID", "var"),
+            new Token("RIGHT_PAREN", ")"),
+            new Token("LEFT_CB", "{")
+        );
+        assertManyTokens("else if (var) {", expectedTokens);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeReturn() {
+        Token token = new Token("KW_RET", "return");
+        assertOneToken("return", token);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeSemicolon() {
+        Token token = new Token("SC", ";");
+        assertOneToken(";", token);
+    }
+
+    @Test
+    void analyzeLine_shouldThrowErrorOnUnrecognizedChar() {
+        SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine("x = ~5", 10));
+        assertEquals("Line 10\n\tUnrecognized character '~'", error.getMessage());
     }
 }

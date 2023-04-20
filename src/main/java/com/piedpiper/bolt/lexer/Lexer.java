@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import static java.util.Map.entry;
 
 import com.piedpiper.bolt.error.SyntaxError;
 
@@ -12,11 +13,25 @@ import lombok.SneakyThrows;
 public class Lexer {
     private LexerState state = LexerState.DEFAULT;
     private List<Token> tokens;
-    private final Map<String, Token> reservedWords = Map.of(
-        
+    private final Map<String, Token> reservedWords = Map.ofEntries(
+        entry("const", new Token("KW_CONST", "const")),
+        entry("int", new Token("KW_INT", "int")),
+        entry("float", new Token("KW_FLOAT", "float")),
+        entry("string", new Token("KW_STR", "string")),
+        entry("boolean", new Token("KW_BOOL", "boolean")),
+        entry("fn", new Token("KW_FN", "fn")),
+        entry("return", new Token("KW_RET", "return")),
+        entry("for", new Token("KW_FOR", "for")),
+        entry("if", new Token("KW_IF", "if")),
+        entry("else", new Token("KW_ELSE", "else")),
+        entry("while", new Token("KW_WHILE", "while")),
+        entry("break", new Token("KW_BRK", "break")),
+        entry("continue", new Token("KW_CNT", "continue")),
+        entry("true", new Token("KW_TRUE", "true")),
+        entry("false", new Token("KW_FALSE", "false"))
     );
     private final String numRegex = "[0-9]+(\\.[0-9]+)?";
-    private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|:|\\?|\\+\\+|--|\\*\\*|==|&&|\\|\\||\\+=)";
+    private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==)";
     private final String identifierRegex = "[a-zA-Z]([a-zA-Z0-9_])*";
 
     public Lexer() {
@@ -53,7 +68,7 @@ public class Lexer {
     }
 
     private boolean isOperator(char curr) {
-        return String.valueOf(curr).matches("(\\+|-|\\*|/|%|!|&|\\^|=|:|\\?)");
+        return String.valueOf(curr).matches("(\\+|-|\\*|/|%|!|&|\\^|=|\\?|<|>)");
     }
 
     private boolean isLetter(char curr) {
@@ -96,8 +111,12 @@ public class Lexer {
             Optional<Token> reservedWord = getReservedWord(id);
             if (reservedWord.isEmpty()) 
                 tokens.add(new Token("ID", id, lineNumber));
-            else
-                tokens.add(reservedWord.get());
+            else {
+                Token keyword = reservedWord.get();
+                if (lineNumber != 0)
+                    keyword.setLineNumber(lineNumber);
+                tokens.add(keyword);
+            }
         }
     }
 
@@ -204,7 +223,33 @@ public class Lexer {
                     currentSequence = handleIdentifierStateChar(currentChar, nextChar, currentSequence, lineNumber);
                     break;
                 case DEFAULT:
-                    break; // already did the work before the switch
+                    // handle any non-operator characters
+                    switch(currentChar) {
+                        case '{':
+                            tokens.add(new Token("LEFT_CB", String.valueOf(currentChar)));
+                            break;
+                        case '}':
+                            tokens.add(new Token("RIGHT_CB", String.valueOf(currentChar)));
+                            break;
+                        case '(':
+                            tokens.add(new Token("LEFT_PAREN", String.valueOf(currentChar)));
+                            break;
+                        case ')':
+                            tokens.add(new Token("RIGHT_PAREN", String.valueOf(currentChar)));
+                            break;
+                        case ';':
+                            tokens.add(new Token("SC", String.valueOf(currentChar)));
+                            break;
+                        case ':':
+                            tokens.add(new Token("COLON", String.valueOf(currentChar)));
+                            break;
+                        case ',':
+                            tokens.add(new Token("COMMA", String.valueOf(currentChar)));
+                            break;
+                        default:
+                            throw new SyntaxError("Unrecognized character '" + currentChar + "'", lineNumber);
+                    }
+                    break;
             }
             i++;
         }
