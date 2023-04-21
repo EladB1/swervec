@@ -174,18 +174,36 @@ public class Lexer {
 
     @SneakyThrows
     private int enterStringStateAndMovePosition(String line, int index, int lineNumber) {
-        // TODO: Handle escape string sequences
-        int relativeClosingPosition = line.substring(index + 1).indexOf('"');
-        if (relativeClosingPosition < 0) // did not find the closing quote
-            throw new SyntaxError("EOL while scanning string literal", lineNumber);
-        int absoluteClosingPosition = index + relativeClosingPosition + 1;
-        StringBuilder sequence = new StringBuilder();
-
-        for (int i = index; i <= absoluteClosingPosition; i++) {
-            sequence.append(line.charAt(i));
+        int length = line.length();
+        String stringErrorMessage = "EOL while scanning string literal";
+        if (length < 2)
+            throw new SyntaxError(stringErrorMessage, lineNumber);
+        int i = index  + 1;
+        // already recognized the opening quote to get here
+        StringBuilder sequence = new StringBuilder("\"");
+        char currentChar, nextChar;
+        while (i < length - 1) {
+            currentChar = line.charAt(i);
+            nextChar = line.charAt(i+1);
+            if (currentChar == '\\' && nextChar == '"') {
+                sequence.append("\\\"");
+                i += 2;
+                continue;
+            }
+            else if (currentChar == '"') {
+                sequence.append('"');
+                tokens.add(new Token("STRING", sequence.toString()));
+                return i+1;
+            }
+            sequence.append(currentChar);
+            i++;
         }
-        tokens.add(new Token("STRING", sequence.toString()));
-        return absoluteClosingPosition + 1; // Move to the position after the closing quotation mark
+        if (line.charAt(length - 2) != '\\' && line.charAt(length -1) == '"') {
+            sequence.append('"');
+            tokens.add(new Token("STRING", sequence.toString()));
+            return i+1;
+        }
+        throw new SyntaxError(stringErrorMessage, lineNumber);
     }
 
     @SneakyThrows

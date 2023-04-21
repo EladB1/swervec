@@ -112,6 +112,18 @@ public class TestLexer {
     }
 
     @Test
+    void analyzeLine_shouldRecognizeEmptyString() {
+        Token token = new Token("STRING", "\"\"");
+        assertOneToken("\"\"", token);
+    }
+
+    @Test
+    void analyzeLine_shouldRecognizeStringWithEscape() {
+        Token token = new Token("STRING", "\"{ \\\"a\\\": 10 }\"");
+        assertOneToken("\"{ \\\"a\\\": 10 }\"", token);
+    }
+
+    @Test
     void analyzeLine_shouldNotRecognizeIncompleteString() {
         SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine("\"Hello"));
         assertEquals("EOL while scanning string literal", error.getMessage());
