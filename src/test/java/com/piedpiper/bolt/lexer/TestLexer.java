@@ -353,11 +353,41 @@ public class TestLexer {
     }
 
     @Test
+    void lex_shouldHandleEmptyMultilineString() {
+        List<String> source = List.of("/\"\"/");
+        Token token = new Token("STRING", "\"\"", 1);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
     void lex_shouldHandleInlineMultilineString() {
         List<String> source = List.of("/\" some inline string \"/");
         Token token = new Token("STRING", "\" some inline string \"", 1);
         List<Token> tokens = lexer.lex(source);
         assertEquals(1, tokens.size());
         assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldHandleTrueMultilineString() {
+        List<String> source = List.of("/\"", "\tfn test(int x) {", "\t\tx ** 2", "\t}", "\"/");
+        String tokenValue = "\"\n" +
+            "fn test(int x) {\n" + 
+            "x ** 2\n" +
+            "}\n" +
+            "\"";
+        Token token = new Token("STRING", tokenValue, 5);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldThrowExceptionOnUnterminatedMultilineString() {
+        List<String> source = List.of("/\"", "\tfn test(int x) {", "\t\tx ** 2", "\t}");
+        SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.lex(source));
+        assertEquals("EOF while scanning multi-line string literal", error.getMessage());
     }
 }

@@ -59,7 +59,6 @@ public class Lexer {
                 if (state == LexerState.IN_MULTILINE_STRING) {
                     if (!line.contains("\"/")) {
                         multiLineString.append(line.trim().concat("\n"));
-                        continue;
                     }
                     else {
                         analyzeLine(line, lineNumber);
@@ -74,7 +73,7 @@ public class Lexer {
             throw new SyntaxError("EOF while scanning multiline comment");
         }
         if (state == LexerState.IN_MULTILINE_STRING) {
-            throw new SyntaxError("EOF while scanning multiline string");
+            throw new SyntaxError("EOF while scanning multi-line string literal");
         }
         System.out.println("Tokens: " + tokens);
         return tokens;
@@ -234,10 +233,12 @@ public class Lexer {
             nextChar = i == line.length() - 1 ? '\0' : line.charAt(i+1); // look ahead to the next character and handle edge case if at the end
             if (currentChar == '/' && nextChar == '"' && state != LexerState.IN_MULTILINE_STRING) {
                 setState(LexerState.IN_MULTILINE_STRING);
-                multiLineString.append('"'); 
+                multiLineString = new StringBuilder("\"");
+                currentSequence = new StringBuilder(); // clear it out
+                i += 2;
+                continue;
             }
             if (currentChar == '"' && state != LexerState.IN_MULTILINE_STRING) {
-                System.out.println(state);
                 i = enterStringStateAndMovePosition(line, i, lineNumber);
                 continue;
             }
@@ -267,26 +268,6 @@ public class Lexer {
                         if (!line.contains("*/"))
                             return tokens;
                     }
-                    if (currentSequence.toString().equals("/\"")) {
-                        setState(LexerState.IN_MULTILINE_STRING);
-                        // read the rest of the line
-                        multiLineString = new StringBuilder('"');
-                        int j = i+1;
-                        while (j < line.length() - 1 && (currentChar != '/' && nextChar != '"')) {
-                            currentChar = line.charAt(j);
-                            nextChar = line.charAt(j+1);
-                            multiLineString.append(currentChar);
-                            multiLineString.append(nextChar);
-                            j += 2;
-                        }
-                        if (currentChar == '/' && nextChar == '"') {
-                            multiLineString.append('"');
-                            tokens.add(new Token("STRING", multiLineString.toString(), lineNumber));
-                            multiLineString = new StringBuilder(); // reset the value
-                            clearState();
-                        }
-                        multiLineString.append('\n');
-                    }
                     break;
                 case IN_IDENTIFIER:
                     currentSequence = handleIdentifierStateChar(currentChar, nextChar, currentSequence, lineNumber);
@@ -302,19 +283,17 @@ public class Lexer {
                     break;
                 case IN_MULTILINE_STRING:
                     if (currentChar != '"' && nextChar != '/') {
-                        multiLineString.append(String.valueOf(nextChar));
+                        multiLineString.append(String.valueOf(currentChar));
                         multiLineString.append(String.valueOf(nextChar));
                     }
                     if (currentChar == '"' && nextChar == '/') {
                         multiLineString.append('"');
                         tokens.add(new Token("STRING", multiLineString.toString(), lineNumber));
-                        currentSequence = new StringBuilder();
                         multiLineString = new StringBuilder(); // reset the value
                         clearState();
                     }
                     i += 2;
-                    continue;
-                    //break;
+                    continue; // increment already done so skip rest of loop iteration
                 case DEFAULT:
                     // handle any non-operator characters
                     switch(currentChar) {
@@ -346,6 +325,8 @@ public class Lexer {
             }
             i++;
         }
+        if (state == LexerState.IN_MULTILINE_STRING)
+            multiLineString.append('\n');
         return tokens;
     }
 }
