@@ -328,18 +328,18 @@ public class TestLexer {
     }
 
     @Test
-    void analyze_shouldIngoreMultilineComment() {
+    void analyzeLine_shouldIngoreMultilineComment() {
         assertZeroTokens("/*This is a comment*/");
     }
 
     @Test
-    void analyze_shouldIngoreMultilineCommentButHandleToken() {
+    void analyzeLine_shouldIngoreMultilineCommentButHandleToken() {
         Token token = new Token("NUMBER", "5");
         assertOneToken("/*This is a comment*/5", token);
     }
 
     @Test
-    void analyze_shouldIngoreMultilineCommentButHandleSeveralTokens() {
+    void analyzeLine_shouldIngoreMultilineCommentButHandleSeveralTokens() {
         List<Token> expectedTokens = List.of(
             new Token("ID", "y"),
             new Token("OP", "="),
@@ -350,5 +350,14 @@ public class TestLexer {
             new Token("NUMBER", "2")
         );
         assertManyTokens("y = /*multiply(PI, radius ** 2)*/ PI * radius ** 2", expectedTokens);
+    }
+
+    @Test
+    void lex_shouldHandleInlineMultilineString() {
+        List<String> source = List.of("/\" some inline string \"/");
+        Token token = new Token("STRING", "\" some inline string \"", 1);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
     }
 }

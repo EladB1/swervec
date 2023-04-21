@@ -13,6 +13,7 @@ import lombok.SneakyThrows;
 public class Lexer {
     private LexerState state = LexerState.DEFAULT;
     private List<Token> tokens;
+    private StringBuilder multiLineString = new StringBuilder();
     private final Map<String, Token> reservedWords = Map.ofEntries(
         entry("const", new Token("KW_CONST", "const")),
         entry("int", new Token("KW_INT", "int")),
@@ -55,13 +56,25 @@ public class Lexer {
         int lineNumber = 1;
         if (!input.isEmpty()) {
             for (String line : input) {
-                if (!line.isEmpty())
+                if (state == LexerState.IN_MULTILINE_STRING) {
+                    if (!line.contains("\"/")) {
+                        multiLineString.append(line.trim().concat("\n"));
+                        continue;
+                    }
+                    else {
+                        analyzeLine(line, lineNumber);
+                    }
+                }
+                else if (!line.isEmpty())
                     analyzeLine(line, lineNumber);
                 lineNumber++;
             }
         }
         if (state == LexerState.IN_MULTILINE_COMMENT) {
-            throw new SyntaxError("Unterminated multiline comment");
+            throw new SyntaxError("EOF while scanning multiline comment");
+        }
+        if (state == LexerState.IN_MULTILINE_STRING) {
+            throw new SyntaxError("EOF while scanning multiline string");
         }
         System.out.println("Tokens: " + tokens);
         return tokens;
@@ -219,11 +232,16 @@ public class Lexer {
         while(i < line.length()) {
             currentChar = line.charAt(i);
             nextChar = i == line.length() - 1 ? '\0' : line.charAt(i+1); // look ahead to the next character and handle edge case if at the end
-            if (currentChar == '"') {
+            if (currentChar == '/' && nextChar == '"' && state != LexerState.IN_MULTILINE_STRING) {
+                setState(LexerState.IN_MULTILINE_STRING);
+                multiLineString.append('"'); 
+            }
+            if (currentChar == '"' && state != LexerState.IN_MULTILINE_STRING) {
+                System.out.println(state);
                 i = enterStringStateAndMovePosition(line, i, lineNumber);
                 continue;
             }
-            if (isWhitespace(currentChar)) {
+            if (isWhitespace(currentChar) && state != LexerState.IN_MULTILINE_STRING) {
                 i++;
                 continue;
             }
@@ -249,6 +267,26 @@ public class Lexer {
                         if (!line.contains("*/"))
                             return tokens;
                     }
+                    if (currentSequence.toString().equals("/\"")) {
+                        setState(LexerState.IN_MULTILINE_STRING);
+                        // read the rest of the line
+                        multiLineString = new StringBuilder('"');
+                        int j = i+1;
+                        while (j < line.length() - 1 && (currentChar != '/' && nextChar != '"')) {
+                            currentChar = line.charAt(j);
+                            nextChar = line.charAt(j+1);
+                            multiLineString.append(currentChar);
+                            multiLineString.append(nextChar);
+                            j += 2;
+                        }
+                        if (currentChar == '/' && nextChar == '"') {
+                            multiLineString.append('"');
+                            tokens.add(new Token("STRING", multiLineString.toString(), lineNumber));
+                            multiLineString = new StringBuilder(); // reset the value
+                            clearState();
+                        }
+                        multiLineString.append('\n');
+                    }
                     break;
                 case IN_IDENTIFIER:
                     currentSequence = handleIdentifierStateChar(currentChar, nextChar, currentSequence, lineNumber);
@@ -262,6 +300,21 @@ public class Lexer {
                         continue;
                     }
                     break;
+                case IN_MULTILINE_STRING:
+                    if (currentChar != '"' && nextChar != '/') {
+                        multiLineString.append(String.valueOf(nextChar));
+                        multiLineString.append(String.valueOf(nextChar));
+                    }
+                    if (currentChar == '"' && nextChar == '/') {
+                        multiLineString.append('"');
+                        tokens.add(new Token("STRING", multiLineString.toString(), lineNumber));
+                        currentSequence = new StringBuilder();
+                        multiLineString = new StringBuilder(); // reset the value
+                        clearState();
+                    }
+                    i += 2;
+                    continue;
+                    //break;
                 case DEFAULT:
                     // handle any non-operator characters
                     switch(currentChar) {
