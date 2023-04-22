@@ -75,7 +75,9 @@ public class Lexer {
         if (state == LexerState.IN_MULTILINE_STRING) {
             throw new SyntaxError("EOF while scanning multi-line string literal");
         }
-        System.out.println("Tokens: " + tokens);
+        System.out.println("Tokens: ");
+        tokens.forEach(System.out::println);
+        System.out.println("EOF");
         return tokens;
     }
 
@@ -303,25 +305,25 @@ public class Lexer {
                     // handle any non-operator characters
                     switch(currentChar) {
                         case '{':
-                            tokens.add(new Token("LEFT_CB", String.valueOf(currentChar)));
+                            tokens.add(new Token("LEFT_CB", String.valueOf(currentChar), lineNumber));
                             break;
                         case '}':
-                            tokens.add(new Token("RIGHT_CB", String.valueOf(currentChar)));
+                            tokens.add(new Token("RIGHT_CB", String.valueOf(currentChar), lineNumber));
                             break;
                         case '(':
-                            tokens.add(new Token("LEFT_PAREN", String.valueOf(currentChar)));
+                            tokens.add(new Token("LEFT_PAREN", String.valueOf(currentChar), lineNumber));
                             break;
                         case ')':
-                            tokens.add(new Token("RIGHT_PAREN", String.valueOf(currentChar)));
+                            tokens.add(new Token("RIGHT_PAREN", String.valueOf(currentChar), lineNumber));
                             break;
                         case ';':
-                            tokens.add(new Token("SC", String.valueOf(currentChar)));
+                            tokens.add(new Token("SC", String.valueOf(currentChar), lineNumber));
                             break;
                         case ':':
-                            tokens.add(new Token("COLON", String.valueOf(currentChar)));
+                            tokens.add(new Token("COLON", String.valueOf(currentChar), lineNumber));
                             break;
                         case ',':
-                            tokens.add(new Token("COMMA", String.valueOf(currentChar)));
+                            tokens.add(new Token("COMMA", String.valueOf(currentChar), lineNumber));
                             break;
                         default:
                             throw new SyntaxError("Unrecognized character '" + currentChar + "'", lineNumber);
