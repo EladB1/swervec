@@ -34,7 +34,7 @@ public class Lexer {
         entry("mut", new Token(TokenType.KW_MUT, "mut"))
     );
     private final String numRegex = "[0-9]+(\\.[0-9]+)?";
-    private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==|-=|\\*=|/=)";
+    private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==|\\!=|-=|\\*=|/=)";
     private final String identifierRegex = "[a-zA-Z]([a-zA-Z0-9_])*";
 
     public Lexer() {
