@@ -10,7 +10,7 @@ import lombok.NonNull;
 @Data
 public class Token {
     @NonNull
-    String name;
+    TokenType name;
     @NonNull
     String value;
     Integer lineNumber = 0;
