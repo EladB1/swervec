@@ -24,6 +24,7 @@ public class App {
                     List<String> lines = Files.readAllLines(filePath);
                     Lexer lexer = new Lexer();
                     List<Token> tokens = lexer.lex(lines);
+                    lexer.printTokens();
                     System.out.println("Number of tokens: " + tokens.size());
             }
             else {

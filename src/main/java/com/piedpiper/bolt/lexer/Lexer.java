@@ -51,6 +51,16 @@ public class Lexer {
         setState(LexerState.DEFAULT);
     }
 
+    public void printTokens() {
+        if (tokens.isEmpty()) {
+            System.out.println("No tokens");
+            return;
+        }
+        System.out.println("Tokens: ");
+        tokens.forEach(System.out::println);
+        System.out.println("EOF");
+    }
+
     @SneakyThrows
     public List<Token> lex(List<String> input) {
         int lineNumber = 1;
@@ -75,9 +85,7 @@ public class Lexer {
         if (state == LexerState.IN_MULTILINE_STRING) {
             throw new SyntaxError("EOF while scanning multi-line string literal");
         }
-        System.out.println("Tokens: ");
-        tokens.forEach(System.out::println);
-        System.out.println("EOF");
+        
         return tokens;
     }
 
