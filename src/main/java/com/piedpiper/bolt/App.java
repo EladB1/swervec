@@ -40,6 +40,5 @@ public class App {
             exception.printStackTrace();
             System.exit(1);
         } 
-        
     }
 }

@@ -2,6 +2,10 @@ fn multiply(int x, float y): float {
     return x * y;
 }
 
+/" This
+is a multiline
+string"/
+
 // main is void so no need to annotate it with the return type
 fn main() {
     const float pi = 3.14;

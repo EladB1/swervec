@@ -328,18 +328,18 @@ public class TestLexer {
     }
 
     @Test
-    void analyze_shouldIngoreMultilineComment() {
+    void analyzeLine_shouldIngoreMultilineComment() {
         assertZeroTokens("/*This is a comment*/");
     }
 
     @Test
-    void analyze_shouldIngoreMultilineCommentButHandleToken() {
+    void analyzeLine_shouldIngoreMultilineCommentButHandleToken() {
         Token token = new Token("NUMBER", "5");
         assertOneToken("/*This is a comment*/5", token);
     }
 
     @Test
-    void analyze_shouldIngoreMultilineCommentButHandleSeveralTokens() {
+    void analyzeLine_shouldIngoreMultilineCommentButHandleSeveralTokens() {
         List<Token> expectedTokens = List.of(
             new Token("ID", "y"),
             new Token("OP", "="),
@@ -350,5 +350,70 @@ public class TestLexer {
             new Token("NUMBER", "2")
         );
         assertManyTokens("y = /*multiply(PI, radius ** 2)*/ PI * radius ** 2", expectedTokens);
+    }
+
+    @Test
+    void lex_shouldHandleEmptyMultilineString() {
+        List<String> source = List.of("/\"\"/");
+        Token token = new Token("STRING", "\"\"", 1);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldHandleInlineMultilineString() {
+        List<String> source = List.of("/\" some inline string \"/");
+        Token token = new Token("STRING", "\" some inline string \"", 1);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldHandleInlineMultilineStringWithQuotes() {
+        List<String> source = List.of("/\" some \"inline\" string \"/");
+        Token token = new Token("STRING", "\" some \\\"inline\\\" string \"", 1);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldHandleTrueMultilineString() {
+        List<String> source = List.of("/\"", "\tfn test(int x) {", "\t\tx ** 2", "\t}", "\"/");
+        String tokenValue = "\"\n" +
+            "\tfn test(int x) {\n" + 
+            "\t\tx ** 2\n" +
+            "\t}\n" +
+            "\"";
+        Token token = new Token("STRING", tokenValue, 5);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldHandleQuotesInMultilineString() {
+        List<String> source = List.of("/\"", "\t{", "\t\t\"key\": [", "\t\t\t\"value1\",", "\t\t\t\"value2\"", "\t\t]", "\t}", "\"/");
+        String tokenValue = "\"\n" +
+            "\t{\n" + 
+            "\t\t\\\"key\\\": [\n" +
+            "\t\t\t\\\"value1\\\",\n" +
+            "\t\t\t\\\"value2\\\"\n" +
+            "\t\t]\n" +
+            "\t}\n" +
+            "\"";
+        Token token = new Token("STRING", tokenValue, 8);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldThrowExceptionOnUnterminatedMultilineString() {
+        List<String> source = List.of("/\"", "\tfn test(int x) {", "\t\tx ** 2", "\t}");
+        SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.lex(source));
+        assertEquals("EOF while scanning multi-line string literal", error.getMessage());
     }
 }

@@ -1,6 +1,10 @@
 string str = "someValue"
 int someInteger = 10
 const float PI = 3.14
+string todo = /"
+    - write some code 
+    - test code
+"/
 
 /*
   for () {

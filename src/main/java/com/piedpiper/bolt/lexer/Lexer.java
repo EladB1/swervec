@@ -13,6 +13,7 @@ import lombok.SneakyThrows;
 public class Lexer {
     private LexerState state = LexerState.DEFAULT;
     private List<Token> tokens;
+    private StringBuilder multiLineString = new StringBuilder();
     private final Map<String, Token> reservedWords = Map.ofEntries(
         entry("const", new Token("KW_CONST", "const")),
         entry("int", new Token("KW_INT", "int")),
@@ -55,15 +56,28 @@ public class Lexer {
         int lineNumber = 1;
         if (!input.isEmpty()) {
             for (String line : input) {
-                if (!line.isEmpty())
+                if (state == LexerState.IN_MULTILINE_STRING) {
+                    if (!line.contains("\"/")) {
+                        multiLineString.append(line.replace("\"", "\\\"").concat("\n"));
+                    }
+                    else {
+                        analyzeLine(line, lineNumber);
+                    }
+                }
+                else if (!line.isEmpty())
                     analyzeLine(line, lineNumber);
                 lineNumber++;
             }
         }
         if (state == LexerState.IN_MULTILINE_COMMENT) {
-            throw new SyntaxError("Unterminated multiline comment");
+            throw new SyntaxError("EOF while scanning multiline comment");
         }
-        System.out.println("Tokens: " + tokens);
+        if (state == LexerState.IN_MULTILINE_STRING) {
+            throw new SyntaxError("EOF while scanning multi-line string literal");
+        }
+        System.out.println("Tokens: ");
+        tokens.forEach(System.out::println);
+        System.out.println("EOF");
         return tokens;
     }
 
@@ -219,11 +233,18 @@ public class Lexer {
         while(i < line.length()) {
             currentChar = line.charAt(i);
             nextChar = i == line.length() - 1 ? '\0' : line.charAt(i+1); // look ahead to the next character and handle edge case if at the end
-            if (currentChar == '"') {
+            if (currentChar == '/' && nextChar == '"' && state != LexerState.IN_MULTILINE_STRING) {
+                setState(LexerState.IN_MULTILINE_STRING);
+                multiLineString = new StringBuilder("\"");
+                currentSequence = new StringBuilder(); // clear it out
+                i += 2;
+                continue;
+            }
+            if (currentChar == '"' && state != LexerState.IN_MULTILINE_STRING) {
                 i = enterStringStateAndMovePosition(line, i, lineNumber);
                 continue;
             }
-            if (isWhitespace(currentChar)) {
+            if (isWhitespace(currentChar) && state != LexerState.IN_MULTILINE_STRING) {
                 i++;
                 continue;
             }
@@ -262,29 +283,47 @@ public class Lexer {
                         continue;
                     }
                     break;
+                case IN_MULTILINE_STRING:
+                    if (currentChar != '"' && nextChar != '/') {
+                        multiLineString.append(String.valueOf(currentChar));
+                        multiLineString.append(String.valueOf(nextChar));
+                    }
+                    else if (currentChar == '"' && nextChar == '/') {
+                        multiLineString.append('"');
+                        tokens.add(new Token("STRING", multiLineString.toString(), lineNumber));
+                        multiLineString = new StringBuilder(); // reset the value
+                        clearState();
+                    }
+                    else if (currentChar == '"') {
+                        multiLineString.append("\\\""); // escape quotes not followed by a slash
+                        i++;
+                        continue;
+                    }
+                    i += 2;
+                    continue; // increment already done so skip rest of loop iteration
                 case DEFAULT:
                     // handle any non-operator characters
                     switch(currentChar) {
                         case '{':
-                            tokens.add(new Token("LEFT_CB", String.valueOf(currentChar)));
+                            tokens.add(new Token("LEFT_CB", String.valueOf(currentChar), lineNumber));
                             break;
                         case '}':
-                            tokens.add(new Token("RIGHT_CB", String.valueOf(currentChar)));
+                            tokens.add(new Token("RIGHT_CB", String.valueOf(currentChar), lineNumber));
                             break;
                         case '(':
-                            tokens.add(new Token("LEFT_PAREN", String.valueOf(currentChar)));
+                            tokens.add(new Token("LEFT_PAREN", String.valueOf(currentChar), lineNumber));
                             break;
                         case ')':
-                            tokens.add(new Token("RIGHT_PAREN", String.valueOf(currentChar)));
+                            tokens.add(new Token("RIGHT_PAREN", String.valueOf(currentChar), lineNumber));
                             break;
                         case ';':
-                            tokens.add(new Token("SC", String.valueOf(currentChar)));
+                            tokens.add(new Token("SC", String.valueOf(currentChar), lineNumber));
                             break;
                         case ':':
-                            tokens.add(new Token("COLON", String.valueOf(currentChar)));
+                            tokens.add(new Token("COLON", String.valueOf(currentChar), lineNumber));
                             break;
                         case ',':
-                            tokens.add(new Token("COMMA", String.valueOf(currentChar)));
+                            tokens.add(new Token("COMMA", String.valueOf(currentChar), lineNumber));
                             break;
                         default:
                             throw new SyntaxError("Unrecognized character '" + currentChar + "'", lineNumber);
@@ -293,6 +332,8 @@ public class Lexer {
             }
             i++;
         }
+        if (state == LexerState.IN_MULTILINE_STRING)
+            multiLineString.append('\n');
         return tokens;
     }
 }
