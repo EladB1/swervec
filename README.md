@@ -66,7 +66,7 @@ The goal is to create a somewhat practical language that is statically typed and
 ### Comments
 Inline comments can be made with `//` which will cause the compiler to ignore the rest of the line (unless `//` is in a string)
 
-Multiline comments can be made as starting with `/*` and ending with `*/`
+Multiline comments can be made as starting with `/*` and ending with `*/`. Unterminated multiline comments are a syntax error.
 
 ### Variable Declarations
 variables declarations must have a type and can optionally be `const`
@@ -77,7 +77,7 @@ Examples:
 
 A valid variable name can contain uppercase letters, lowercase letters, numbers, and underscores, but must start with an uppercase or lowercase letter.
 
-Once a variable is declared, you can reassign it (unless it's a `const` variable). Reclaring, by specifying a type before it, is an error unless it's part of a loop condition.
+Once a variable is declared, you can reassign it (unless it's a `const` variable). Redeclaring, by specifying a type before it, is an error unless it's part of a loop condition.
 
 #### Arrays
 Arrays can be declared using the `Array` keyword and must specify their types by wrapping the type in `<` and `>`. There are a few different ways to declare arrays that change their behavior.
