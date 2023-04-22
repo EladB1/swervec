@@ -371,14 +371,40 @@ public class TestLexer {
     }
 
     @Test
+    void lex_shouldHandleInlineMultilineStringWithQuotes() {
+        List<String> source = List.of("/\" some \"inline\" string \"/");
+        Token token = new Token("STRING", "\" some \\\"inline\\\" string \"", 1);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
     void lex_shouldHandleTrueMultilineString() {
         List<String> source = List.of("/\"", "\tfn test(int x) {", "\t\tx ** 2", "\t}", "\"/");
         String tokenValue = "\"\n" +
-            "fn test(int x) {\n" + 
-            "x ** 2\n" +
-            "}\n" +
+            "\tfn test(int x) {\n" + 
+            "\t\tx ** 2\n" +
+            "\t}\n" +
             "\"";
         Token token = new Token("STRING", tokenValue, 5);
+        List<Token> tokens = lexer.lex(source);
+        assertEquals(1, tokens.size());
+        assertEquals(token, tokens.get(0));
+    }
+
+    @Test
+    void lex_shouldHandleQuotesInMultilineString() {
+        List<String> source = List.of("/\"", "\t{", "\t\t\"key\": [", "\t\t\t\"value1\",", "\t\t\t\"value2\"", "\t\t]", "\t}", "\"/");
+        String tokenValue = "\"\n" +
+            "\t{\n" + 
+            "\t\t\\\"key\\\": [\n" +
+            "\t\t\t\\\"value1\\\",\n" +
+            "\t\t\t\\\"value2\\\"\n" +
+            "\t\t]\n" +
+            "\t}\n" +
+            "\"";
+        Token token = new Token("STRING", tokenValue, 8);
         List<Token> tokens = lexer.lex(source);
         assertEquals(1, tokens.size());
         assertEquals(token, tokens.get(0));

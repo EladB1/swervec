@@ -58,7 +58,7 @@ public class Lexer {
             for (String line : input) {
                 if (state == LexerState.IN_MULTILINE_STRING) {
                     if (!line.contains("\"/")) {
-                        multiLineString.append(line.trim().concat("\n"));
+                        multiLineString.append(line.replace("\"", "\\\"").concat("\n"));
                     }
                     else {
                         analyzeLine(line, lineNumber);
@@ -286,11 +286,16 @@ public class Lexer {
                         multiLineString.append(String.valueOf(currentChar));
                         multiLineString.append(String.valueOf(nextChar));
                     }
-                    if (currentChar == '"' && nextChar == '/') {
+                    else if (currentChar == '"' && nextChar == '/') {
                         multiLineString.append('"');
                         tokens.add(new Token("STRING", multiLineString.toString(), lineNumber));
                         multiLineString = new StringBuilder(); // reset the value
                         clearState();
+                    }
+                    else if (currentChar == '"') {
+                        multiLineString.append("\\\""); // escape quotes not followed by a slash
+                        i++;
+                        continue;
                     }
                     i += 2;
                     continue; // increment already done so skip rest of loop iteration
