@@ -202,11 +202,14 @@ public class TestLexer {
     void analyzeLine_shouldRecognizeArrayDeclaration() {
         List<Token> expectedTokens = List.of(
             new Token(TokenType.KW_CONST, "const"),
-            new Token(TokenType.KW_ARR, "array"),
-            new Token(TokenType.LEFT_SQB, "["),
+            new Token(TokenType.KW_ARR, "Array"),
+            new Token(TokenType.OP, "<"),
             new Token(TokenType.KW_INT, "int"),
-            new Token(TokenType.RIGHT_SQB, "]"),
+            new Token(TokenType.OP, ">"),
             new Token(TokenType.ID, "myList"),
+            new Token(TokenType.LEFT_SQB, "["),
+            new Token(TokenType.NUMBER, "3"),
+            new Token(TokenType.RIGHT_SQB, "]"),
             new Token(TokenType.OP, "="),
             new Token(TokenType.LEFT_CB, "{"),
             new Token(TokenType.NUMBER, "10"),
@@ -216,7 +219,7 @@ public class TestLexer {
             new Token(TokenType.NUMBER, "30"),
             new Token(TokenType.RIGHT_CB, "}")
         );
-        assertManyTokens("const array[int] myList = {10, 20, 30}", expectedTokens);
+        assertManyTokens("const Array<int> myList[3] = {10, 20, 30}", expectedTokens);
     }
 
     @Test

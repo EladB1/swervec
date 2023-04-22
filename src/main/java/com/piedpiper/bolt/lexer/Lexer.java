@@ -30,11 +30,11 @@ public class Lexer {
         entry("continue", new Token(TokenType.KW_CNT, "continue")),
         entry("true", new Token(TokenType.KW_TRUE, "true")),
         entry("false", new Token(TokenType.KW_FALSE, "false")),
-        entry("array", new Token(TokenType.KW_ARR, "array")),
+        entry("Array", new Token(TokenType.KW_ARR, "Array")),
         entry("mut", new Token(TokenType.KW_MUT, "mut"))
     );
     private final String numRegex = "[0-9]+(\\.[0-9]+)?";
-    private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==)";
+    private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==|-=|\\*=|/=)";
     private final String identifierRegex = "[a-zA-Z]([a-zA-Z0-9_])*";
 
     public Lexer() {

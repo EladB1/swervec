@@ -7,15 +7,18 @@ string todo = /"
 "/
 
 
-const array[string] langs = {"C", "Java", "Python", "Typescript"} // 
+const Array<string> langs[4] = {"C", "Java", "Python", "Typescript"} // 
 /*
     An array declared with const is a constant reference to an immutable array by default
     A const mut array is a constant reference to a mutable array 
     mut allows your array to change but the variable that stores the array cannot be reassigned
 
-    non-const arrays are mutable by default so mut is unnecessary
 */
-const mut array[int] primes = {2, 19}
+const mut Array<int> primes[10] = {2, 19}
+
+// non-const arrays are mutable by default so mut is unnecessary
+Array<int> evens[5]
+evens = {2, 4, 6}
 
 fn concat(string first, string second) : string {
     return first + second
