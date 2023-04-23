@@ -141,9 +141,7 @@ public class Lexer {
                 tokens.add(new Token(TokenType.ID, id, lineNumber));
             else {
                 Token keyword = reservedWord.get();
-                if (lineNumber != 0)
-                    keyword.setLineNumber(lineNumber);
-                tokens.add(keyword);
+                tokens.add(keyword.withLineNumber(lineNumber));
             }
         }
     }
@@ -216,7 +214,7 @@ public class Lexer {
             }
             else if (currentChar == '"') {
                 sequence.append('"');
-                tokens.add(new Token(TokenType.STRING, sequence.toString()));
+                tokens.add(new Token(TokenType.STRING, sequence.toString(), lineNumber));
                 return i+1;
             }
             sequence.append(currentChar);
@@ -224,7 +222,7 @@ public class Lexer {
         }
         if (line.charAt(length - 2) != '\\' && line.charAt(length -1) == '"') {
             sequence.append('"');
-            tokens.add(new Token(TokenType.STRING, sequence.toString()));
+            tokens.add(new Token(TokenType.STRING, sequence.toString(), lineNumber));
             return i+1;
         }
         throw new SyntaxError(stringErrorMessage, lineNumber);
