@@ -19,6 +19,8 @@ The goal is to create a somewhat practical language that is statically typed and
 
 > Memory management is TBD
 
+__Parsing Strategy__: Recursive Descent, LL(1)
+
 ## Language specification
 
 ### Reserved words:
