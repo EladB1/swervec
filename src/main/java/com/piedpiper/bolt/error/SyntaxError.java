@@ -5,7 +5,7 @@ import lombok.With;
 
 @Getter
 @With
-public class SyntaxError extends Exception {
+public class SyntaxError extends RuntimeException {
     String message;
 
     public SyntaxError(String message) {

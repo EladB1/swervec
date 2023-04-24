@@ -8,8 +8,6 @@ import static java.util.Map.entry;
 
 import com.piedpiper.bolt.error.SyntaxError;
 
-import lombok.SneakyThrows;
-
 public class Lexer {
     private LexerState state = LexerState.DEFAULT;
     private List<Token> tokens;
@@ -63,7 +61,6 @@ public class Lexer {
         System.out.println("EOF");
     }
 
-    @SneakyThrows
     public List<Token> lex(List<String> input) {
         int lineNumber = 1;
         if (!input.isEmpty()) {
@@ -115,8 +112,6 @@ public class Lexer {
         return Optional.empty();
     }
 
-
-    @SneakyThrows
     private void addNumberToken(StringBuilder number, int lineNumber) {
         String num = number.toString();
         if (num.matches(numRegex)) {
@@ -194,7 +189,6 @@ public class Lexer {
         return sequence;
     }
 
-    @SneakyThrows
     private int enterStringStateAndMovePosition(String line, int index, int lineNumber) {
         int length = line.length();
         String stringErrorMessage = "EOL while scanning string literal";
@@ -228,12 +222,10 @@ public class Lexer {
         throw new SyntaxError(stringErrorMessage, lineNumber);
     }
 
-    @SneakyThrows
     public List<Token> analyzeLine(String line) {
         return analyzeLine(line, 0);
     }
 
-    @SneakyThrows
     public List<Token> analyzeLine(String line, int lineNumber) {
         StringBuilder currentSequence = new StringBuilder();
         char currentChar, nextChar;
