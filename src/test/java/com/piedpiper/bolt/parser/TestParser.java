@@ -12,6 +12,33 @@ import com.piedpiper.bolt.lexer.Token;
 import com.piedpiper.bolt.lexer.TokenType;
 
 public class TestParser {
+
+    private void assertChildrenCount(int count, ParseTree node) {
+        assertEquals(count, node.getChildren().size());
+    }
+
+    private void assertTokenEquals(Token token, ParseTree node) {
+        assertEquals(token, node.getToken());
+    }
+
+    private void assertNodeTypeEquals(String nodeType, ParseTree node) {
+        assertEquals(nodeType, node.getType());
+    }
+
+    private void assertTokensEqualLeafNodes(List<Token> tokens, ParseTree node) {
+        List<ParseTree> children = node.getChildren();
+        for (int i = 0; i < children.size(); i++) {
+            assertEquals(tokens.get(i), children.get(i).getToken());
+            assertEquals(0, children.get(i).getChildren().size()); // passing in a non-leaf node will cause the test to fail
+        }
+    }
+
+    private void assertTokensEqualLeafNodes(List<Token> tokens, ParseTree node, int start, int stop) {
+        // start is inclusive but stop is not so need to call stop with one value greater
+        List<Token> slice = tokens.subList(start, stop);
+        assertTokensEqualLeafNodes(slice, node);
+    }
+
     @Test
     void test_parseArrayAccess_succeedsWithArrayIndex() { // TODO: find a way to clean up testing trees
         List<Token> tokens = List.of(
@@ -22,17 +49,15 @@ public class TestParser {
         );
         Parser parser = new Parser(tokens);
         ParseTree node = parser.parseArrayAccess();
-        assertEquals(2, node.getChildren().size());
-        assertEquals("ARRAYACCESS", node.getType());
-        assertEquals(tokens.get(0), node.getChildren().get(0).getToken());
+
+        assertChildrenCount(2, node);
+        assertNodeTypeEquals("ARRAYACCESS", node);
+        assertTokenEquals(tokens.get(0), node.getChildren().get(0));
+
         ParseTree arrayIndex = node.getChildren().get(1);
-        assertEquals("ARRAYINDEX", arrayIndex.getType());
-        List<ParseTree> leafNodes = arrayIndex.getChildren();
-        assertEquals(3, leafNodes.size());
-        for (int i = 1; i < leafNodes.size(); i++) { // start from 1 to skip over the first value of tokens
-            assertEquals(tokens.get(i), leafNodes.get(i-1).getToken());
-            assertEquals(0, leafNodes.get(i-1).getChildren().size());
-        }
+        assertNodeTypeEquals("ARRAYINDEX", arrayIndex);
+        assertChildrenCount(3, arrayIndex);
+        assertTokensEqualLeafNodes(tokens, arrayIndex, 1, 4);
     }
 
     @Test

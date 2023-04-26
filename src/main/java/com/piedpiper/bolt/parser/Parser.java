@@ -1,6 +1,5 @@
 package com.piedpiper.bolt.parser;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.piedpiper.bolt.error.SyntaxError;
@@ -68,13 +67,17 @@ public class Parser {
     }
 
     // GROUP ::= "( EXPR )"
-    public void parseGroup() {
-
+    public ParseTree parseGroup() {
+        return new ParseTree("GROUP", List.of(
+            parseExpectedToken(TokenType.LEFT_PAREN, current),
+            parseExpr(),
+            parseExpectedToken(TokenType.RIGHT_PAREN, current)
+        ));
     }
 
     // EXPR ::=  VALUE ( OP EXPR )* / UNARYOPUSE
-    public void parseExpr() {
-
+    public ParseTree parseExpr() {
+        return null; // TODO
     }
 
     // UNARYOPUSE ::= ( LEFTUNARYOP / UNARYOP ) ( ID / BOOLEAN / NUMBER / ARRAYACCESS / FUNCCALL ) / ( ID / NUMBER / ARRAYACCESS / FUNCCALL ) (UNARYOP)
@@ -83,13 +86,19 @@ public class Parser {
     }
 
     // LEFTUNARYOP ::= "!" / "-"
-    public void parseLeftUnaryOp() {
-
+    public ParseTree parseLeftUnaryOp() {
+        if (current.getValue().equals("!") || current.getValue().equals("-"))
+            return parseExpectedToken(TokenType.OP, current, current.getValue());
+        else
+            throw new SyntaxError("Expected LEFTUNARYOP but got " + current.getName() + " ('" + current.getValue() +"')", current.getLineNumber());
     }
 
     // UNARYOP ::= "++" / "--"
-    public void parseUnaryOp() {
-
+    public ParseTree parseUnaryOp() {
+        if (current.getValue().equals("++") || current.getValue().equals("--"))
+            return parseExpectedToken(TokenType.OP, current, current.getValue());
+        else
+            throw new SyntaxError("Expected LEFTUNARYOP but got " + current.getName() + " ('" + current.getValue() +"')", current.getLineNumber());
     }
 
     // VALUE ::=  FUNCCALL / ARRAYACCESS / STRINGLIT / NUMBER / BOOLEAN / ARRAYLIT 
