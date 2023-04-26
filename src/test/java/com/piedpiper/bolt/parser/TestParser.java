@@ -13,7 +13,7 @@ import com.piedpiper.bolt.lexer.TokenType;
 
 public class TestParser {
     @Test
-    void test_parseArrayAccess_succeedsWithArrayIndex() {
+    void test_parseArrayAccess_succeedsWithArrayIndex() { // TODO: find a way to clean up testing trees
         List<Token> tokens = List.of(
             new Token(TokenType.ID, "x"),
             new Token(TokenType.LEFT_SQB, "["),
@@ -21,11 +21,17 @@ public class TestParser {
             new Token(TokenType.RIGHT_SQB, "]")
         );
         Parser parser = new Parser(tokens);
-        List<ParseTree> nodes = parser.parseArrayAccess();
-        assertEquals(4, nodes.size());
-        for (int i = 0; i < nodes.size(); i++) {
-            assertEquals(tokens.get(i), nodes.get(i).getToken());
-            assertEquals(0, nodes.get(i).getChildren().size());
+        ParseTree node = parser.parseArrayAccess();
+        assertEquals(2, node.getChildren().size());
+        assertEquals("ARRAYACCESS", node.getType());
+        assertEquals(tokens.get(0), node.getChildren().get(0).getToken());
+        ParseTree arrayIndex = node.getChildren().get(1);
+        assertEquals("ARRAYINDEX", arrayIndex.getType());
+        List<ParseTree> leafNodes = arrayIndex.getChildren();
+        assertEquals(3, leafNodes.size());
+        for (int i = 1; i < leafNodes.size(); i++) { // start from 1 to skip over the first value of tokens
+            assertEquals(tokens.get(i), leafNodes.get(i-1).getToken());
+            assertEquals(0, leafNodes.get(i-1).getChildren().size());
         }
     }
 
@@ -35,10 +41,10 @@ public class TestParser {
             new Token(TokenType.ID, "x")
         );
         Parser parser = new Parser(tokens);
-        List<ParseTree> nodes = parser.parseArrayAccess();
-        assertEquals(1, nodes.size());
-        assertEquals(tokens.get(0), nodes.get(0).getToken());
-        assertEquals(0, nodes.get(0).getChildren().size());
+        ParseTree node = parser.parseArrayAccess();
+        assertEquals(1, node.getChildren().size());
+        assertEquals(tokens.get(0), node.getChildren().get(0).getToken());
+        assertEquals(0, node.getChildren().get(0).getChildren().size());
     }
 
     @Test
@@ -71,11 +77,11 @@ public class TestParser {
             new Token(TokenType.RIGHT_SQB, "]")
         );
         Parser parser = new Parser(tokens);
-        List<ParseTree> nodes = parser.parseArrayIndex();
-        assertEquals(3, nodes.size());
-        for (int i = 0; i < nodes.size(); i++) {
-            assertEquals(tokens.get(i), nodes.get(i).getToken());
-            assertEquals(0, nodes.get(i).getChildren().size());
+        ParseTree node = parser.parseArrayIndex();
+        assertEquals(3, node.getChildren().size());
+        for (int i = 0; i < node.getChildren().size(); i++) {
+            assertEquals(tokens.get(i), node.getChildren().get(i).getToken());
+            assertEquals(0, node.getChildren().get(i).getChildren().size());
         }
     }
 

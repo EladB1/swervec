@@ -30,7 +30,7 @@ public class Parser {
      * VARDECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAYDECL
      * VARASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = VALUE 
      * TYPE ::= "int" / "string" / "float" / "boolean" / ARRAYTYPE
-     * CONTROLFLOW ::= "return" ( EXPR )? / "continue" / "break"
+     * CONTROLFLOW ::= "return" ( EXPR | GROUP )? / "continue" / "break"
     */
     private List<Token> tokens;
     private int position = 0;
@@ -103,27 +103,27 @@ public class Parser {
     }
 
     // ARRAYACCESS ::= ID ( ARRAYINDEX )*
-    public List<ParseTree> parseArrayAccess() {
-        List<ParseTree> nodes = new ArrayList<>();
+    public ParseTree parseArrayAccess() {
+        ParseTree node = new ParseTree("ARRAYACCESS");
         boolean hasLeftSQB = next != null && next.getName() == TokenType.LEFT_SQB;
         if (next != null && next.getName() != TokenType.LEFT_SQB) {
             throw new SyntaxError("Expected LEFT_SQB but got " + next.getName() + " ('" + next.getValue() + "')", next.getLineNumber());
         }
-        nodes.add(parseExpectedToken(TokenType.ID, current));
+        node.appendChildren(parseExpectedToken(TokenType.ID, current));
         while (hasLeftSQB) {
             hasLeftSQB = next != null && next.getName() == TokenType.LEFT_SQB;
-            nodes.addAll(parseArrayIndex());
+            node.appendChildren(parseArrayIndex());
         }
-        return nodes;
+        return node;
     }
 
     // ARRAYINDEX ::= "[" NUMBER "]"
-    public List<ParseTree> parseArrayIndex() {
-        return List.of(
+    public ParseTree parseArrayIndex() {
+        return new ParseTree("ARRAYINDEX", List.of(
             parseExpectedToken(TokenType.LEFT_SQB, current),
             parseExpectedToken(TokenType.NUMBER, current),
             parseExpectedToken(TokenType.RIGHT_SQB, current)
-        );
+        ));
     }
 
     // ARRAYLIT ::= "{" (VALUE ("," VALUE)* )? "}"
@@ -152,14 +152,16 @@ public class Parser {
     }
 
     // ARRAYTYPE ::= "Array" "<" TYPE ">"
-    public List<ParseTree> parseArrayType() {
-        List<ParseTree> nodes = List.of(
+    public ParseTree parseArrayType() {
+        ParseTree node = new ParseTree("ARRAYTYPE");
+        node.appendChildren(
             parseExpectedToken(TokenType.KW_ARR, current),
-            parseExpectedToken(TokenType.OP, current, "<")
+            parseExpectedToken(TokenType.OP, current, "<"),
+            parseType(),
+            parseExpectedToken(TokenType.OP, current, ">")
+
         );
-        nodes.addAll(parseType());
-        nodes.add(parseExpectedToken(TokenType.OP, current, ">"));
-        return nodes;
+        return node;
     }
 
     // IMMUTABLEARRAYDECL ::= "const" ARRAYTYPE ID ( ARRAYINDEX )? "=" ARRAYLIT
@@ -183,34 +185,34 @@ public class Parser {
     }
 
     // TYPE ::= "int" / "string" / "float" / "boolean" / ARRAYTYPE
-    public List<ParseTree> parseType() {
+    public ParseTree parseType() {
         if (current.getName() == TokenType.KW_ARR)
             return parseArrayType();
         if (isPrimitiveType(current)) {
-            List<ParseTree> nodes = List.of(new ParseTree(current));
+            ParseTree node = new ParseTree(current);
             move();
-            return nodes;
+            return node;
         }
         throw new SyntaxError("Expected TYPE but got " + current.getName() + " ('" + current.getValue() + "')", current.getLineNumber());
     }
 
     // CONTROLFLOW ::= "return" ( EXPR )? / "continue" / "break"
-    public List<ParseTree> parseControlFlow() {
-        List<ParseTree> nodes = new ArrayList<>();
+    public ParseTree parseControlFlow() {
+        ParseTree node = new ParseTree("CONTROLFLOW");
         if (current.getName() == TokenType.KW_CNT || current.getName() == TokenType.KW_BRK) {
-            nodes.add(new ParseTree(current));
+            node.appendChildren(new ParseTree(current));
             move();
         }
             
         else if (current.getName() == TokenType.KW_RET) {
-            nodes.add(new ParseTree(current));
+            node.appendChildren(new ParseTree(current));
             move();
             // TODO: parseExpr()
         }
         else {
             throw new SyntaxError("Expected KW_CNT, KW_BRK, or KW_RET EXPR but got " + current.getName() + "('" + current.getValue() + "')", current.getLineNumber());
         }
-        return nodes;
+        return node;
     }
 
     /* Utility parsing method */
