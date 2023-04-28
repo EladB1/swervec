@@ -23,7 +23,7 @@ public class ParseTree {
     public ParseTree(String type, List<ParseTree> children) {
         this.type = type;
         this.token = null;
-        this.children = children;
+        this.children.addAll(children); // setting this.children = children causes the list to become immutable
     }
 
     public ParseTree(Token token) {

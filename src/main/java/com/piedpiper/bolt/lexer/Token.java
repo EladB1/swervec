@@ -1,19 +1,13 @@
 package com.piedpiper.bolt.lexer;
 
-import lombok.RequiredArgsConstructor;
-import lombok.With;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NonNull;
+public interface Token {
+    // for lombok with methods
+    public Token withName(TokenType name);
+    public Token withValue(String value);
+    public Token withLineNumber(Integer lineNumber);
 
-@RequiredArgsConstructor
-@AllArgsConstructor
-@Data
-@With
-public class Token {
-    @NonNull
-    TokenType name;
-    @NonNull
-    String value;
-    Integer lineNumber = 0;
+    // getters
+    public TokenType getName();
+    public String getValue();
+    public Integer getLineNumber();
 }

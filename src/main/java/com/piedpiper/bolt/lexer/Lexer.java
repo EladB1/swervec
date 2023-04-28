@@ -13,23 +13,23 @@ public class Lexer {
     private List<Token> tokens;
     private StringBuilder multiLineString = new StringBuilder();
     private final Map<String, Token> reservedWords = Map.ofEntries(
-        entry("const", new Token(TokenType.KW_CONST, "const")),
-        entry("int", new Token(TokenType.KW_INT, "int")),
-        entry("float", new Token(TokenType.KW_FLOAT, "float")),
-        entry("string", new Token(TokenType.KW_STR, "string")),
-        entry("boolean", new Token(TokenType.KW_BOOL, "boolean")),
-        entry("fn", new Token(TokenType.KW_FN, "fn")),
-        entry("return", new Token(TokenType.KW_RET, "return")),
-        entry("for", new Token(TokenType.KW_FOR, "for")),
-        entry("if", new Token(TokenType.KW_IF, "if")),
-        entry("else", new Token(TokenType.KW_ELSE, "else")),
-        entry("while", new Token(TokenType.KW_WHILE, "while")),
-        entry("break", new Token(TokenType.KW_BRK, "break")),
-        entry("continue", new Token(TokenType.KW_CNT, "continue")),
-        entry("true", new Token(TokenType.KW_TRUE, "true")),
-        entry("false", new Token(TokenType.KW_FALSE, "false")),
-        entry("Array", new Token(TokenType.KW_ARR, "Array")),
-        entry("mut", new Token(TokenType.KW_MUT, "mut"))
+        entry("const", new StaticToken(TokenType.KW_CONST)),
+        entry("int", new StaticToken(TokenType.KW_INT)),
+        entry("float", new StaticToken(TokenType.KW_FLOAT)),
+        entry("string", new StaticToken(TokenType.KW_STR)),
+        entry("boolean", new StaticToken(TokenType.KW_BOOL)),
+        entry("fn", new StaticToken(TokenType.KW_FN)),
+        entry("return", new StaticToken(TokenType.KW_RET)),
+        entry("for", new StaticToken(TokenType.KW_FOR)),
+        entry("if", new StaticToken(TokenType.KW_IF)),
+        entry("else", new StaticToken(TokenType.KW_ELSE)),
+        entry("while", new StaticToken(TokenType.KW_WHILE)),
+        entry("break", new StaticToken(TokenType.KW_BRK)),
+        entry("continue", new StaticToken(TokenType.KW_CNT)),
+        entry("true", new StaticToken(TokenType.KW_TRUE)),
+        entry("false", new StaticToken(TokenType.KW_FALSE)),
+        entry("Array", new StaticToken(TokenType.KW_ARR)),
+        entry("mut", new StaticToken(TokenType.KW_MUT))
     );
     private final String numRegex = "[0-9]+(\\.[0-9]+)?";
     private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==|\\!=|-=|\\*=|/=)";
@@ -115,7 +115,7 @@ public class Lexer {
     private void addNumberToken(StringBuilder number, int lineNumber) {
         String num = number.toString();
         if (num.matches(numRegex)) {
-            tokens.add(new Token(TokenType.NUMBER, num, lineNumber));
+            tokens.add(new VariableToken(TokenType.NUMBER, num, lineNumber));
         }
         else {
             throw new SyntaxError("Found invalid number '" + num + "'", lineNumber);
@@ -125,7 +125,7 @@ public class Lexer {
     private void addOperatorToken(StringBuilder operator, int lineNumber) {
         String op = operator.toString();
         if (op.matches(operatorRegex))
-            tokens.add(new Token(TokenType.OP, op, lineNumber));
+            tokens.add(new VariableToken(TokenType.OP, op, lineNumber));
     }
 
     private void addIdentifierToken(StringBuilder identifier, int lineNumber) {
@@ -133,7 +133,7 @@ public class Lexer {
         if (id.matches(identifierRegex)) {
             Optional<Token> reservedWord = getReservedWord(id);
             if (reservedWord.isEmpty()) 
-                tokens.add(new Token(TokenType.ID, id, lineNumber));
+                tokens.add(new VariableToken(TokenType.ID, id, lineNumber));
             else {
                 Token keyword = reservedWord.get();
                 tokens.add(keyword.withLineNumber(lineNumber));
@@ -208,7 +208,7 @@ public class Lexer {
             }
             else if (currentChar == '"') {
                 sequence.append('"');
-                tokens.add(new Token(TokenType.STRING, sequence.toString(), lineNumber));
+                tokens.add(new VariableToken(TokenType.STRING, sequence.toString(), lineNumber));
                 return i+1;
             }
             sequence.append(currentChar);
@@ -216,7 +216,7 @@ public class Lexer {
         }
         if (line.charAt(length - 2) != '\\' && line.charAt(length -1) == '"') {
             sequence.append('"');
-            tokens.add(new Token(TokenType.STRING, sequence.toString(), lineNumber));
+            tokens.add(new VariableToken(TokenType.STRING, sequence.toString(), lineNumber));
             return i+1;
         }
         throw new SyntaxError(stringErrorMessage, lineNumber);
@@ -290,7 +290,7 @@ public class Lexer {
                     }
                     else if (currentChar == '"' && nextChar == '/') {
                         multiLineString.append('"');
-                        tokens.add(new Token(TokenType.STRING, multiLineString.toString(), lineNumber));
+                        tokens.add(new VariableToken(TokenType.STRING, multiLineString.toString(), lineNumber));
                         multiLineString = new StringBuilder(); // reset the value
                         clearState();
                     }
@@ -305,31 +305,31 @@ public class Lexer {
                     // handle any non-operator characters
                     switch(currentChar) {
                         case '{':
-                            tokens.add(new Token(TokenType.LEFT_CB, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.LEFT_CB, lineNumber));
                             break;
                         case '}':
-                            tokens.add(new Token(TokenType.RIGHT_CB, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.RIGHT_CB, lineNumber));
                             break;
                         case '(':
-                            tokens.add(new Token(TokenType.LEFT_PAREN, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.LEFT_PAREN, lineNumber));
                             break;
                         case ')':
-                            tokens.add(new Token(TokenType.RIGHT_PAREN, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.RIGHT_PAREN, lineNumber));
                             break;
                         case '[':
-                            tokens.add(new Token(TokenType.LEFT_SQB, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.LEFT_SQB, lineNumber));
                             break;
                         case ']':
-                            tokens.add(new Token(TokenType.RIGHT_SQB, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.RIGHT_SQB, lineNumber));
                             break;
                         case ';':
-                            tokens.add(new Token(TokenType.SC, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.SC, lineNumber));
                             break;
                         case ':':
-                            tokens.add(new Token(TokenType.COLON, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.COLON, lineNumber));
                             break;
                         case ',':
-                            tokens.add(new Token(TokenType.COMMA, String.valueOf(currentChar), lineNumber));
+                            tokens.add(new StaticToken(TokenType.COMMA, lineNumber));
                             break;
                         default:
                             throw new SyntaxError("Unrecognized character '" + currentChar + "'", lineNumber);

@@ -4,79 +4,158 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.piedpiper.bolt.error.SyntaxError;
+import com.piedpiper.bolt.lexer.StaticToken;
 import com.piedpiper.bolt.lexer.Token;
 import com.piedpiper.bolt.lexer.TokenType;
+import com.piedpiper.bolt.lexer.VariableToken;
 
 public class TestParser {
 
-    private void assertChildrenCount(int count, ParseTree node) {
-        assertEquals(count, node.getChildren().size());
+    private List<ParseTree> tokensToTreeNodes(List<Token> tokens) {
+        return tokens.stream().map((Token token) -> new ParseTree(token)).collect(Collectors.toList());
     }
 
-    private void assertTokenEquals(Token token, ParseTree node) {
-        assertEquals(token, node.getToken());
+    // top-level parse
+
+    // parseLine
+
+    // parseStatement
+
+    // parseExpr
+
+    // parseUnaryOp
+
+    // parseLeftUnaryOp
+    @ParameterizedTest
+    @ValueSource(strings = {"++", "--", "-", "!"})
+    void test_parseLeftUnaryOp_succeedsID(String operator) {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.OP, operator),
+            new VariableToken(TokenType.ID, "x")
+        );
+
+        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", tokensToTreeNodes(tokens));
+
+        Parser parser = new Parser(tokens);
+        ParseTree tree = parser.parseLeftUnaryOp();
+
+        assertEquals(expectedParseTree, tree);
     }
 
-    private void assertNodeTypeEquals(String nodeType, ParseTree node) {
-        assertEquals(nodeType, node.getType());
-    }
+    @ParameterizedTest
+    @ValueSource(strings = {"++", "--", "-"})
+    void test_parseLeftUnaryOp_succeedsWithNumLiteral(String operator) {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.OP, operator),
+            new VariableToken(TokenType.NUMBER, "5")
+        );
 
-    private void assertTokensEqualLeafNodes(List<Token> tokens, ParseTree node) {
-        List<ParseTree> children = node.getChildren();
-        for (int i = 0; i < children.size(); i++) {
-            assertEquals(tokens.get(i), children.get(i).getToken());
-            assertEquals(0, children.get(i).getChildren().size()); // passing in a non-leaf node will cause the test to fail
-        }
-    }
+        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", tokensToTreeNodes(tokens));
 
-    private void assertTokensEqualLeafNodes(List<Token> tokens, ParseTree node, int start, int stop) {
-        // start is inclusive but stop is not so need to call stop with one value greater
-        List<Token> slice = tokens.subList(start, stop);
-        assertTokensEqualLeafNodes(slice, node);
+        Parser parser = new Parser(tokens);
+        ParseTree tree = parser.parseLeftUnaryOp();
+
+        assertEquals(expectedParseTree, tree);
     }
 
     @Test
-    void test_parseArrayAccess_succeedsWithArrayIndex() { // TODO: find a way to clean up testing trees
+    void test_parseLeftUnaryOp_succeedsWithBooleanLiteral() {
         List<Token> tokens = List.of(
-            new Token(TokenType.ID, "x"),
-            new Token(TokenType.LEFT_SQB, "["),
-            new Token(TokenType.NUMBER, "12"),
-            new Token(TokenType.RIGHT_SQB, "]")
+            new VariableToken(TokenType.OP, "!"),
+            new StaticToken(TokenType.KW_TRUE)
         );
+
+        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", tokensToTreeNodes(tokens));
+
         Parser parser = new Parser(tokens);
-        ParseTree node = parser.parseArrayAccess();
+        ParseTree tree = parser.parseLeftUnaryOp();
 
-        assertChildrenCount(2, node);
-        assertNodeTypeEquals("ARRAYACCESS", node);
-        assertTokenEquals(tokens.get(0), node.getChildren().get(0));
-
-        ParseTree arrayIndex = node.getChildren().get(1);
-        assertNodeTypeEquals("ARRAYINDEX", arrayIndex);
-        assertChildrenCount(3, arrayIndex);
-        assertTokensEqualLeafNodes(tokens, arrayIndex, 1, 4);
+        assertEquals(expectedParseTree, tree);
     }
 
     @Test
-    void test_parseArrayAccess_succeedsWithoutArrayIndex() {
+    void test_parseLeftUnaryOp_succeedsWithFunctionCall() {
         List<Token> tokens = List.of(
-            new Token(TokenType.ID, "x")
+            new VariableToken(TokenType.OP, "!"),
+            new VariableToken(TokenType.ID, "isInt"),
+            new StaticToken(TokenType.LEFT_PAREN),
+            new StaticToken(TokenType.RIGHT_PAREN)
         );
+
+        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", List.of(
+            new ParseTree(tokens.get(0)),
+            new ParseTree("FUNCCALL", tokensToTreeNodes(tokens.subList(1, 4)))
+        ));
+
         Parser parser = new Parser(tokens);
-        ParseTree node = parser.parseArrayAccess();
-        assertEquals(1, node.getChildren().size());
-        assertEquals(tokens.get(0), node.getChildren().get(0).getToken());
-        assertEquals(0, node.getChildren().get(0).getChildren().size());
+        ParseTree tree = parser.parseLeftUnaryOp();
+
+        assertEquals(expectedParseTree, tree);
+    }
+
+    @Test
+    void test_parseLeftUnaryOp_succeedsWithArrayAccess() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.OP, "-"),
+            new VariableToken(TokenType.ID, "nums"),
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "0"),
+            new StaticToken(TokenType.RIGHT_SQB)
+        );
+
+        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", List.of(
+            new ParseTree(tokens.get(0)),
+            new ParseTree("ARRAYACCESS", List.of(
+                new ParseTree(tokens.get(1)),
+                new ParseTree("ARRAYINDEX", tokensToTreeNodes(tokens.subList(2, 5))
+                )
+            ))
+        ));
+
+        Parser parser = new Parser(tokens);
+        ParseTree tree = parser.parseLeftUnaryOp();
+
+        assertEquals(expectedParseTree, tree);
+    }
+
+    // parseValue
+
+    // parseFunctionCall
+
+    // parseArrayAccess
+    @Test
+    void test_parseArrayAccess_succeedsWithArrayIndex() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "x"),
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "12"),
+            new StaticToken(TokenType.RIGHT_SQB)
+        );
+
+        ParseTree expectedParseTree = new ParseTree("ARRAYACCESS", List.of(
+            new ParseTree(tokens.get(0)),
+            new ParseTree("ARRAYINDEX", tokensToTreeNodes(tokens.subList(1, 4))
+            )
+        ));
+
+        Parser parser = new Parser(tokens);
+        ParseTree tree = parser.parseArrayAccess();
+
+        assertEquals(expectedParseTree, tree);
     }
 
     @Test
     void test_parseArrayAccess_EOFError() {
         List<Token> tokens = List.of(
-            new Token(TokenType.ID, "x"),
-            new Token(TokenType.LEFT_SQB, "[")
+            new VariableToken(TokenType.ID, "x"),
+            new StaticToken(TokenType.LEFT_SQB)
         );
         Parser parser = new Parser(tokens);
         SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayAccess());
@@ -86,35 +165,33 @@ public class TestParser {
     @Test
     void test_parseArrayAccess_wrongTokenError() {
         List<Token> tokens = List.of(
-            new Token(TokenType.ID, "x"),
-            new Token(TokenType.LEFT_PAREN, "(")
+            new VariableToken(TokenType.ID, "x"),
+            new StaticToken(TokenType.LEFT_PAREN)
         );
         Parser parser = new Parser(tokens);
         SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayAccess());
-        assertEquals("Expected LEFT_SQB but got LEFT_PAREN ('(')", exception.getMessage());
+        assertEquals("Expected LEFT_SQB but got LEFT_PAREN ('')", exception.getMessage());
     }
 
+    // parseArrayIndex
     @Test
     void test_parseArrayIndex_succeeds() {
         List<Token> tokens = List.of(
-            new Token(TokenType.LEFT_SQB, "["),
-            new Token(TokenType.NUMBER, "5"),
-            new Token(TokenType.RIGHT_SQB, "]")
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "5"),
+            new StaticToken(TokenType.RIGHT_SQB)
         );
         Parser parser = new Parser(tokens);
-        ParseTree node = parser.parseArrayIndex();
-        assertEquals(3, node.getChildren().size());
-        for (int i = 0; i < node.getChildren().size(); i++) {
-            assertEquals(tokens.get(i), node.getChildren().get(i).getToken());
-            assertEquals(0, node.getChildren().get(i).getChildren().size());
-        }
+        ParseTree expectedParseTree = new ParseTree("ARRAYINDEX", tokensToTreeNodes(tokens));
+        ParseTree tree = parser.parseArrayIndex();
+        assertEquals(expectedParseTree, tree);
     }
 
     @Test
     void test_parseArrayIndex_EOFError() {
         List<Token> tokens = List.of(
-            new Token(TokenType.LEFT_SQB, "["),
-            new Token(TokenType.NUMBER, "3")
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "3")
         );
         Parser parser = new Parser(tokens);
         SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayIndex());
@@ -124,12 +201,84 @@ public class TestParser {
     @Test
     void test_parseArrayIndex_wrongTokenError() {
         List<Token> tokens = List.of(
-            new Token(TokenType.LEFT_SQB, "["),
-            new Token(TokenType.STRING, "\"value\""),
-            new Token(TokenType.RIGHT_SQB, "]")
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.STRING, "\"value\""),
+            new StaticToken(TokenType.RIGHT_SQB)
         );
         Parser parser = new Parser(tokens);
         SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayIndex());
         assertEquals("Expected NUMBER but got STRING ('\"value\"')", exception.getMessage());
     }
+
+    // parseArrayLiteral
+
+    // parseConditional
+
+    // parseIf
+
+    // parseElse
+
+    // parseConditionalBody
+
+    // parseBlockBody
+
+    // parseLoop
+
+    // parseFunctionDefinition
+
+    // parseFunctionParameter
+
+    // parseArrayType
+    @Test
+    void test_parseArrayType_success() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, "<"),
+            new StaticToken(TokenType.KW_INT),
+            new VariableToken(TokenType.OP, ">")
+        );
+        ParseTree expectedParseTree = new ParseTree("ARRAYTYPE", tokensToTreeNodes(tokens));
+        Parser parser = new Parser(tokens);
+        ParseTree tree = parser.parseArrayType();
+        assertEquals(expectedParseTree, tree);
+    }
+
+    @Test
+    void test_parseArrayType_wrongTokenError() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, ">"),
+            new StaticToken(TokenType.KW_INT),
+            new VariableToken(TokenType.OP, "<")
+        );
+        Parser parser = new Parser(tokens);
+        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseArrayType());
+        assertEquals("Expected < but got OP ('>')", error.getMessage());
+    }
+
+    @Test
+    void test_parseArrayType_wrongTypeError() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, "<"),
+            new VariableToken(TokenType.ID, "integer"),
+            new VariableToken(TokenType.OP, ">")
+        );
+        Parser parser = new Parser(tokens);
+        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseArrayType());
+        assertEquals("Expected TYPE but got ID ('integer')", error.getMessage());
+    }
+
+    // parseImmutableArrayDeclaration
+
+    // parseArrayDeclaration
+
+    // parseVariableDeclaration
+
+    // parseVariableAssignment
+
+    // parseType
+
+    // parseControlFlow
+
 }

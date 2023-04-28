@@ -25,7 +25,7 @@ public class Parser {
      * BLOCKBODY = ( CONTROLFLOW / STMNT )
      * LOOP ::= ("for" / "while") "(" EXPR ")" "{" ( BLOCKBODY )* "}"
      * FUNCDEF ::= "fn" ID "(" (FUNCPARAM ("," FUNCPARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCKBODY )* "}"
-     * FUNCPARAM ::= TYPE ID ("=" VALUE )?
+     * FUNCPARAM ::= TYPE ID ("=" EXPR )?
      * ARRAYTYPE ::= "Array" "<" TYPE ">"
      * IMMUTABLEARRAYDECL ::= "const" ARRAYTYPE ID ( ARRAYINDEX )? "=" ARRAYLIT / ID
      * ARRAYDECL ::= ("const" "mut")? ARRAYTYPE ID ARRAYINDEX ( "=" ARRAYLIT / ID )? / IMMUTABLEARRAYDECL
@@ -163,9 +163,9 @@ public class Parser {
             if (isNumber(current))
                 node.appendChildren(parseExpectedToken(TokenType.NUMBER, current));
             else if (isID(current)) {
-                if (next.getName() == TokenType.LEFT_PAREN)
+                if (next != null && next.getName() == TokenType.LEFT_PAREN)
                     node.appendChildren(parseFunctionCall());
-                else if (next.getName() == TokenType.LEFT_SQB)
+                else if (next != null && next.getName() == TokenType.LEFT_SQB)
                     node.appendChildren(parseArrayAccess());
                 else
                     node.appendChildren(parseExpectedToken(TokenType.ID, current));
@@ -174,11 +174,11 @@ public class Parser {
         else if (current.getValue().equals("!")) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
             if (isBooleanLiteral(current))
-                node.appendChildren(parseExpectedToken(TokenType.NUMBER, current));
+                node.appendChildren(parseExpectedToken(current.getName(), current));
             else if (isID(current)) {
-                if (next.getName() == TokenType.LEFT_PAREN)
+                if (next != null && next.getName() == TokenType.LEFT_PAREN)
                     node.appendChildren(parseFunctionCall());
-                else if (next.getName() == TokenType.LEFT_SQB)
+                else if (next != null && next.getName() == TokenType.LEFT_SQB)
                     node.appendChildren(parseArrayAccess());
                 else
                     node.appendChildren(parseExpectedToken(TokenType.ID, current));
@@ -201,9 +201,9 @@ public class Parser {
         else if (current.getName() == TokenType.LEFT_CB)
             node.appendChildren(parseArrayLiteral());
         else if (isID(current)) {
-            if (next.getName() == TokenType.LEFT_SQB)
+            if (next != null && next.getName() == TokenType.LEFT_SQB)
                 node.appendChildren(parseArrayAccess());
-            else if (next.getName() == TokenType.LEFT_PAREN)
+            else if (next != null && next.getName() == TokenType.LEFT_PAREN)
                 node.appendChildren(parseFunctionCall());
             else
                 node.appendChildren(parseExpectedToken(TokenType.ID, current));
@@ -213,8 +213,10 @@ public class Parser {
 
     // FUNCCALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
     public ParseTree parseFunctionCall() {
-        ParseTree node = new ParseTree("FUNCCALL");
-        node.appendChildren(parseExpectedToken(TokenType.LEFT_PAREN, current));
+        ParseTree node = new ParseTree("FUNCCALL", List.of(
+            parseExpectedToken(TokenType.ID, current),
+            parseExpectedToken(TokenType.LEFT_PAREN, current))
+        );
         if (current.getName() != TokenType.RIGHT_PAREN) {
             node.appendChildren(parseExpr());
             while (current.getName() != TokenType.RIGHT_PAREN) {
@@ -229,7 +231,7 @@ public class Parser {
     public ParseTree parseArrayAccess() {
         ParseTree node = new ParseTree("ARRAYACCESS");
         boolean hasLeftSQB = next != null && next.getName() == TokenType.LEFT_SQB;
-        if (next != null && next.getName() != TokenType.LEFT_SQB) {
+        if (!hasLeftSQB) {
             throw new SyntaxError("Expected LEFT_SQB but got " + next.getName() + " ('" + next.getValue() + "')", next.getLineNumber());
         }
         node.appendChildren(parseExpectedToken(TokenType.ID, current));
@@ -266,8 +268,8 @@ public class Parser {
     // COND ::= IF ( "else" IF )* ( ELSE )?
     public ParseTree parseConditional() {
         ParseTree node = new ParseTree("COND", List.of(parseIf()));
-        if (current.getName() == TokenType.KW_ELSE && next.getName() == TokenType.KW_IF) {
-            while(current.getName() == TokenType.KW_ELSE && next.getName() == TokenType.KW_IF) {
+        if (current.getName() == TokenType.KW_ELSE && next != null && next.getName() == TokenType.KW_IF) {
+            while(current.getName() == TokenType.KW_ELSE && next != null && next.getName() == TokenType.KW_IF) {
                 node.appendChildren(parseExpectedToken(TokenType.KW_ELSE, current), parseIf());
             }
         }
@@ -342,8 +344,10 @@ public class Parser {
             parseExpectedToken(TokenType.ID, current),
             parseExpectedToken(TokenType.LEFT_PAREN, current)
         ));
-        if (current.getName() != TokenType.RIGHT_PAREN) {
-            
+        if (current.getName() != TokenType.RIGHT_PAREN)
+            node.appendChildren(parseFunctionParameter());
+        while (current.getName() != TokenType.RIGHT_PAREN) {
+            node.appendChildren(parseExpectedToken(TokenType.COMMA, current), parseFunctionParameter());
         }
         node.appendChildren(parseExpectedToken(TokenType.RIGHT_PAREN, current));
         if (current.getValue().equals(":"))
@@ -358,14 +362,14 @@ public class Parser {
         return node;
     }
 
-    // FUNCPARAM ::= TYPE ID ("=" VALUE )?
+    // FUNCPARAM ::= TYPE ID ("=" EXPR )?
     public ParseTree parseFunctionParameter() {
         ParseTree node = new ParseTree("FUNCPARAM", List.of(
             parseType(),
             parseExpectedToken(TokenType.ID, current)
         ));
         if (current.getValue().equals("=")) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseValue());
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseExpr());
         }
         return node;
     }
@@ -401,7 +405,7 @@ public class Parser {
     public ParseTree parseArrayDeclaration() {
         ParseTree node = new ParseTree("ARRAYDECL");
         if (current.getName() == TokenType.KW_CONST) {
-            if (next.getName() == TokenType.KW_MUT) {
+            if (next != null && next.getName() == TokenType.KW_MUT) {
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current), parseExpectedToken(TokenType.KW_MUT, current));
             }
             else {
@@ -411,9 +415,9 @@ public class Parser {
         }
         node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current));
         if (current.getValue().equals("=")) {
-            if (next.getName() == TokenType.LEFT_CB)
+            if (next != null && next.getName() == TokenType.LEFT_CB)
                 node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseArrayLiteral());
-            else if (next.getName() == TokenType.ID)
+            else if (next != null && next.getName() == TokenType.ID)
                 node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseExpectedToken(TokenType.ID, current));
         }
         return node;
@@ -423,7 +427,7 @@ public class Parser {
     public ParseTree parseVariableDeclaration() {
         ParseTree node = new ParseTree("VARDECL");
         if (current.getName() == TokenType.KW_CONST) {
-            if (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR) {
+            if (next != null && (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR)) {
                 node.appendChildren(parseArrayDeclaration());
                 return node; // let array declaraction do the rest
             }
@@ -500,7 +504,9 @@ public class Parser {
                 return node;
             }
             else {
-                message = String.format("Expected %s but got %s ('%s')", expectedToken, actualToken.getName(), actualToken.getValue());
+                message = actualToken.getValue().isBlank() // is this a StaticToken or VariableToken
+                ? String.format("Expected %s but got %s", expectedToken, actualToken.getName())
+                : String.format("Expected %s but got %s ('%s')", expectedToken, actualToken.getName(), actualToken.getValue());
                 
             }
         }
@@ -520,7 +526,7 @@ public class Parser {
                 return node;
             }
             else {
-                message = String.format("Expected %s but got %s ('%s')", expectedToken, actualToken.getName(), actualToken.getValue());
+                message = String.format("Expected %s but got %s ('%s')", value, actualToken.getName(), actualToken.getValue());
                 
             }
         }
