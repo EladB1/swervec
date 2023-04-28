@@ -170,6 +170,9 @@ public class Parser {
                 else
                     node.appendChildren(parseExpectedToken(TokenType.ID, current));
             }
+            else {
+                throw new SyntaxError("Invalid unary operator on " + current.getName());
+            }
         }
         else if (current.getValue().equals("!")) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
@@ -182,6 +185,9 @@ public class Parser {
                     node.appendChildren(parseArrayAccess());
                 else
                     node.appendChildren(parseExpectedToken(TokenType.ID, current));
+            }
+            else {
+                throw new SyntaxError("Invalid unary operator on " + current.getName());
             }
         }
         else
@@ -476,6 +482,7 @@ public class Parser {
 
     // CONTROLFLOW ::= "return" ( EXPR )? / "continue" / "break"
     public ParseTree parseControlFlow() {
+        List<String> leftUnaryOps = List.of("!", "-", "++", "--");
         ParseTree node = new ParseTree("CONTROLFLOW");
         if (current.getName() == TokenType.KW_CNT || current.getName() == TokenType.KW_BRK) {
             node.appendChildren(parseExpectedToken(current.getName(), current));
@@ -483,7 +490,9 @@ public class Parser {
             
         else if (current.getName() == TokenType.KW_RET) {
             node.appendChildren(parseExpectedToken(current.getName(), current));
-            node.appendChildren(parseExpr());
+            if (current.getName() == TokenType.LEFT_PAREN || current.getName() == TokenType.LEFT_CB || leftUnaryOps.contains(current.getValue()) || isID(current) ||  isBooleanLiteral(current) || isString(current)) {
+                node.appendChildren(parseExpr());
+            }
         }
         else {
             throw new SyntaxError("Expected KW_CNT, KW_BRK, or KW_RET EXPR but got " + current.getName() + "('" + current.getValue() + "')", current.getLineNumber());

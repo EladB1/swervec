@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.piedpiper.bolt.error.SyntaxError;
@@ -124,6 +125,19 @@ public class TestParser {
 
         assertEquals(expectedParseTree, tree);
     }
+
+    @Test
+    void test_parseLeftUnaryOp_wrongToken() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.OP, "!"),
+            new VariableToken(TokenType.STRING, "\"true\"")
+        );
+
+        Parser parser = new Parser(tokens);
+        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseLeftUnaryOp());
+        assertEquals("Invalid unary operator on STRING", error.getMessage());
+    }
+
 
     // parseValue
 
@@ -278,7 +292,61 @@ public class TestParser {
     // parseVariableAssignment
 
     // parseType
+    @ParameterizedTest
+    @EnumSource(value = TokenType.class, names = {"KW_INT", "KW_STR", "KW_BOOL", "KW_FLOAT"})
+    void test_parseType_primitiveTypeSuccess(TokenType type) {
+        List<Token> token = List.of(new StaticToken(type));
+        Parser parser = new Parser(token);
+        assertEquals(new ParseTree(token.get(0)), parser.parseType());
+    }
+
+    @Test
+    void test_parseType_fails() {
+        List<Token> token = List.of(new StaticToken(TokenType.KW_FN));
+        Parser parser = new Parser(token);
+        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseType());
+        assertEquals("Expected TYPE but got KW_FN ('')", error.getMessage());
+    }
 
     // parseControlFlow
+    @Test
+    void test_parseControlFlow_successReturnOnly() {
+        List<Token> token = List.of(new StaticToken(TokenType.KW_RET));
+        ParseTree expectedParseTree = new ParseTree("CONTROLFLOW", tokensToTreeNodes(token));
+        Parser parser = new Parser(token);
+        assertEquals(expectedParseTree, parser.parseControlFlow());
+    }
 
+    @Test
+    void test_parseControlFlow_successReturnValue() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_RET),
+            new VariableToken(TokenType.ID, "value"),
+            new VariableToken(TokenType.OP, "%"),
+            new VariableToken(TokenType.NUMBER, "2")
+        );
+        ParseTree expectedParseTree = new ParseTree("CONTROLFLOW", List.of(
+            new ParseTree(tokens.get(0)),
+            new ParseTree("EXPR", List.of(
+                new ParseTree("VALUE", List.of(
+                    new ParseTree(tokens.get(1)))
+                ),
+                new ParseTree(tokens.get(2)),
+                new ParseTree("EXPR", List.of(
+                    new ParseTree("VALUE", List.of(new ParseTree(tokens.get(3))))
+                ))
+            ))
+        ));
+        Parser parser = new Parser(tokens);
+        assertEquals(expectedParseTree, parser.parseControlFlow());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TokenType.class, names = {"KW_CNT", "KW_BRK"})
+    void test_parseControlFlow_successNonReturn(TokenType type) {
+        List<Token> token = List.of(new StaticToken(type));
+        ParseTree expectedParseTree = new ParseTree("CONTROLFLOW", tokensToTreeNodes(token));
+        Parser parser = new Parser(token);
+        assertEquals(expectedParseTree, parser.parseControlFlow());
+    }
 }
