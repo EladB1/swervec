@@ -8,36 +8,54 @@ import com.piedpiper.bolt.lexer.TokenType;
 
 public class Parser {
     /*
-     * LINE ::= STMNT / FUNCDEF
-     * STMNT ::= EXPR / COND / LOOP / VARDECL / VARASSIGN
-     * EXPR ::=  VALUE ( OP ( EXPR ) )* / "(" EXPR ")" / UNARYOP
-     * UNARYOP ::= LEFTUNARYOP / ( ID / NUMBER / ARRAYACCESS / FUNCCALL ) ( "++" / "--" )
-     * LEFTUNARYOP ::= ( "++" / "--" / "-" ) ( ID / NUMBER / ARRAYACCESS / FUNCCALL ) / "!" (BOOLEAN / ID / ARRAYACCESS / FUNCCALL)
-     * VALUE ::=  FUNCCALL / ARRAYACCESS / ID / STRINGLIT / NUMBER / BOOLEAN / ARRAYLIT 
-     * FUNCCALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
-     * ARRAYACCESS ::= ID ( ARRAYINDEX )+
-     * ARRAYINDEX ::= "[" NUMBER "]"
-     * ARRAYLIT ::= "{" (VALUE ("," VALUE)* )? "}"
+     * PROGRAM ::= ( STMNT / FUNC-DEF )+
+     * STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
+     * EXPR ::= ( ARITH-EXPR / LOGICAL-OR / TERNARY ) ( ";" )?
+     * ARITH-EXPR ::= TERM (ADD-OP TERM)*
+     * TERM ::= FACTOR (MULT-OP TERM)*
+     * FACTOR ::= VALUE / "(" EXPR ")" / UNARY-OP
+     * LOGICAL-OR ::=  ( LOGICAL-OR "||" )* LOGICAL-AND
+     * LOGICAL-AND ::= ( LOGICAL-AND "&&" )* CMPR-EXPR
+     * CMPR-EXPR ::= EXPR ( CMPR-OP EXPR )?
+     * UNARY-OP ::= LEFT-UNARY-OP / ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) ( "++" / "--" )
+     * LEFT-UNARY-OP ::= ( "++" / "--" / "-" ) ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) / "!" (BOOLEAN / ID / ARRAY-ACCESS / FUNC-CALL)
+     * ADD-OP ::= "+" / "-" / "^" / "&"
+     * MULT-OP ::= "*" / "/" / "%"
+     * CMPR-OP ::= "<" / ">" / "<=" / ">=" / "!=" / "=="
+     * TERNARY ::= EXPR ? VALUE : VALUE
+     * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
+     * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
+     * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
+     * ARRAY-INDEX ::= "[" NUMBER / ARRAY-ACCESS / FUNC-CALL / ID "]"
+     * ARRAY-LIT ::= "{" (EXPR ("," EXPR)* )? "}"
      * COND ::= IF ( "else" IF )* ( ELSE )?
-     * IF ::= "if" "(" EXPR ")" CONDBODY
-     * ELSE ::= "else" CONDBODY
-     * CONDBODY = ( ( "{" ( BLOCKBODY )* "}" ) / BLOCKBODY )
-     * BLOCKBODY = ( CONTROLFLOW / STMNT )
-     * LOOP ::= ("for" / "while") "(" EXPR ")" "{" ( BLOCKBODY )* "}"
-     * FUNCDEF ::= "fn" ID "(" (FUNCPARAM ("," FUNCPARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCKBODY )* "}"
-     * FUNCPARAM ::= TYPE ID ("=" EXPR )?
-     * ARRAYTYPE ::= "Array" "<" TYPE ">"
-     * IMMUTABLEARRAYDECL ::= "const" ARRAYTYPE ID ( ARRAYINDEX )? "=" ARRAYLIT / ID
-     * ARRAYDECL ::= ("const" "mut")? ARRAYTYPE ID ARRAYINDEX ( "=" ARRAYLIT / ID )? / IMMUTABLEARRAYDECL
-     * VARDECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAYDECL
-     * VARASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = VALUE 
-     * TYPE ::= "int" / "string" / "float" / "boolean" / ARRAYTYPE
-     * CONTROLFLOW ::= "return" ( EXPR )? / "continue" / "break"
+     * IF ::= "if" "(" EXPR ")" COND-BODY
+     * ELSE ::= "else" COND-BODY
+     * COND-BODY ::= ( ( "{" ( BLOCK-BODY )* "}" ) / BLOCK-BODY )
+     * BLOCK-BODY ::= CONTROL-FLOW / STMNT
+     * LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
+     * WHILE-LOOP ::= "while" "(" EXPR ")"
+     * FOR-LOOP ::= "for" "(" EXPR ( ";" EXPR ";" EXPR )? ")"
+     * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
+     * FUNC-PARAM ::= TYPE ID ("=" EXPR )?
+     * ARRAY-TYPE ::= "Array" "<" TYPE ">"
+     * IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" ARRAY-LIT / ID
+     * ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" ARRAY-LIT / ID )? / IMMUTABLE-ARRAY-DECL
+     * VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
+     * VAR-ASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = VALUE 
+     * TYPE ::= "int" / "string" / "float" / "boolean" / ARRAY-TYPE
+     * CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
     */
     private List<Token> tokens;
     private int position = 0;
     private Token current;
     private Token next; // use this to look ahead
+    List<String> leftUnaryOps = List.of("-", "!", "++", "--");
+    List<String> rightUnaryOps = leftUnaryOps.subList(2, 4);
+    List<String> assignmentOps = List.of("=", "+=", "-=", "*=", "/=");
+    List<String> comparisonOps = List.of("<", ">", "<=", ">=", "!=", "==");
+    List<String> addOps = List.of("+", "-", "^", "&");
+    List<String> multOps = List.of("*", "/", "%");
     
     public Parser(List<Token> tokens) {
         this.tokens = tokens;
@@ -57,32 +75,24 @@ public class Parser {
         }
     }
 
-    
+    // PROGRAM ::= ( STMNT / FUNCDEF )+
     public ParseTree parse() {
         ParseTree node = new ParseTree("PROGRAM");
         while (!atEnd()) {
-            node.appendChildren(parseLine());
+            if (current.getName() == TokenType.KW_FN) {
+                node.appendChildren(parseFunctionDefinition());
+            }
+            else {
+                node.appendChildren(parseStatement());
+            }
         }
         return node;
     }
 
-    // LINE ::= STMNT / FUNCDEF
-    public ParseTree parseLine() {
-        ParseTree node = new ParseTree("LINE");
-        if (current.getName() == TokenType.KW_FN) {
-            node.appendChildren(parseFunctionDefinition());
-        }
-        else {
-            node.appendChildren(parseStatement());
-        }
-        return node;
-    }
-
-    // STMNT ::= EXPR / COND / LOOP / VARDECL / VARASSIGN
+    // STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
     public ParseTree parseStatement() {
         ParseTree node = new ParseTree("STMT");
-        List<String> leftUnaryOps = List.of("!", "-", "++", "--");
-        List<String> assignmentOps = List.of("=", "+=", "-=", "*=", "/=");
+        
         if (current.getName() == TokenType.KW_CONST || isPrimitiveType(current) || current.getName() == TokenType.KW_ARR) {
             node.appendChildren(parseVariableDeclaration());
         }
@@ -106,7 +116,7 @@ public class Parser {
         return node;
     }
 
-    // EXPR ::=  VALUE ( OP ( EXPR ) )* / "(" EXPR ")" / UNARYOP
+    // EXPR ::= ( ARITH-EXPR / LOGICAL-OR / TERNARY ) ( ";" )?
     public ParseTree parseExpr() {
         ParseTree node = new ParseTree("EXPR");
 
@@ -133,11 +143,9 @@ public class Parser {
         return node;
     }
 
-    // UNARYOP ::= LEFTUNARYOP / ( ID / NUMBER / ARRAYACCESS / FUNCCALL ) ( "++" / "--" )
+    // UNARY-OP ::= LEFT-UNARY-OP / ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) ( "++" / "--" )
     public ParseTree parseUnaryOp() {
-        ParseTree node = new ParseTree("UNARYOP");
-        List<String> leftUnaryOps = List.of("!", "-", "++", "--");
-        List<String> rightUnaryOps = leftUnaryOps.subList(2, 4);
+        ParseTree node = new ParseTree("UNARY-OP");
         if (leftUnaryOps.contains(current.getValue()))
             node.appendChildren(parseLeftUnaryOp());
         else {
@@ -155,9 +163,9 @@ public class Parser {
         return node;
     }
 
-    // LEFTUNARYOP ::= ( "++" / "--" / "-" ) ( ID / NUMBER / ARRAYACCESS / FUNCCALL ) / "!" (BOOLEAN / ID / ARRAYACCESS / FUNCCALL)
+    // LEFT-UNARY-OP ::= ( "++" / "--" / "-" ) ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) / "!" (BOOLEAN / ID / ARRAY-ACCESS / FUNC-CALL)
     public ParseTree parseLeftUnaryOp() {
-        ParseTree node = new ParseTree("LEFTUNARYOP");
+        ParseTree node = new ParseTree("LEFT-UNARY-OP");
         if (current.getValue().equals("++") || current.getValue().equals("--") || current.getValue().equals("-")) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
             if (isNumber(current))
@@ -195,7 +203,7 @@ public class Parser {
         return node;
     }
 
-    // VALUE ::=  FUNCCALL / ARRAYACCESS / ID / STRINGLIT / NUMBER / BOOLEAN / ARRAYLIT 
+    // VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
     public ParseTree parseValue() {
         ParseTree node = new ParseTree("VALUE");
         if (isNumber(current))
@@ -217,9 +225,9 @@ public class Parser {
         return node;
     }
 
-    // FUNCCALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
+    // FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
     public ParseTree parseFunctionCall() {
-        ParseTree node = new ParseTree("FUNCCALL", List.of(
+        ParseTree node = new ParseTree("FUNC-CALL", List.of(
             parseExpectedToken(TokenType.ID, current),
             parseExpectedToken(TokenType.LEFT_PAREN, current))
         );
@@ -233,9 +241,9 @@ public class Parser {
         return node;
     }
 
-    // ARRAYACCESS ::= ID ( ARRAYINDEX )+
+    // ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
     public ParseTree parseArrayAccess() {
-        ParseTree node = new ParseTree("ARRAYACCESS");
+        ParseTree node = new ParseTree("ARRAY-ACCESS");
         boolean hasLeftSQB = next != null && next.getName() == TokenType.LEFT_SQB;
         if (!hasLeftSQB) {
             throw new SyntaxError("Expected LEFT_SQB but got " + next.getName() + " ('" + next.getValue() + "')", next.getLineNumber());
@@ -248,18 +256,18 @@ public class Parser {
         return node;
     }
 
-    // ARRAYINDEX ::= "[" NUMBER "]"
+    // ARRAY-INDEX ::= "[" NUMBER / ARRAY-ACCESS / FUNC-CALL / ID "]"
     public ParseTree parseArrayIndex() {
-        return new ParseTree("ARRAYINDEX", List.of(
+        return new ParseTree("ARRAY-INDEX", List.of(
             parseExpectedToken(TokenType.LEFT_SQB, current),
             parseExpectedToken(TokenType.NUMBER, current),
             parseExpectedToken(TokenType.RIGHT_SQB, current)
         ));
     }
 
-    // ARRAYLIT ::= "{" (EXPR ("," EXPR)* )? "}"
+    // ARRAY-LIT ::= "{" (EXPR ("," EXPR)* )? "}"
     public ParseTree parseArrayLiteral() {
-        ParseTree node = new ParseTree("ARRAYLIT");
+        ParseTree node = new ParseTree("ARRAY-LIT");
         node.appendChildren(parseExpectedToken(TokenType.LEFT_CB, current));
         if (current.getName() != TokenType.RIGHT_CB) {
             node.appendChildren(parseExpr());
@@ -284,7 +292,7 @@ public class Parser {
         return node;
     }
 
-    // IF ::= "if" "(" EXPR ")" CONDBODY
+    // IF ::= "if" "(" EXPR ")" COND-BODY
     public ParseTree parseIf() {
         ParseTree node = new ParseTree("IF", List.of(
             parseExpectedToken(TokenType.KW_IF, current),
@@ -296,7 +304,7 @@ public class Parser {
         return node;
     }
 
-    // ELSE ::= "else" CONDBODY
+    // ELSE ::= "else" COND-BODY
     public ParseTree parseElse() {
         return new ParseTree("ELSE", List.of(
             parseExpectedToken(TokenType.KW_ELSE, current),
@@ -304,9 +312,9 @@ public class Parser {
         ));
     }
 
-    // CONDBODY = ( ( "{" ( BLOCKBODY )* "}" ) / BLOCKBODY )
+    // COND-BODY = ( ( "{" ( BLOCK-BODY )* "}" ) / BLOCK-BODY )
     public ParseTree parseConditionalBody() {
-        ParseTree node = new ParseTree("BLOCKBODY");
+        ParseTree node = new ParseTree("BLOCK-BODY");
         if (current.getName() == TokenType.LEFT_CB) {
             node.appendChildren(parseExpectedToken(TokenType.LEFT_CB, current));
             if (current.getName() != TokenType.RIGHT_CB) {
@@ -321,12 +329,12 @@ public class Parser {
         return node;
     }
 
-    // BLOCKBODY = ( CONTROLFLOW / STMNT )
+    // BLOCK-BODY = CONTROLFLOW / STMNT
     public ParseTree parseBlockBody() {
         return List.of(TokenType.KW_RET, TokenType.KW_CNT, TokenType.KW_BRK).contains(current.getName()) ? parseControlFlow() : parseStatement();
     }
 
-    // LOOP ::= ("for" / "while") "(" EXPR ")" "{" ( BLOCKBODY )* "}"
+    // LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
     public ParseTree parseLoop() {
         TokenType loopType = current.getName();
         ParseTree node = new ParseTree("LOOP", List.of(
@@ -343,9 +351,9 @@ public class Parser {
         return node;
     }
 
-    //  FUNCDEF ::= "fn" ID "(" (FUNCPARAM ("," FUNCPARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCKBODY )* "}"
+    //  FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
     public ParseTree parseFunctionDefinition() {
-        ParseTree node = new ParseTree("FUNC", List.of(
+        ParseTree node = new ParseTree("FUNC-DEF", List.of(
             parseExpectedToken(TokenType.KW_FN, current),
             parseExpectedToken(TokenType.ID, current),
             parseExpectedToken(TokenType.LEFT_PAREN, current)
@@ -368,9 +376,9 @@ public class Parser {
         return node;
     }
 
-    // FUNCPARAM ::= TYPE ID ("=" EXPR )?
+    // FUNC-PARAM ::= TYPE ID ("=" EXPR )?
     public ParseTree parseFunctionParameter() {
-        ParseTree node = new ParseTree("FUNCPARAM", List.of(
+        ParseTree node = new ParseTree("FUNC-PARAM", List.of(
             parseType(),
             parseExpectedToken(TokenType.ID, current)
         ));
@@ -380,9 +388,9 @@ public class Parser {
         return node;
     }
 
-    // ARRAYTYPE ::= "Array" "<" TYPE ">"
+    // ARRAY-TYPE ::= "Array" "<" TYPE ">"
     public ParseTree parseArrayType() {
-        ParseTree node = new ParseTree("ARRAYTYPE");
+        ParseTree node = new ParseTree("ARRAY-TYPE");
         node.appendChildren(
             parseExpectedToken(TokenType.KW_ARR, current),
             parseExpectedToken(TokenType.OP, current, "<"),
@@ -393,9 +401,9 @@ public class Parser {
         return node;
     }
 
-    // IMMUTABLEARRAYDECL ::= "const" ARRAYTYPE ID ( ARRAYINDEX )? "=" ARRAYLIT / ID
+    // IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" ARRAY-LIT / ID
     public ParseTree parseImmutableArrayDeclaration() {
-        ParseTree node = new ParseTree("IMMUTABLEARRAYDECL", List.of(
+        ParseTree node = new ParseTree("IMMUTABLE-ARRAY-DECL", List.of(
             parseExpectedToken(TokenType.KW_CONST, current),
             parseArrayType(),
             parseExpectedToken(TokenType.ID, current)
@@ -407,9 +415,9 @@ public class Parser {
         return node;
     }
 
-    // ARRAYDECL ::= ("const" "mut")? ARRAYTYPE ID ARRAYINDEX ( "=" ARRAYLIT / ID )? / IMMUTABLEARRAYDECL
+    // ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" ARRAY-LIT / ID )? / IMMUTABLE-ARRAY-DECL
     public ParseTree parseArrayDeclaration() {
-        ParseTree node = new ParseTree("ARRAYDECL");
+        ParseTree node = new ParseTree("ARRAY-DECL");
         if (current.getName() == TokenType.KW_CONST) {
             if (next != null && next.getName() == TokenType.KW_MUT) {
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current), parseExpectedToken(TokenType.KW_MUT, current));
@@ -429,9 +437,9 @@ public class Parser {
         return node;
     }
 
-    // VARDECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAYDECL
+    // VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
     public ParseTree parseVariableDeclaration() {
-        ParseTree node = new ParseTree("VARDECL");
+        ParseTree node = new ParseTree("VAR-DECL");
         if (current.getName() == TokenType.KW_CONST) {
             if (next != null && (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR)) {
                 node.appendChildren(parseArrayDeclaration());
@@ -452,12 +460,11 @@ public class Parser {
         return node;
     }
 
-    // VARASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = VALUE 
+    // VAR-ASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = VALUE 
     public ParseTree parseVariableAssignment() { // reassignment of already declared variable
-        ParseTree node = new ParseTree("VARASSIGN", List.of(parseExpectedToken(TokenType.ID, current)));
-        List<String> assignmentOperators = List.of("+=", "-=", "*=", "/=", "=");
+        ParseTree node = new ParseTree("VAR-ASSIGN", List.of(parseExpectedToken(TokenType.ID, current)));
         if (current.getName().equals(TokenType.OP)) {
-            if (assignmentOperators.contains(current.getValue()))
+            if (assignmentOps.contains(current.getValue()))
                 node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
             else
                 throw new SyntaxError("Unexpected character '" + current.getValue() + "' in variable assignment", current.getLineNumber());
@@ -468,7 +475,7 @@ public class Parser {
         return node;
     }
 
-    // TYPE ::= "int" / "string" / "float" / "boolean" / ARRAYTYPE
+    // TYPE ::= "int" / "string" / "float" / "boolean" / ARRAY-TYPE
     public ParseTree parseType() {
         if (current.getName() == TokenType.KW_ARR)
             return parseArrayType();
@@ -480,10 +487,9 @@ public class Parser {
         throw new SyntaxError("Expected TYPE but got " + current.getName() + " ('" + current.getValue() + "')", current.getLineNumber());
     }
 
-    // CONTROLFLOW ::= "return" ( EXPR )? / "continue" / "break"
+    // CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
     public ParseTree parseControlFlow() {
-        List<String> leftUnaryOps = List.of("!", "-", "++", "--");
-        ParseTree node = new ParseTree("CONTROLFLOW");
+        ParseTree node = new ParseTree("CONTROL-FLOW");
         if (current.getName() == TokenType.KW_CNT || current.getName() == TokenType.KW_BRK) {
             node.appendChildren(parseExpectedToken(current.getName(), current));
         }
