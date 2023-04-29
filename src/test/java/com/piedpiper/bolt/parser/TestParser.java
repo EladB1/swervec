@@ -42,7 +42,7 @@ public class TestParser {
             new VariableToken(TokenType.ID, "x")
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens));
 
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseLeftUnaryOp();
@@ -58,7 +58,7 @@ public class TestParser {
             new VariableToken(TokenType.NUMBER, "5")
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens));
 
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseLeftUnaryOp();
@@ -73,7 +73,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_TRUE)
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens));
 
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseLeftUnaryOp();
@@ -90,9 +90,9 @@ public class TestParser {
             new StaticToken(TokenType.RIGHT_PAREN)
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", List.of(
+        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", List.of(
             new ParseTree(tokens.get(0)),
-            new ParseTree("FUNCCALL", tokensToTreeNodes(tokens.subList(1, 4)))
+            new ParseTree("FUNC-CALL", tokensToTreeNodes(tokens.subList(1, 4)))
         ));
 
         Parser parser = new Parser(tokens);
@@ -111,11 +111,11 @@ public class TestParser {
             new StaticToken(TokenType.RIGHT_SQB)
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFTUNARYOP", List.of(
+        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", List.of(
             new ParseTree(tokens.get(0)),
-            new ParseTree("ARRAYACCESS", List.of(
+            new ParseTree("ARRAY-ACCESS", List.of(
                 new ParseTree(tokens.get(1)),
-                new ParseTree("ARRAYINDEX", tokensToTreeNodes(tokens.subList(2, 5))
+                new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens.subList(2, 5))
                 )
             ))
         ));
@@ -153,9 +153,9 @@ public class TestParser {
             new StaticToken(TokenType.RIGHT_SQB)
         );
 
-        ParseTree expectedParseTree = new ParseTree("ARRAYACCESS", List.of(
+        ParseTree expectedParseTree = new ParseTree("ARRAY-ACCESS", List.of(
             new ParseTree(tokens.get(0)),
-            new ParseTree("ARRAYINDEX", tokensToTreeNodes(tokens.subList(1, 4))
+            new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens.subList(1, 4))
             )
         ));
 
@@ -184,7 +184,7 @@ public class TestParser {
         );
         Parser parser = new Parser(tokens);
         SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayAccess());
-        assertEquals("Expected LEFT_SQB but got LEFT_PAREN ('')", exception.getMessage());
+        assertEquals("Expected LEFT_SQB but got LEFT_PAREN", exception.getMessage());
     }
 
     // parseArrayIndex
@@ -196,7 +196,7 @@ public class TestParser {
             new StaticToken(TokenType.RIGHT_SQB)
         );
         Parser parser = new Parser(tokens);
-        ParseTree expectedParseTree = new ParseTree("ARRAYINDEX", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens));
         ParseTree tree = parser.parseArrayIndex();
         assertEquals(expectedParseTree, tree);
     }
@@ -251,7 +251,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_INT),
             new VariableToken(TokenType.OP, ">")
         );
-        ParseTree expectedParseTree = new ParseTree("ARRAYTYPE", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = new ParseTree("ARRAY-TYPE", tokensToTreeNodes(tokens));
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseArrayType();
         assertEquals(expectedParseTree, tree);
@@ -305,14 +305,14 @@ public class TestParser {
         List<Token> token = List.of(new StaticToken(TokenType.KW_FN));
         Parser parser = new Parser(token);
         SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseType());
-        assertEquals("Expected TYPE but got KW_FN ('')", error.getMessage());
+        assertEquals("Expected TYPE but got KW_FN", error.getMessage());
     }
 
     // parseControlFlow
     @Test
     void test_parseControlFlow_successReturnOnly() {
         List<Token> token = List.of(new StaticToken(TokenType.KW_RET));
-        ParseTree expectedParseTree = new ParseTree("CONTROLFLOW", tokensToTreeNodes(token));
+        ParseTree expectedParseTree = new ParseTree("CONTROL-FLOW", tokensToTreeNodes(token));
         Parser parser = new Parser(token);
         assertEquals(expectedParseTree, parser.parseControlFlow());
     }
@@ -325,7 +325,7 @@ public class TestParser {
             new VariableToken(TokenType.OP, "%"),
             new VariableToken(TokenType.NUMBER, "2")
         );
-        ParseTree expectedParseTree = new ParseTree("CONTROLFLOW", List.of(
+        ParseTree expectedParseTree = new ParseTree("CONTROL-FLOW", List.of(
             new ParseTree(tokens.get(0)),
             new ParseTree("EXPR", List.of(
                 new ParseTree("VALUE", List.of(
@@ -345,7 +345,7 @@ public class TestParser {
     @EnumSource(value = TokenType.class, names = {"KW_CNT", "KW_BRK"})
     void test_parseControlFlow_successNonReturn(TokenType type) {
         List<Token> token = List.of(new StaticToken(type));
-        ParseTree expectedParseTree = new ParseTree("CONTROLFLOW", tokensToTreeNodes(token));
+        ParseTree expectedParseTree = new ParseTree("CONTROL-FLOW", tokensToTreeNodes(token));
         Parser parser = new Parser(token);
         assertEquals(expectedParseTree, parser.parseControlFlow());
     }

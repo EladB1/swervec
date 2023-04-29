@@ -22,7 +22,7 @@ public class Parser {
      * ADD-OP ::= "+" / "-" / "^" / "&"
      * MULT-OP ::= "*" / "/" / "%"
      * CMPR-OP ::= "<" / ">" / "<=" / ">=" / "!=" / "=="
-     * TERNARY ::= EXPR ? VALUE : VALUE
+     * TERNARY ::= TERNARY ::= EXPR "?" EXPR ":" EXPR
      * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
      * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
      * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
@@ -73,6 +73,22 @@ public class Parser {
             current = tokens.get(position);
             next = position == tokens.size() - 1 ? null : tokens.get(position + 1);
         }
+    }
+
+    private String formComplaint(String expected, Token token) {
+        String messageStart = "Expected " + expected + " but ";
+        String messageEnd = atEnd() 
+            ? "reached EOF" 
+            : "got " + token.getName() + ( 
+                token.getValue().isBlank()
+                ? ""
+                : " ('" + token.getValue() + "')"
+            );
+        return messageStart + messageEnd;
+    }
+
+    private String formComplaint(TokenType expected, Token token) {
+        return formComplaint(expected.toString(), token);
     }
 
     // PROGRAM ::= ( STMNT / FUNCDEF )+
@@ -199,8 +215,19 @@ public class Parser {
             }
         }
         else
-            throw new SyntaxError("Expected LEFTUNARYOP but got " + current.getName() + " ('" + current.getValue() +"')", current.getLineNumber());
+            throw new SyntaxError(formComplaint("LEFTUNARYOP", current), current.getLineNumber());
         return node;
+    }
+
+    // TERNARY ::= EXPR "?" EXPR ":" EXPR
+    public ParseTree parseTernary() {
+        return new ParseTree("TERNARY", List.of(
+            parseExpr(),
+            parseExpectedToken(TokenType.OP, current, "?"),
+            parseExpr(),
+            parseExpectedToken(TokenType.OP, current, ":"),
+            parseExpr()
+        ));
     }
 
     // VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
@@ -246,7 +273,7 @@ public class Parser {
         ParseTree node = new ParseTree("ARRAY-ACCESS");
         boolean hasLeftSQB = next != null && next.getName() == TokenType.LEFT_SQB;
         if (!hasLeftSQB) {
-            throw new SyntaxError("Expected LEFT_SQB but got " + next.getName() + " ('" + next.getValue() + "')", next.getLineNumber());
+            throw new SyntaxError(formComplaint("LEFT_SQB", next), next.getLineNumber());
         }
         node.appendChildren(parseExpectedToken(TokenType.ID, current));
         while (hasLeftSQB) {
@@ -258,11 +285,25 @@ public class Parser {
 
     // ARRAY-INDEX ::= "[" NUMBER / ARRAY-ACCESS / FUNC-CALL / ID "]"
     public ParseTree parseArrayIndex() {
-        return new ParseTree("ARRAY-INDEX", List.of(
-            parseExpectedToken(TokenType.LEFT_SQB, current),
-            parseExpectedToken(TokenType.NUMBER, current),
-            parseExpectedToken(TokenType.RIGHT_SQB, current)
+        ParseTree node = new ParseTree("ARRAY-INDEX", List.of(
+            parseExpectedToken(TokenType.LEFT_SQB, current)
         ));
+        if (isNumber(current))
+            node.appendChildren(parseExpectedToken(TokenType.NUMBER, current));
+        else if (isID(current)) {
+            if (next.getName() == TokenType.LEFT_PAREN)
+                node.appendChildren(parseFunctionCall());
+            else if (next.getName() == TokenType.LEFT_SQB)
+                node.appendChildren(parseArrayAccess());
+            else
+                node.appendChildren(parseExpectedToken(TokenType.ID, current));
+        }
+        else {
+            String message = formComplaint(TokenType.NUMBER, current);
+            throw new SyntaxError(message);
+        }
+        node.appendChildren(parseExpectedToken(TokenType.RIGHT_SQB, current));
+        return node;
     }
 
     // ARRAY-LIT ::= "{" (EXPR ("," EXPR)* )? "}"
@@ -317,10 +358,8 @@ public class Parser {
         ParseTree node = new ParseTree("BLOCK-BODY");
         if (current.getName() == TokenType.LEFT_CB) {
             node.appendChildren(parseExpectedToken(TokenType.LEFT_CB, current));
-            if (current.getName() != TokenType.RIGHT_CB) {
-                while (current.getName() != TokenType.RIGHT_CB) {
-                    node.appendChildren(parseBlockBody());
-                }
+            while (current.getName() != TokenType.RIGHT_CB) {
+                node.appendChildren(parseBlockBody());
             }
             node.appendChildren(parseExpectedToken(TokenType.RIGHT_CB, current));
         }
@@ -331,7 +370,7 @@ public class Parser {
 
     // BLOCK-BODY = CONTROLFLOW / STMNT
     public ParseTree parseBlockBody() {
-        return List.of(TokenType.KW_RET, TokenType.KW_CNT, TokenType.KW_BRK).contains(current.getName()) ? parseControlFlow() : parseStatement();
+        return isControlFlow(current) ? parseControlFlow() : parseStatement();
     }
 
     // LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
@@ -471,7 +510,7 @@ public class Parser {
             node.appendChildren(parseValue());            
         }
         else
-            throw new SyntaxError("Expected equality operator but got " + current.getName() + "('" + current.getValue() + "')", current.getLineNumber());
+            throw new SyntaxError(formComplaint("equality", current), current.getLineNumber());
         return node;
     }
 
@@ -480,11 +519,9 @@ public class Parser {
         if (current.getName() == TokenType.KW_ARR)
             return parseArrayType();
         if (isPrimitiveType(current)) {
-            ParseTree node = new ParseTree(current);
-            move();
-            return node;
+            return parseExpectedToken(current.getName(), current);
         }
-        throw new SyntaxError("Expected TYPE but got " + current.getName() + " ('" + current.getValue() + "')", current.getLineNumber());
+        throw new SyntaxError(formComplaint("TYPE", current), current.getLineNumber());
     }
 
     // CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
@@ -501,7 +538,7 @@ public class Parser {
             }
         }
         else {
-            throw new SyntaxError("Expected KW_CNT, KW_BRK, or KW_RET EXPR but got " + current.getName() + "('" + current.getValue() + "')", current.getLineNumber());
+            throw new SyntaxError(formComplaint("KW_CNT, KW_BRK, or KW_RET EXPR", current), current.getLineNumber());
         }
         return node;
     }
@@ -511,7 +548,7 @@ public class Parser {
         ParseTree node;
         String message = "";
         if (atEnd())
-            message = "Expected " + expectedToken + " but reached EOF";
+            message = formComplaint(expectedToken, actualToken);
         else {
             if (actualToken.getName() == expectedToken) {
                 node = new ParseTree(actualToken);
@@ -519,9 +556,7 @@ public class Parser {
                 return node;
             }
             else {
-                message = actualToken.getValue().isBlank() // is this a StaticToken or VariableToken
-                ? String.format("Expected %s but got %s", expectedToken, actualToken.getName())
-                : String.format("Expected %s but got %s ('%s')", expectedToken, actualToken.getName(), actualToken.getValue());
+                message = formComplaint(expectedToken, actualToken);
                 
             }
         }
@@ -533,7 +568,7 @@ public class Parser {
         ParseTree node;
         String message = "";
         if (atEnd())
-            message = "Expected " + expectedToken + " but reached EOF";
+            message = formComplaint(expectedToken, actualToken);
         else {
             if (actualToken.getName() == expectedToken && actualToken.getValue() == value) {
                 node = new ParseTree(actualToken);
@@ -541,8 +576,7 @@ public class Parser {
                 return node;
             }
             else {
-                message = String.format("Expected %s but got %s ('%s')", value, actualToken.getName(), actualToken.getValue());
-                
+                message = formComplaint(value, actualToken);
             }
         }
         throw new SyntaxError(message, actualToken.getLineNumber());
@@ -574,6 +608,14 @@ public class Parser {
             TokenType.KW_FLOAT,
             TokenType.KW_STR,
             TokenType.KW_BOOL
+        ).contains(token.getName());
+    }
+
+    private boolean isControlFlow(Token token) {
+        return List.of(
+            TokenType.KW_RET,
+            TokenType.KW_CNT,
+            TokenType.KW_BRK
         ).contains(token.getName());
     }
 
