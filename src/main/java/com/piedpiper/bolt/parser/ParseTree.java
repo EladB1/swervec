@@ -3,6 +3,7 @@ package com.piedpiper.bolt.parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.piedpiper.bolt.lexer.VariableToken;
 import com.piedpiper.bolt.lexer.Token;
 
 import lombok.Data;
@@ -27,7 +28,7 @@ public class ParseTree {
     }
 
     public ParseTree(Token token) {
-        this.type = "non-terminal";
+        this.type = "terminal";
         this.token = token;
     }
 
@@ -35,5 +36,41 @@ public class ParseTree {
         for (ParseTree child : children) {
             this.children.add(child);
         }
+    }
+
+    @Override
+    public String toString() {
+        return toString(0);
+    }
+
+    private String toString(int indentLevel) {
+        String indentation = getNestedIndentation(indentLevel);
+        StringBuilder output = new StringBuilder(indentation + "ParseTree => ");
+        if (type.equals("terminal")) {
+            output.append("Token: " + token.getName());
+            if (token instanceof VariableToken)
+                output.append(" ('" + token.getValue() + "')");
+                if (token.getLineNumber() != 0)
+                    output.append(", line: " + token.getLineNumber());
+        }
+        else {
+            output.append(type);
+        }
+        if (!children.isEmpty()) {
+            output.append(", children: [");
+            for (int i = 0; i < children.size(); i++) {
+                output.append("\n" + children.get(i).toString(indentLevel+1));
+            }
+            output.append("\n" + indentation + "]");
+        }
+        return output.toString();
+    }
+
+    private String getNestedIndentation(int indentLevel) {
+        StringBuilder indentation = new StringBuilder();
+        for (int i = 0; i < indentLevel; i++) {
+            indentation.append('\t');
+        }
+        return indentation.toString();
     }
 }
