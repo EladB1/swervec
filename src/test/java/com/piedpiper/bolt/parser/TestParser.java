@@ -25,11 +25,21 @@ public class TestParser {
 
     // top-level parse
 
-    // parseLine
-
     // parseStatement
 
     // parseExpr
+
+    // parseArithmeticExpression
+
+    // parseTerm
+
+    // parseFactor
+
+    // parseLogicalOr
+
+    // parseLogicalAnd
+
+    // parseComparisonExpression
 
     // parseUnaryOp
 
@@ -138,6 +148,7 @@ public class TestParser {
         assertEquals("Invalid unary operator on STRING", error.getMessage());
     }
 
+    // parseTernary
 
     // parseValue
 
@@ -237,6 +248,10 @@ public class TestParser {
     // parseBlockBody
 
     // parseLoop
+
+    // parseForLoop
+
+    // parseWhileLoop
 
     // parseFunctionDefinition
 
