@@ -22,7 +22,7 @@ public class Parser {
      * ADD-OP ::= "+" / "-" / "^" / "&"
      * MULT-OP ::= "*" / "/" / "%"
      * CMPR-OP ::= "<" / ">" / "<=" / ">=" / "!=" / "=="
-     * TERNARY ::= TERNARY ::= EXPR "?" EXPR ":" EXPR
+     * TERNARY ::= EXPR "?" EXPR ":" EXPR
      * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
      * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
      * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
@@ -112,7 +112,13 @@ public class Parser {
         if (current.getName() == TokenType.KW_CONST || isPrimitiveType(current) || current.getName() == TokenType.KW_ARR) {
             node.appendChildren(parseVariableDeclaration());
         }
-        else if (current.getName() == TokenType.LEFT_PAREN || current.getName() == TokenType.LEFT_CB || leftUnaryOps.contains(current.getValue()) || isBooleanLiteral(current) || isString(current)) {
+        else if (
+            current.getName() == TokenType.LEFT_PAREN 
+            || current.getName() == TokenType.LEFT_CB 
+            || leftUnaryOps.contains(current.getValue()) 
+            || isBooleanLiteral(current) 
+            || isString(current)
+        ) {
             node.appendChildren(parseExpr());
         }
         else if (current.getName() == TokenType.KW_FOR || current.getName() == TokenType.KW_WHILE) {
@@ -134,29 +140,94 @@ public class Parser {
 
     // EXPR ::= ( ARITH-EXPR / LOGICAL-OR / TERNARY ) ( ";" )?
     public ParseTree parseExpr() {
+        List<String> logicalOps = List.of("||", "&&");
         ParseTree node = new ParseTree("EXPR");
+        if (next.getValue().equals("?"))
+            node.appendChildren(parseTernary());
+        else if (
+            current.getName() == TokenType.LEFT_PAREN 
+            || leftUnaryOps.contains(current.getValue()) 
+            || rightUnaryOps.contains(next.getValue()) 
+            || addOps.contains(next.getValue()) 
+            || multOps.contains(next.getValue())
+        )
+            node.appendChildren(parseArithmeticExpression());
+        else if (logicalOps.contains(next.getValue()) || comparisonOps.contains(next.getValue()))
+            node.appendChildren(parseLogicalOr());
+        return node;
+    }
 
-        if (current.getName() == TokenType.LEFT_PAREN) {
-            return new ParseTree("EXPR", List.of(
+    // ARITH-EXPR ::= TERM (ADD-OP TERM)*
+    public ParseTree parseArithmeticExpression() {
+        if (next != null && !addOps.contains(next.getValue()))
+            return parseTerm();
+        ParseTree node = new ParseTree("TERM", List.of(parseTerm()));
+        while (!atEnd() && multOps.contains(current.getValue())) {
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
+        }
+        return node;
+    }
+
+    // TERM ::= FACTOR (MULT-OP TERM)*
+    public ParseTree parseTerm() {
+        if (next != null && !multOps.contains(next.getValue()))
+            return parseFactor();
+        ParseTree node = new ParseTree("TERM", List.of(parseFactor()));
+        while (!atEnd() && multOps.contains(current.getValue())) {
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
+        }
+        return node;
+    }
+
+    // FACTOR ::= VALUE / "(" EXPR ")" / UNARY-OP
+    public ParseTree parseFactor() {
+        if (leftUnaryOps.contains(current.getValue()) || (isID(current) && rightUnaryOps.contains(next.getValue())))
+            return parseUnaryOp();
+        else if (current.getName() == TokenType.LEFT_PAREN) {
+            return new ParseTree("FACTOR", List.of(
                 parseExpectedToken(TokenType.LEFT_PAREN, current),
                 parseExpr(),
                 parseExpectedToken(TokenType.RIGHT_PAREN, current)
             ));
         }
+        else
+            return parseValue();
+    }
 
-        List<String> unaryOps = List.of("!", "++", "--");
-        if (unaryOps.contains(current.getValue()) || current.getValue().equals("-")) {
-            node.appendChildren(parseUnaryOp());
-            return node;
+    // LOGICAL-OR ::=  ( LOGICAL-OR "||" )* LOGICAL-AND
+    public ParseTree parseLogicalOr() {
+        if (next != null && !next.getValue().equals("||"))
+            return parseLogicalAnd();
+        ParseTree node = new ParseTree("LOGICAL-OR");
+        while (next != null && next.getValue().equals("||")) {
+            node.appendChildren(parseLogicalOr(), parseExpectedToken(TokenType.OP, current, "&&"));
         }
-        
-        node.appendChildren(parseValue());
-        while (isOp(current) && !unaryOps.contains(current.getValue())) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current), parseExpr());
-        }
-        if (unaryOps.contains(current.getValue()))
-            throw new SyntaxError("Unary operator used where binary operator expected", current.getLineNumber());
         return node;
+    }
+
+    // LOGICAL-AND ::= ( LOGICAL-AND "&&" )* CMPR-EXPR
+    public ParseTree parseLogicalAnd() {
+        if (next != null && !next.getValue().equals("&&"))
+            return parseComparisonExpression();
+        ParseTree node = new ParseTree("LOGICAL-AND");
+        while (next != null && next.getValue().equals("&&")) {
+            node.appendChildren(parseLogicalAnd(), parseExpectedToken(TokenType.OP, current, "&&"));
+        }
+        return node;
+    }
+
+    // CMPR-EXPR ::= EXPR ( CMPR-OP EXPR )?
+    public ParseTree parseComparisonExpression() {
+        if (next != null && !comparisonOps.contains(next.getValue()))
+            return parseExpr();
+        ParseTree node = new ParseTree("CMPR-EXPR", List.of(
+            parseExpr()
+        ));
+        if (comparisonOps.contains(current.getValue())) {
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseExpr());
+        }
+        return node;
+
     }
 
     // UNARY-OP ::= LEFT-UNARY-OP / ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) ( "++" / "--" )
@@ -195,7 +266,7 @@ public class Parser {
                     node.appendChildren(parseExpectedToken(TokenType.ID, current));
             }
             else {
-                throw new SyntaxError("Invalid unary operator on " + current.getName());
+                throw new SyntaxError("Invalid unary operator on " + current.getName(), current.getLineNumber());
             }
         }
         else if (current.getValue().equals("!")) {
@@ -211,7 +282,7 @@ public class Parser {
                     node.appendChildren(parseExpectedToken(TokenType.ID, current));
             }
             else {
-                throw new SyntaxError("Invalid unary operator on " + current.getName());
+                throw new SyntaxError("Invalid unary operator on " + current.getName(), current.getLineNumber());
             }
         }
         else
@@ -300,7 +371,7 @@ public class Parser {
         }
         else {
             String message = formComplaint(TokenType.NUMBER, current);
-            throw new SyntaxError(message);
+            throw new SyntaxError(message, current.getLineNumber());
         }
         node.appendChildren(parseExpectedToken(TokenType.RIGHT_SQB, current));
         return node;
@@ -378,9 +449,7 @@ public class Parser {
         TokenType loopType = current.getName();
         ParseTree node = new ParseTree("LOOP", List.of(
             parseExpectedToken(loopType, current),
-            parseExpectedToken(TokenType.LEFT_PAREN, current),
-            parseExpr(),
-            parseExpectedToken(TokenType.RIGHT_PAREN, current),
+            loopType == TokenType.KW_FOR ? parseForLoop() : parseWhileLoop(),
             parseExpectedToken(TokenType.LEFT_CB, current)
         ));
         while (current.getName() != TokenType.RIGHT_CB) {
@@ -389,6 +458,36 @@ public class Parser {
         node.appendChildren(parseExpectedToken(TokenType.RIGHT_CB, current));
         return node;
     }
+
+    //WHILE-LOOP ::= "while" "(" EXPR ")"
+    public ParseTree parseWhileLoop() {
+        return new ParseTree("WHILE-LOOP", List.of(
+            parseExpectedToken(TokenType.KW_WHILE, current),
+            parseExpectedToken(TokenType.LEFT_PAREN, current),
+            parseExpr(),
+            parseExpectedToken(TokenType.RIGHT_PAREN, current)
+        ));
+    }
+
+    // FOR-LOOP ::= "for" "(" EXPR ( ";" EXPR ";" EXPR )? ")"
+    public ParseTree parseForLoop() {
+        ParseTree node = new ParseTree("FOR-LOOP", List.of(
+            parseExpectedToken(TokenType.KW_FOR, current),
+            parseExpectedToken(TokenType.LEFT_PAREN, current),
+            parseExpr()
+        ));
+        if (current.getName() == TokenType.SC) {
+            node.appendChildren(
+                parseExpectedToken(TokenType.SC, current),
+                parseExpr(), parseExpectedToken(TokenType.SC, current),
+                parseExpr()
+            );
+        }
+        node.appendChildren(parseExpectedToken(TokenType.RIGHT_PAREN, current));
+        return node;
+    }
+
+    //
 
     //  FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
     public ParseTree parseFunctionDefinition() {

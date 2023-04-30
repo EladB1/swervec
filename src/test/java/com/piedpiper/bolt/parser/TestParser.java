@@ -328,12 +328,14 @@ public class TestParser {
         ParseTree expectedParseTree = new ParseTree("CONTROL-FLOW", List.of(
             new ParseTree(tokens.get(0)),
             new ParseTree("EXPR", List.of(
-                new ParseTree("VALUE", List.of(
-                    new ParseTree(tokens.get(1)))
-                ),
-                new ParseTree(tokens.get(2)),
-                new ParseTree("EXPR", List.of(
-                    new ParseTree("VALUE", List.of(new ParseTree(tokens.get(3))))
+                new ParseTree("TERM", List.of(
+                    new ParseTree("VALUE", List.of(
+                        new ParseTree(tokens.get(1)))
+                    ),
+                    new ParseTree(tokens.get(2)),
+                    new ParseTree("TERM", List.of(
+                        new ParseTree("VALUE", List.of(new ParseTree(tokens.get(3))))
+                    ))
                 ))
             ))
         ));
