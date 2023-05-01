@@ -10,9 +10,10 @@ public class Parser {
     /*
      * PROGRAM ::= ( STMNT / FUNC-DEF )+
      * STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
-     * EXPR ::= ( ARITH-EXPR / LOGICAL-OR / TERNARY ) ( ";" )?
+     * EXPR ::= ( ARITH-EXPR / LOGICAL-OR )
      * ARITH-EXPR ::= TERM (ADD-OP TERM)*
-     * TERM ::= FACTOR (MULT-OP TERM)*
+     * TERM ::= EXPO (MULT-OP TERM)*
+     * EXPO ::= FACTOR ( "**" EXPO )*
      * FACTOR ::= VALUE / "(" EXPR ")" / UNARY-OP
      * LOGICAL-OR ::=  ( LOGICAL-OR "||" )* LOGICAL-AND
      * LOGICAL-AND ::= ( LOGICAL-AND "&&" )* CMPR-EXPR
@@ -22,8 +23,8 @@ public class Parser {
      * ADD-OP ::= "+" / "-" / "^" / "&"
      * MULT-OP ::= "*" / "/" / "%"
      * CMPR-OP ::= "<" / ">" / "<=" / ">=" / "!=" / "=="
-     * TERNARY ::= EXPR "?" EXPR ":" EXPR
-     * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
+     * TERNARY ::= LOGICAL-OR "?" EXPR ":" EXPR
+     * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT / TERNARY
      * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
      * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
      * ARRAY-INDEX ::= "[" NUMBER / ARRAY-ACCESS / FUNC-CALL / ID "]"
@@ -35,7 +36,7 @@ public class Parser {
      * BLOCK-BODY ::= CONTROL-FLOW / STMNT
      * LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
      * WHILE-LOOP ::= "while" "(" EXPR ")"
-     * FOR-LOOP ::= "for" "(" EXPR ( ";" EXPR ";" EXPR )? ")"
+     * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ( ";" EXPR ";" EXPR )? ) / TYPE ID : EXPR ) ")"
      * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
      * FUNC-PARAM ::= TYPE ID ("=" EXPR )?
      * ARRAY-TYPE ::= "Array" "<" TYPE ">"
@@ -138,7 +139,7 @@ public class Parser {
         return node;
     }
 
-    // EXPR ::= ( ARITH-EXPR / LOGICAL-OR / TERNARY ) ( ";" )?
+    // EXPR ::= ( ARITH-EXPR / LOGICAL-OR )
     public ParseTree parseExpr() {
         List<String> logicalOps = List.of("||", "&&");
         ParseTree node = new ParseTree("EXPR");
@@ -159,28 +160,41 @@ public class Parser {
 
     // ARITH-EXPR ::= TERM (ADD-OP TERM)*
     public ParseTree parseArithmeticExpression() {
-        if (next != null && !addOps.contains(next.getValue()))
+        if (next == null || !addOps.contains(next.getValue()))
             return parseTerm();
-        ParseTree node = new ParseTree("TERM", List.of(parseTerm()));
+        ParseTree node = new ParseTree("ARITH-EXPR", List.of(parseTerm()));
+        while (!atEnd() && addOps.contains(current.getValue())) {
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
+        }
+        return node;
+    }
+
+    // TERM ::= EXPO (MULT-OP TERM)*
+    public ParseTree parseTerm() {
+        if (next == null || !multOps.contains(next.getValue()))
+            return parseExponent();
+        ParseTree node = new ParseTree("TERM", List.of(parseExponent()));
         while (!atEnd() && multOps.contains(current.getValue())) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
         }
         return node;
     }
 
-    // TERM ::= FACTOR (MULT-OP TERM)*
-    public ParseTree parseTerm() {
-        if (next != null && !multOps.contains(next.getValue()))
+    // EXPO ::= FACTOR ( "**" EXPO )*
+    public ParseTree parseExponent() {
+        if (next == null || !next.getValue().equals("**"))
             return parseFactor();
-        ParseTree node = new ParseTree("TERM", List.of(parseFactor()));
-        while (!atEnd() && multOps.contains(current.getValue())) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
+        ParseTree node = new ParseTree("EXPO", List.of(parseFactor()));
+        while (!atEnd() && current.getValue().equals("**")) {
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseFactor());
         }
         return node;
     }
 
     // FACTOR ::= VALUE / "(" EXPR ")" / UNARY-OP
     public ParseTree parseFactor() {
+        if (next == null)
+            return parseValue();
         if (leftUnaryOps.contains(current.getValue()) || (isID(current) && rightUnaryOps.contains(next.getValue())))
             return parseUnaryOp();
         else if (current.getName() == TokenType.LEFT_PAREN) {
@@ -290,7 +304,7 @@ public class Parser {
         return node;
     }
 
-    // TERNARY ::= EXPR "?" EXPR ":" EXPR
+    // TERNARY ::= LOGICAL-OR "?" EXPR ":" EXPR
     public ParseTree parseTernary() {
         return new ParseTree("TERNARY", List.of(
             parseExpr(),
@@ -303,24 +317,24 @@ public class Parser {
 
     // VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
     public ParseTree parseValue() {
-        ParseTree node = new ParseTree("VALUE");
         if (isNumber(current))
-            node.appendChildren(parseExpectedToken(TokenType.NUMBER, current));
+            return parseExpectedToken(TokenType.NUMBER, current);
         else if (isString(current))
-            node.appendChildren(parseExpectedToken(TokenType.STRING, current));
+            return parseExpectedToken(TokenType.STRING, current);
         else if (isBooleanLiteral(current))
-            node.appendChildren(parseExpectedToken(current.getName(), current));
+            return parseExpectedToken(current.getName(), current);
         else if (current.getName() == TokenType.LEFT_CB)
-            node.appendChildren(parseArrayLiteral());
+            return parseArrayLiteral();
         else if (isID(current)) {
             if (next != null && next.getName() == TokenType.LEFT_SQB)
-                node.appendChildren(parseArrayAccess());
+                return parseArrayAccess();
             else if (next != null && next.getName() == TokenType.LEFT_PAREN)
-                node.appendChildren(parseFunctionCall());
+                return parseFunctionCall();
             else
-                node.appendChildren(parseExpectedToken(TokenType.ID, current));
+                return parseExpectedToken(TokenType.ID, current);
         }
-        return node;
+        else
+            throw new SyntaxError(formComplaint("VALUE", current), current.getLineNumber());
     }
 
     // FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
@@ -381,9 +395,9 @@ public class Parser {
     public ParseTree parseArrayLiteral() {
         ParseTree node = new ParseTree("ARRAY-LIT");
         node.appendChildren(parseExpectedToken(TokenType.LEFT_CB, current));
-        if (current.getName() != TokenType.RIGHT_CB) {
+        if (current.getName() != TokenType.RIGHT_CB && current.getName() != TokenType.COMMA) {
             node.appendChildren(parseExpr());
-            while (current.getName() != TokenType.RIGHT_CB) {
+            while (!atEnd() && current.getName() != TokenType.RIGHT_CB) {
                 node.appendChildren(parseExpectedToken(TokenType.COMMA, current), parseExpr());
             }
         }
@@ -469,7 +483,7 @@ public class Parser {
         ));
     }
 
-    // FOR-LOOP ::= "for" "(" EXPR ( ";" EXPR ";" EXPR )? ")"
+    // FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ( ";" EXPR ";" EXPR )? ) / TYPE ID : EXPR ) ")"
     public ParseTree parseForLoop() {
         ParseTree node = new ParseTree("FOR-LOOP", List.of(
             parseExpectedToken(TokenType.KW_FOR, current),

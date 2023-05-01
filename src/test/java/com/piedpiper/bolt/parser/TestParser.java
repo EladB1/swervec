@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -23,6 +24,11 @@ public class TestParser {
         return tokens.stream().map((Token token) -> new ParseTree(token)).collect(Collectors.toList());
     }
 
+    private void assertSyntaxError(String expectedErrorMessage, Executable executable) {
+        SyntaxError error = assertThrows(SyntaxError.class, executable);
+        assertEquals(expectedErrorMessage, error.getMessage());
+    }
+
     // top-level parse
 
     // parseStatement
@@ -30,8 +36,46 @@ public class TestParser {
     // parseExpr
 
     // parseArithmeticExpression
+    @Test
+    void test_parseArithmeticExpression_simple() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "length"),
+            new VariableToken(TokenType.OP, "-"),
+            new VariableToken(TokenType.ID, "i")
+        );
+
+        ParseTree expectedParseTree = new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens));
+        Parser parser = new Parser(tokens);
+        assertEquals(expectedParseTree, parser.parseArithmeticExpression());
+    }
 
     // parseTerm
+    @Test
+    void test_parseTerm_simple() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "*"),
+            new VariableToken(TokenType.ID, "j")
+        );
+
+        ParseTree expectedParseTree = new ParseTree("TERM", tokensToTreeNodes(tokens));
+        Parser parser = new Parser(tokens);
+        assertEquals(expectedParseTree, parser.parseTerm());
+    }
+
+    // parseExponent
+    @Test
+    void test_parseExpo_simple() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "**"),
+            new VariableToken(TokenType.ID, "n")
+        );
+
+        ParseTree expectedParseTree = new ParseTree("EXPO", tokensToTreeNodes(tokens));
+        Parser parser = new Parser(tokens);
+        assertEquals(expectedParseTree, parser.parseExponent());
+    }
 
     // parseFactor
 
@@ -144,8 +188,7 @@ public class TestParser {
         );
 
         Parser parser = new Parser(tokens);
-        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseLeftUnaryOp());
-        assertEquals("Invalid unary operator on STRING", error.getMessage());
+        assertSyntaxError("Invalid unary operator on STRING", () -> parser.parseLeftUnaryOp());
     }
 
     // parseTernary
@@ -183,8 +226,7 @@ public class TestParser {
             new StaticToken(TokenType.LEFT_SQB)
         );
         Parser parser = new Parser(tokens);
-        SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayAccess());
-        assertEquals("Expected NUMBER but reached EOF", exception.getMessage());
+        assertSyntaxError("Expected NUMBER but reached EOF", () -> parser.parseArrayAccess());
     }
 
     @Test
@@ -194,8 +236,7 @@ public class TestParser {
             new StaticToken(TokenType.LEFT_PAREN)
         );
         Parser parser = new Parser(tokens);
-        SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayAccess());
-        assertEquals("Expected LEFT_SQB but got LEFT_PAREN", exception.getMessage());
+        assertSyntaxError("Expected LEFT_SQB but got LEFT_PAREN", () -> parser.parseArrayAccess());
     }
 
     // parseArrayIndex
@@ -219,8 +260,7 @@ public class TestParser {
             new VariableToken(TokenType.NUMBER, "3")
         );
         Parser parser = new Parser(tokens);
-        SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayIndex());
-        assertEquals("Expected RIGHT_SQB but reached EOF", exception.getMessage());
+        assertSyntaxError("Expected RIGHT_SQB but reached EOF", () -> parser.parseArrayIndex());
     }
 
     @Test
@@ -231,11 +271,29 @@ public class TestParser {
             new StaticToken(TokenType.RIGHT_SQB)
         );
         Parser parser = new Parser(tokens);
-        SyntaxError exception = assertThrows(SyntaxError.class, () -> parser.parseArrayIndex());
-        assertEquals("Expected NUMBER but got STRING ('\"value\"')", exception.getMessage());
+        assertSyntaxError("Expected NUMBER but got STRING ('\"value\"')", () -> parser.parseArrayIndex());
     }
 
     // parseArrayLiteral
+    @Test
+    void test_parseArrayLiteral_empty() {
+
+    }
+
+    @Test
+    void test_parseArrayLiteral_one() {
+
+    }
+
+    @Test
+    void test_parseArrayLiteral_multiple() {
+
+    }
+
+    @Test
+    void test_parseArrayLiteral_error() {
+        
+    }
 
     // parseConditional
 
@@ -281,8 +339,7 @@ public class TestParser {
             new VariableToken(TokenType.OP, "<")
         );
         Parser parser = new Parser(tokens);
-        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseArrayType());
-        assertEquals("Expected < but got OP ('>')", error.getMessage());
+        assertSyntaxError("Expected < but got OP ('>')", () -> parser.parseArrayType());
     }
 
     @Test
@@ -319,8 +376,7 @@ public class TestParser {
     void test_parseType_fails() {
         List<Token> token = List.of(new StaticToken(TokenType.KW_FN));
         Parser parser = new Parser(token);
-        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseType());
-        assertEquals("Expected TYPE but got KW_FN", error.getMessage());
+        assertSyntaxError("Expected TYPE but got KW_FN", () -> parser.parseType());
     }
 
     // parseControlFlow
@@ -344,15 +400,11 @@ public class TestParser {
             new ParseTree(tokens.get(0)),
             new ParseTree("EXPR", List.of(
                 new ParseTree("TERM", List.of(
-                    new ParseTree("VALUE", List.of(
-                        new ParseTree(tokens.get(1)))
-                    ),
+                    new ParseTree(tokens.get(1)),
                     new ParseTree(tokens.get(2)),
-                    new ParseTree("TERM", List.of(
-                        new ParseTree("VALUE", List.of(new ParseTree(tokens.get(3))))
-                    ))
+                    new ParseTree(tokens.get(3)))
                 ))
-            ))
+            )
         ));
         Parser parser = new Parser(tokens);
         assertEquals(expectedParseTree, parser.parseControlFlow());
