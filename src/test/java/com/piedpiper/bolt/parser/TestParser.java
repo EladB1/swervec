@@ -34,6 +34,10 @@ public class TestParser {
     // parseStatement
 
     // parseExpr
+    @Test
+    void test_parseExpr_compound() {
+       
+    }
 
     // parseArithmeticExpression
     @Test
@@ -78,6 +82,20 @@ public class TestParser {
     }
 
     // parseFactor
+    @Test
+    void test_parseFactor_value() {
+
+    }
+
+    @Test
+    void test_parseFactor_parenExpr() {
+
+    }
+
+    @Test
+    void test_parseFactor_unaryOp() {
+
+    }
 
     // parseLogicalOr
 
@@ -86,6 +104,11 @@ public class TestParser {
     // parseComparisonExpression
 
     // parseUnaryOp
+    @ParameterizedTest
+    @ValueSource(strings = {"++", "--"})
+    void test_parseUnaryOp(String operator) {
+
+    }
 
     // parseLeftUnaryOp
     @ParameterizedTest
@@ -192,6 +215,10 @@ public class TestParser {
     }
 
     // parseTernary
+    @Test
+    void test_parseTernary_simple() {
+        
+    }
 
     // parseValue
 
@@ -292,7 +319,7 @@ public class TestParser {
 
     @Test
     void test_parseArrayLiteral_error() {
-        
+
     }
 
     // parseConditional

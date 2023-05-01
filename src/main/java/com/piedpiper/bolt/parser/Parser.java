@@ -186,7 +186,7 @@ public class Parser {
             return parseFactor();
         ParseTree node = new ParseTree("EXPO", List.of(parseFactor()));
         while (!atEnd() && current.getValue().equals("**")) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseFactor());
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseExponent());
         }
         return node;
     }
@@ -307,7 +307,7 @@ public class Parser {
     // TERNARY ::= LOGICAL-OR "?" EXPR ":" EXPR
     public ParseTree parseTernary() {
         return new ParseTree("TERNARY", List.of(
-            parseExpr(),
+            parseLogicalOr(),
             parseExpectedToken(TokenType.OP, current, "?"),
             parseExpr(),
             parseExpectedToken(TokenType.OP, current, ":"),
@@ -730,6 +730,10 @@ public class Parser {
             TokenType.KW_CNT,
             TokenType.KW_BRK
         ).contains(token.getName());
+    }
+
+    private boolean isArithmeticOperator(Token token) {
+        return addOps.contains(token.getValue()) || multOps.contains(token.getValue()) || comparisonOps.contains(token.getValue()) || token.getValue().equals("**");
     }
 
     
