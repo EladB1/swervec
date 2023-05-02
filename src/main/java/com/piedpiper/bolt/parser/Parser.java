@@ -140,21 +140,10 @@ public class Parser {
     }
 
     // EXPR ::= ( ARITH-EXPR / LOGICAL-OR )
+    // EXPR ::= ( CMPR-EXPR / LOGICAL-OR )
     public ParseTree parseExpr() {
-        List<String> logicalOps = List.of("||", "&&");
         ParseTree node = new ParseTree("EXPR");
-        if (next.getValue().equals("?"))
-            node.appendChildren(parseTernary());
-        else if (
-            current.getName() == TokenType.LEFT_PAREN 
-            || leftUnaryOps.contains(current.getValue()) 
-            || rightUnaryOps.contains(next.getValue()) 
-            || addOps.contains(next.getValue()) 
-            || multOps.contains(next.getValue())
-        )
-            node.appendChildren(parseArithmeticExpression());
-        else if (logicalOps.contains(next.getValue()) || comparisonOps.contains(next.getValue()))
-            node.appendChildren(parseLogicalOr());
+        node.appendChildren(parseLogicalOr());
         return node;
     }
 
@@ -210,35 +199,44 @@ public class Parser {
 
     // LOGICAL-OR ::=  ( LOGICAL-OR "||" )* LOGICAL-AND
     public ParseTree parseLogicalOr() {
-        if (next != null && !next.getValue().equals("||"))
-            return parseLogicalAnd();
-        ParseTree node = new ParseTree("LOGICAL-OR");
-        while (next != null && next.getValue().equals("||")) {
-            node.appendChildren(parseLogicalOr(), parseExpectedToken(TokenType.OP, current, "&&"));
+        ParseTree logicalAnd = parseLogicalAnd();
+        if (atEnd() || !current.getValue().equals("||"))
+            return logicalAnd;
+
+        ParseTree node = new ParseTree("LOGICAL-OR", List.of(logicalAnd));
+
+        while (!atEnd() && current.getValue().equals("||")) {
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, "||"), parseLogicalAnd());
         }
+
         return node;
     }
 
     // LOGICAL-AND ::= ( LOGICAL-AND "&&" )* CMPR-EXPR
     public ParseTree parseLogicalAnd() {
-        if (next != null && !next.getValue().equals("&&"))
-            return parseComparisonExpression();
-        ParseTree node = new ParseTree("LOGICAL-AND");
-        while (next != null && next.getValue().equals("&&")) {
-            node.appendChildren(parseLogicalAnd(), parseExpectedToken(TokenType.OP, current, "&&"));
+        ParseTree compare = parseComparisonExpression();
+        if (atEnd() || !current.getValue().equals("&&"))
+            return compare;
+        
+        ParseTree node = new ParseTree("LOGICAL-AND", List.of(compare));
+        
+        while (!atEnd() && current.getValue().equals("&&")) {
+            node.appendChildren(
+                parseExpectedToken(TokenType.OP, current, "&&"),
+                parseComparisonExpression()
+            );
         }
         return node;
     }
 
-    // CMPR-EXPR ::= EXPR ( CMPR-OP EXPR )?
+    // CMPR-EXPR ::= ARITH-EXPR ( CMPR-OP ARITH-EXPR )?
     public ParseTree parseComparisonExpression() {
-        if (next != null && !comparisonOps.contains(next.getValue()))
-            return parseExpr();
-        ParseTree node = new ParseTree("CMPR-EXPR", List.of(
-            parseExpr()
-        ));
+        ParseTree arithExpr = parseArithmeticExpression();
+        if (atEnd() || !comparisonOps.contains(current.getValue()))
+            return arithExpr;
+        ParseTree node = new ParseTree("CMPR-EXPR", List.of(arithExpr));
         if (comparisonOps.contains(current.getValue())) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseExpr());
+            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseArithmeticExpression());
         }
         return node;
 
@@ -333,8 +331,9 @@ public class Parser {
             else
                 return parseExpectedToken(TokenType.ID, current);
         }
-        else
-            throw new SyntaxError(formComplaint("VALUE", current), current.getLineNumber());
+        return new ParseTree(current);
+        //else
+            //throw new SyntaxError(formComplaint("VALUE", current), current.getLineNumber());
     }
 
     // FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )

@@ -36,7 +36,77 @@ public class TestParser {
     // parseExpr
     @Test
     void test_parseExpr_compound() {
-       
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "+"),
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "<="),
+            new VariableToken(TokenType.NUMBER, "4"),
+            new VariableToken(TokenType.OP, "&&"),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "!="),
+            new VariableToken(TokenType.NUMBER, "0")
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("EXPR", List.of(
+            new ParseTree("LOGICAL-AND", List.of(
+                new ParseTree("CMPR-EXPR", List.of(
+                    new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(0, 3))),
+                    new ParseTree(tokens.get(3)),
+                    new ParseTree(tokens.get(4))
+                )),
+                new ParseTree(tokens.get(5)),
+                new ParseTree("CMPR-EXPR", tokensToTreeNodes(tokens.subList(6, 9)))
+            ))
+        ));
+
+        assertEquals(expectedParseTree, parser.parseExpr());
+    }
+
+    @Test
+    void test_parseExpr_complex() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "+"),
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "<="),
+            new VariableToken(TokenType.NUMBER, "4"),
+            new VariableToken(TokenType.OP, "||"),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "%"),
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "=="),
+            new VariableToken(TokenType.NUMBER, "0"),
+            new VariableToken(TokenType.OP, "&&"),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "!="),
+            new VariableToken(TokenType.ID, "length")
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("EXPR", List.of(
+            new ParseTree("LOGICAL-OR", List.of(
+                new ParseTree("CMPR-EXPR", List.of(
+                    new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(0, 3))),
+                    new ParseTree(tokens.get(3)),
+                    new ParseTree(tokens.get(4))
+                )),
+                new ParseTree(tokens.get(5)),
+                new ParseTree("LOGICAL-AND", List.of(
+                    new ParseTree("CMPR-EXPR", List.of(
+                        new ParseTree("TERM", tokensToTreeNodes(tokens.subList(6, 9))),
+                        new ParseTree(tokens.get(9)),
+                        new ParseTree(tokens.get(10))
+                    )),
+                    new ParseTree(tokens.get(11)),
+                    new ParseTree("CMPR-EXPR", tokensToTreeNodes(tokens.subList(12, 15)))
+                ))
+            ))
+                
+        ));
+
+        assertEquals(expectedParseTree, parser.parseExpr());
     }
 
     // parseArithmeticExpression
@@ -98,10 +168,99 @@ public class TestParser {
     }
 
     // parseLogicalOr
+    @Test
+    void test_parseLogicalOr_simple() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_TRUE),
+            new VariableToken(TokenType.OP, "||"),
+            new StaticToken(TokenType.KW_FALSE)
+        );
+        Parser parser = new Parser(tokens);
+        ParseTree expectedParseTree = new ParseTree("LOGICAL-OR", tokensToTreeNodes(tokens));
+
+        assertEquals(expectedParseTree, parser.parseLogicalOr());
+    }
+
+    @Test
+    void test_parseLogicalOr_compound() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.LEFT_PAREN),
+            new StaticToken(TokenType.KW_TRUE),
+            new VariableToken(TokenType.OP, "||"),
+            new StaticToken(TokenType.KW_FALSE),
+            new StaticToken(TokenType.RIGHT_PAREN),
+            new VariableToken(TokenType.OP, "&&"),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "=="),
+            new VariableToken(TokenType.NUMBER, "10")
+        );
+        Parser parser = new Parser(tokens);
+        ParseTree expectedParseTree = new ParseTree("LOGICAL-AND", List.of(
+            new ParseTree("FACTOR", List.of(
+                new ParseTree(tokens.get(0)),
+                new ParseTree("EXPR", List.of(
+                    new ParseTree("LOGICAL-OR", tokensToTreeNodes(tokens.subList(1, 4)))
+                )),
+                new ParseTree(tokens.get(4))
+            )),
+            new ParseTree(tokens.get(5)),
+            new ParseTree("CMPR-EXPR", tokensToTreeNodes(tokens.subList(6, 9)))
+        ));
+        assertEquals(expectedParseTree, parser.parseLogicalOr());
+    }
+
 
     // parseLogicalAnd
+    @Test
+    void test_parseLogicalAnd_simple() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_TRUE),
+            new VariableToken(TokenType.OP, "&&"),
+            new StaticToken(TokenType.KW_FALSE)
+        );
+        Parser parser = new Parser(tokens);
+        ParseTree expectedParseTree = new ParseTree("LOGICAL-AND", tokensToTreeNodes(tokens));
+
+        assertEquals(expectedParseTree, parser.parseLogicalAnd());
+    }
+
+    @Test
+    void test_parseLogicalAnd_compound() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_TRUE),
+            new VariableToken(TokenType.OP, "&&"),
+            new StaticToken(TokenType.KW_FALSE),
+            new VariableToken(TokenType.OP, "&&"),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "=="),
+            new VariableToken(TokenType.NUMBER, "10")
+        );
+        Parser parser = new Parser(tokens);
+        ParseTree expectedParseTree = new ParseTree("LOGICAL-AND", tokensToTreeNodes(tokens.subList(0, 4)));
+        expectedParseTree.appendChildren(new ParseTree("CMPR-EXPR", tokensToTreeNodes(tokens.subList(4, 7))));
+        assertEquals(expectedParseTree, parser.parseLogicalAnd());
+    }
+
 
     // parseComparisonExpression
+    @Test
+    void test_parseComparisonExpression_compound() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "+"),
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "<="),
+            new VariableToken(TokenType.NUMBER, "4")
+        );
+        Parser parser = new Parser(tokens);
+        ParseTree expectedParseTree = new ParseTree("CMPR-EXPR", List.of(
+            new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(0, 3))),
+            new ParseTree(tokens.get(3)),
+            new ParseTree(tokens.get(4))
+        ));
+
+        assertEquals(expectedParseTree, parser.parseComparisonExpression());
+    }
 
     // parseUnaryOp
     @ParameterizedTest
@@ -217,7 +376,18 @@ public class TestParser {
     // parseTernary
     @Test
     void test_parseTernary_simple() {
-        
+        /*List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "isOpen"),
+            new VariableToken(TokenType.OP, "?"),
+            new VariableToken(TokenType.ID, "connect"),
+            new StaticToken(TokenType.COLON),
+            new VariableToken(TokenType.ID, "disconnect")
+        );
+        Parser parser = new Parser(tokens);
+        ParseTree expectedParseTree = new ParseTree("TERNARY", List.of(
+            new ParseTree("")
+        ));
+        assertEquals(expectedParseTree, parser.parseTernary());*/
     }
 
     // parseValue
