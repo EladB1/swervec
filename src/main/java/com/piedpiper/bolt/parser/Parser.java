@@ -140,18 +140,21 @@ public class Parser {
     }
 
     // EXPR ::= ( ARITH-EXPR / LOGICAL-OR )
-    // EXPR ::= ( CMPR-EXPR / LOGICAL-OR )
+    // EXPR ::= ( LOGICAL-OR / TERNARY )
     public ParseTree parseExpr() {
         ParseTree node = new ParseTree("EXPR");
         node.appendChildren(parseLogicalOr());
+        if (current.getValue().equals("?"))
+            node = new ParseTree("EXPR", List.of(parseTernary()));
         return node;
     }
 
     // ARITH-EXPR ::= TERM (ADD-OP TERM)*
     public ParseTree parseArithmeticExpression() {
-        if (next == null || !addOps.contains(next.getValue()))
-            return parseTerm();
-        ParseTree node = new ParseTree("ARITH-EXPR", List.of(parseTerm()));
+        ParseTree term = parseTerm();
+        if (atEnd() || !addOps.contains(current.getValue()))
+            return term;
+        ParseTree node = new ParseTree("ARITH-EXPR", List.of(term));
         while (!atEnd() && addOps.contains(current.getValue())) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
         }
@@ -160,9 +163,10 @@ public class Parser {
 
     // TERM ::= EXPO (MULT-OP TERM)*
     public ParseTree parseTerm() {
-        if (next == null || !multOps.contains(next.getValue()))
-            return parseExponent();
-        ParseTree node = new ParseTree("TERM", List.of(parseExponent()));
+        ParseTree exponent = parseExponent();
+        if (atEnd() || !multOps.contains(current.getValue()))
+            return exponent;
+        ParseTree node = new ParseTree("TERM", List.of(exponent));
         while (!atEnd() && multOps.contains(current.getValue())) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
         }
@@ -171,12 +175,14 @@ public class Parser {
 
     // EXPO ::= FACTOR ( "**" EXPO )*
     public ParseTree parseExponent() {
-        if (next == null || !next.getValue().equals("**"))
-            return parseFactor();
-        ParseTree node = new ParseTree("EXPO", List.of(parseFactor()));
+        ParseTree factor = parseFactor();
+        if (atEnd() || !current.getValue().equals("**"))
+            return factor;
+        ParseTree node = new ParseTree("EXPO", List.of(factor));
         while (!atEnd() && current.getValue().equals("**")) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseExponent());
         }
+        System.out.println(node);
         return node;
     }
 
@@ -308,7 +314,7 @@ public class Parser {
             parseLogicalOr(),
             parseExpectedToken(TokenType.OP, current, "?"),
             parseExpr(),
-            parseExpectedToken(TokenType.OP, current, ":"),
+            parseExpectedToken(TokenType.COLON, current),
             parseExpr()
         ));
     }

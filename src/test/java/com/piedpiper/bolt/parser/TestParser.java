@@ -137,6 +137,33 @@ public class TestParser {
         assertEquals(expectedParseTree, parser.parseTerm());
     }
 
+    @Test
+    void test_parseTerm_withParens() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.LEFT_PAREN),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "+"),
+            new VariableToken(TokenType.NUMBER, "1"),
+            new StaticToken(TokenType.RIGHT_PAREN),
+            new VariableToken(TokenType.OP, "*"),
+            new VariableToken(TokenType.ID, "j")
+        );
+
+        ParseTree expectedParseTree = new ParseTree("TERM", List.of(
+            new ParseTree("FACTOR", List.of(
+                new ParseTree(tokens.get(0)),
+                new ParseTree("EXPR", List.of(
+                    new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(1, 4)))
+                )),
+                new ParseTree(tokens.get(4))
+            )),
+            new ParseTree(tokens.get(5)),
+            new ParseTree(tokens.get(6))
+        ));
+        Parser parser = new Parser(tokens);
+        assertEquals(expectedParseTree, parser.parseTerm());
+    }
+
     // parseExponent
     @Test
     void test_parseExpo_simple() {
@@ -376,7 +403,7 @@ public class TestParser {
     // parseTernary
     @Test
     void test_parseTernary_simple() {
-        /*List<Token> tokens = List.of(
+        List<Token> tokens = List.of(
             new VariableToken(TokenType.ID, "isOpen"),
             new VariableToken(TokenType.OP, "?"),
             new VariableToken(TokenType.ID, "connect"),
@@ -385,9 +412,64 @@ public class TestParser {
         );
         Parser parser = new Parser(tokens);
         ParseTree expectedParseTree = new ParseTree("TERNARY", List.of(
-            new ParseTree("")
+            new ParseTree(tokens.get(0)),
+            new ParseTree(tokens.get(1)),
+            new ParseTree("EXPR", List.of(new ParseTree(tokens.get(2)))),
+            new ParseTree(tokens.get(3)),
+            new ParseTree("EXPR", List.of(new ParseTree(tokens.get(4))))
+
         ));
-        assertEquals(expectedParseTree, parser.parseTernary());*/
+        assertEquals(expectedParseTree, parser.parseTernary());
+    }
+
+    @Test
+    void test_parseTernary_complex() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "%"),
+            new VariableToken(TokenType.NUMBER, "2"),
+            new VariableToken(TokenType.OP, "=="),
+            new VariableToken(TokenType.NUMBER, "0"),
+            new VariableToken(TokenType.OP, "?"),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "/"),
+            new VariableToken(TokenType.NUMBER, "2"),
+            new StaticToken(TokenType.COLON),
+            new StaticToken(TokenType.LEFT_PAREN),
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "-"),
+            new VariableToken(TokenType.NUMBER, "1"),
+            new StaticToken(TokenType.RIGHT_PAREN),
+            new VariableToken(TokenType.OP, "/"),
+            new VariableToken(TokenType.NUMBER, "2")
+        );
+        Parser parser = new Parser(tokens);
+        ParseTree expectedParseTree = new ParseTree("TERNARY", List.of(
+            new ParseTree("CMPR-EXPR", List.of(
+                new ParseTree("TERM", tokensToTreeNodes(tokens.subList(0, 3))),
+                new ParseTree(tokens.get(3)),
+                new ParseTree(tokens.get(4))
+            )),
+            new ParseTree(tokens.get(5)),
+            new ParseTree("EXPR", List.of(
+                new ParseTree("TERM", tokensToTreeNodes(tokens.subList(6, 9)))
+            )),
+            new ParseTree(tokens.get(9)),
+            new ParseTree("EXPR", List.of(
+                new ParseTree("TERM", List.of(
+                    new ParseTree("FACTOR", List.of(
+                        new ParseTree(tokens.get(10)),
+                        new ParseTree("EXPR", List.of(
+                            new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(11, 14)))
+                        )),
+                        new ParseTree(tokens.get(14))
+                    )),
+                    new ParseTree(tokens.get(15)),
+                    new ParseTree(tokens.get(16))
+                ))
+            ))
+        ));
+        assertEquals(expectedParseTree, parser.parseTernary());
     }
 
     // parseValue
