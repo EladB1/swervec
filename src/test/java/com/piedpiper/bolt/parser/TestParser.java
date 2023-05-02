@@ -35,6 +35,27 @@ public class TestParser {
 
     // parseExpr
     @Test
+    void test_parseExpr_withUnary() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "++"),
+            new VariableToken(TokenType.OP, "*"),
+            new VariableToken(TokenType.NUMBER, "2")
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("EXPR", List.of(
+            new ParseTree("TERM", List.of(
+                new ParseTree("UNARY-OP", tokensToTreeNodes(tokens.subList(0, 2))),
+                new ParseTree(tokens.get(2)),
+                new ParseTree(tokens.get(3))
+            ))
+        ));
+
+        assertEquals(expectedParseTree, parser.parseExpr());
+    }
+
+    @Test
     void test_parseExpr_compound() {
         List<Token> tokens = List.of(
             new VariableToken(TokenType.NUMBER, "2"),
@@ -556,17 +577,82 @@ public class TestParser {
     // parseArrayLiteral
     @Test
     void test_parseArrayLiteral_empty() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.LEFT_CB),
+            new StaticToken(TokenType.RIGHT_CB)
+        );
+        Parser parser = new Parser(tokens);
 
+        ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", tokensToTreeNodes(tokens));
+
+        assertEquals(expectedParseTree, parser.parseArrayLiteral());
     }
 
     @Test
     void test_parseArrayLiteral_one() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.LEFT_CB),
+            new VariableToken(TokenType.ID, "computedValue"),
+            new VariableToken(TokenType.OP, "^"),
+            new VariableToken(TokenType.NUMBER, "1"),
+            new StaticToken(TokenType.RIGHT_CB)
+        );
+        Parser parser = new Parser(tokens);
 
+        ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
+            new ParseTree(tokens.get(0)),
+            new ParseTree("EXPR", List.of(
+                new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(1, 4)))
+            )),
+            new ParseTree(tokens.get(4))
+        ));
+
+        assertEquals(expectedParseTree, parser.parseArrayLiteral());
     }
 
     @Test
     void test_parseArrayLiteral_multiple() {
+        // {computedValue ^ 1, someFunc(), someArr()}
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.LEFT_CB),
+            new VariableToken(TokenType.ID, "computedValue"),
+            new VariableToken(TokenType.OP, "^"),
+            new VariableToken(TokenType.NUMBER, "1"),
+            new StaticToken(TokenType.COMMA),
+            new VariableToken(TokenType.ID, "someFunc"),
+            new StaticToken(TokenType.LEFT_PAREN),
+            new StaticToken(TokenType.RIGHT_PAREN),
+            new StaticToken(TokenType.COMMA),
+            new VariableToken(TokenType.ID, "someArr"),
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "0"),
+            new StaticToken(TokenType.RIGHT_SQB),
+            new StaticToken(TokenType.RIGHT_CB)
+        );
+        Parser parser = new Parser(tokens);
 
+        ParseTree commaNode = new ParseTree(tokens.get(4));
+
+        ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
+            new ParseTree(tokens.get(0)),
+            new ParseTree("EXPR", List.of(
+                new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(1, 4)))
+            )),
+            commaNode,
+            new ParseTree("EXPR", List.of(
+                new ParseTree("FUNC-CALL", tokensToTreeNodes(tokens.subList(5, 8)))
+            )),
+            commaNode,
+            new ParseTree("EXPR", List.of(
+                new ParseTree("ARRAY-ACCESS", List.of(
+                    new ParseTree(tokens.get(9)),
+                    new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens.subList(10, 13)))
+                ))
+            )),
+            new ParseTree(tokens.get(13))
+        ));
+
+        assertEquals(expectedParseTree, parser.parseArrayLiteral());
     }
 
     @Test
