@@ -19,6 +19,24 @@ import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.lexer.VariableToken;
 
 public class TestParser {
+    // commonly used tokens
+    private final Token commaToken = new StaticToken(TokenType.COMMA);
+    private final Token leftParenToken = new StaticToken(TokenType.LEFT_PAREN);
+    private final Token rightParenToken = new StaticToken(TokenType.RIGHT_PAREN);
+    private final Token leftCBToken = new StaticToken(TokenType.LEFT_CB);
+    private final Token rightCBToken = new StaticToken(TokenType.RIGHT_CB);
+    private final Token leftSQBToken = new StaticToken(TokenType.LEFT_SQB);
+    private final Token rightSQBToken = new StaticToken(TokenType.RIGHT_SQB);
+    
+
+    // commonly used tree nodes
+    private final ParseTree commaNode = new ParseTree(commaToken);
+    private final ParseTree leftParenNode = new ParseTree(leftParenToken);
+    private final ParseTree rightParenNode = new ParseTree(rightParenToken);
+    private final ParseTree leftCBNode = new ParseTree(leftCBToken);
+    private final ParseTree rightCBNode = new ParseTree(rightCBToken);
+    private final ParseTree leftSQBNode = new ParseTree(leftSQBToken);
+    private final ParseTree rightSQBNode = new ParseTree(rightSQBToken);
 
     private List<ParseTree> tokensToTreeNodes(List<Token> tokens) {
         return tokens.stream().map((Token token) -> new ParseTree(token)).collect(Collectors.toList());
@@ -160,23 +178,24 @@ public class TestParser {
 
     @Test
     void test_parseTerm_withParens() {
+        // (i + 1) * j
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_PAREN),
+            leftParenToken,
             new VariableToken(TokenType.ID, "i"),
             new VariableToken(TokenType.OP, "+"),
             new VariableToken(TokenType.NUMBER, "1"),
-            new StaticToken(TokenType.RIGHT_PAREN),
+            rightParenToken,
             new VariableToken(TokenType.OP, "*"),
             new VariableToken(TokenType.ID, "j")
         );
 
         ParseTree expectedParseTree = new ParseTree("TERM", List.of(
             new ParseTree("FACTOR", List.of(
-                new ParseTree(tokens.get(0)),
+                leftParenNode,
                 new ParseTree("EXPR", List.of(
                     new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(1, 4)))
                 )),
-                new ParseTree(tokens.get(4))
+                rightParenNode
             )),
             new ParseTree(tokens.get(5)),
             new ParseTree(tokens.get(6))
@@ -232,11 +251,11 @@ public class TestParser {
     @Test
     void test_parseLogicalOr_compound() {
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_PAREN),
+            leftParenToken,
             new StaticToken(TokenType.KW_TRUE),
             new VariableToken(TokenType.OP, "||"),
             new StaticToken(TokenType.KW_FALSE),
-            new StaticToken(TokenType.RIGHT_PAREN),
+            rightParenToken,
             new VariableToken(TokenType.OP, "&&"),
             new VariableToken(TokenType.ID, "i"),
             new VariableToken(TokenType.OP, "=="),
@@ -245,11 +264,11 @@ public class TestParser {
         Parser parser = new Parser(tokens);
         ParseTree expectedParseTree = new ParseTree("LOGICAL-AND", List.of(
             new ParseTree("FACTOR", List.of(
-                new ParseTree(tokens.get(0)),
+                leftParenNode,
                 new ParseTree("EXPR", List.of(
                     new ParseTree("LOGICAL-OR", tokensToTreeNodes(tokens.subList(1, 4)))
                 )),
-                new ParseTree(tokens.get(4))
+                rightParenNode
             )),
             new ParseTree(tokens.get(5)),
             new ParseTree("CMPR-EXPR", tokensToTreeNodes(tokens.subList(6, 9)))
@@ -314,7 +333,31 @@ public class TestParser {
     @ParameterizedTest
     @ValueSource(strings = {"++", "--"})
     void test_parseUnaryOp(String operator) {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, operator)
+        );
+        Parser parser = new Parser(tokens);
 
+        ParseTree expectedParseTree = new ParseTree("UNARY-OP", tokensToTreeNodes(tokens));
+
+        assertEquals(expectedParseTree, parser.parseUnaryOp());
+    }
+
+    @Test
+    void test_parseUnaryOp_callsLeftUnaryOp() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.OP, "-"),
+            new VariableToken(TokenType.ID, "i")
+            
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("UNARY-OP", List.of(
+            new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens))
+        ));
+
+        assertEquals(expectedParseTree, parser.parseUnaryOp());
     }
 
     // parseLeftUnaryOp
@@ -370,8 +413,8 @@ public class TestParser {
         List<Token> tokens = List.of(
             new VariableToken(TokenType.OP, "!"),
             new VariableToken(TokenType.ID, "isInt"),
-            new StaticToken(TokenType.LEFT_PAREN),
-            new StaticToken(TokenType.RIGHT_PAREN)
+            leftParenToken,
+            rightParenToken
         );
 
         ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", List.of(
@@ -390,9 +433,9 @@ public class TestParser {
         List<Token> tokens = List.of(
             new VariableToken(TokenType.OP, "-"),
             new VariableToken(TokenType.ID, "nums"),
-            new StaticToken(TokenType.LEFT_SQB),
+            leftSQBToken,
             new VariableToken(TokenType.NUMBER, "0"),
-            new StaticToken(TokenType.RIGHT_SQB)
+            rightSQBToken
         );
 
         ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", List.of(
@@ -456,11 +499,11 @@ public class TestParser {
             new VariableToken(TokenType.OP, "/"),
             new VariableToken(TokenType.NUMBER, "2"),
             new StaticToken(TokenType.COLON),
-            new StaticToken(TokenType.LEFT_PAREN),
+            leftParenToken,
             new VariableToken(TokenType.ID, "i"),
             new VariableToken(TokenType.OP, "-"),
             new VariableToken(TokenType.NUMBER, "1"),
-            new StaticToken(TokenType.RIGHT_PAREN),
+            rightParenToken,
             new VariableToken(TokenType.OP, "/"),
             new VariableToken(TokenType.NUMBER, "2")
         );
@@ -496,15 +539,101 @@ public class TestParser {
     // parseValue
 
     // parseFunctionCall
+    @Test
+    void test_parseFunctionCall_noParams() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "request"),
+            leftParenToken,
+            rightParenToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("FUNC-CALL", tokensToTreeNodes(tokens));
+
+        assertEquals(expectedParseTree, parser.parseFunctionCall());
+    }
+
+    @Test
+    void test_parseFunctionCall_oneParam() {
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "request"),
+            leftParenToken,
+            new VariableToken(TokenType.STRING, "\"https://website.com/resource/\""),
+            rightParenToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("FUNC-CALL", List.of(
+            new ParseTree(tokens.get(0)),
+            new ParseTree(tokens.get(1)),
+            new ParseTree("EXPR", List.of(
+                new ParseTree(tokens.get(2))
+            )),
+            new ParseTree(tokens.get(3))
+        ));
+
+        assertEquals(expectedParseTree, parser.parseFunctionCall());
+    }
+
+    @Test
+    void test_parseFunctionCall_multipleParams() {
+        // request("https://website.com/resource", headers[application_json], getMethod(RESOURCE))
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "request"),
+            leftParenToken,
+            new VariableToken(TokenType.STRING, "\"https://website.com/resource/\""),
+            commaToken,
+            new VariableToken(TokenType.ID, "headers"),
+            leftSQBToken,
+            new VariableToken(TokenType.ID, "application_json"),
+            rightSQBToken,
+            commaToken,
+            new VariableToken(TokenType.ID, "getMethod"),
+            leftParenToken,
+            new VariableToken(TokenType.ID, "RESOURCE"),
+            rightParenToken,
+            rightParenToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("FUNC-CALL", List.of(
+            new ParseTree(tokens.get(0)),
+            leftParenNode,
+            new ParseTree("EXPR", List.of(
+                new ParseTree(tokens.get(2))
+            )),
+            commaNode,
+            new ParseTree("EXPR", List.of(
+                new ParseTree("ARRAY-ACCESS", List.of(
+                    new ParseTree(tokens.get(4)),
+                    new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens.subList(5, 8)))
+                ))
+            )),
+            commaNode,
+            new ParseTree("EXPR", List.of(
+                new ParseTree("FUNC-CALL", List.of(
+                    new ParseTree(tokens.get(9)),
+                    new ParseTree(tokens.get(10)),
+                    new ParseTree("EXPR", List.of(
+                        new ParseTree(tokens.get(11))
+                    )),
+                    rightParenNode
+                ))
+            )),
+            rightParenNode
+        ));
+
+        assertEquals(expectedParseTree, parser.parseFunctionCall());
+    }
 
     // parseArrayAccess
     @Test
     void test_parseArrayAccess_succeedsWithArrayIndex() {
         List<Token> tokens = List.of(
             new VariableToken(TokenType.ID, "x"),
-            new StaticToken(TokenType.LEFT_SQB),
+            leftSQBToken,
             new VariableToken(TokenType.NUMBER, "12"),
-            new StaticToken(TokenType.RIGHT_SQB)
+            rightSQBToken
         );
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-ACCESS", List.of(
@@ -523,7 +652,7 @@ public class TestParser {
     void test_parseArrayAccess_EOFError() {
         List<Token> tokens = List.of(
             new VariableToken(TokenType.ID, "x"),
-            new StaticToken(TokenType.LEFT_SQB)
+            leftSQBToken
         );
         Parser parser = new Parser(tokens);
         assertSyntaxError("Expected NUMBER but reached EOF", () -> parser.parseArrayAccess());
@@ -533,7 +662,7 @@ public class TestParser {
     void test_parseArrayAccess_wrongTokenError() {
         List<Token> tokens = List.of(
             new VariableToken(TokenType.ID, "x"),
-            new StaticToken(TokenType.LEFT_PAREN)
+            leftParenToken
         );
         Parser parser = new Parser(tokens);
         assertSyntaxError("Expected LEFT_SQB but got LEFT_PAREN", () -> parser.parseArrayAccess());
@@ -543,9 +672,9 @@ public class TestParser {
     @Test
     void test_parseArrayIndex_succeeds() {
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_SQB),
+            leftSQBToken,
             new VariableToken(TokenType.NUMBER, "5"),
-            new StaticToken(TokenType.RIGHT_SQB)
+            rightSQBToken
         );
         Parser parser = new Parser(tokens);
         ParseTree expectedParseTree = new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens));
@@ -556,7 +685,7 @@ public class TestParser {
     @Test
     void test_parseArrayIndex_EOFError() {
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_SQB),
+            leftSQBToken,
             new VariableToken(TokenType.NUMBER, "3")
         );
         Parser parser = new Parser(tokens);
@@ -566,9 +695,9 @@ public class TestParser {
     @Test
     void test_parseArrayIndex_wrongTokenError() {
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_SQB),
+            leftSQBToken,
             new VariableToken(TokenType.STRING, "\"value\""),
-            new StaticToken(TokenType.RIGHT_SQB)
+            rightSQBToken
         );
         Parser parser = new Parser(tokens);
         assertSyntaxError("Expected NUMBER but got STRING ('\"value\"')", () -> parser.parseArrayIndex());
@@ -578,8 +707,8 @@ public class TestParser {
     @Test
     void test_parseArrayLiteral_empty() {
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_CB),
-            new StaticToken(TokenType.RIGHT_CB)
+            leftCBToken,
+            rightCBToken
         );
         Parser parser = new Parser(tokens);
 
@@ -591,20 +720,20 @@ public class TestParser {
     @Test
     void test_parseArrayLiteral_one() {
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_CB),
+            leftCBToken,
             new VariableToken(TokenType.ID, "computedValue"),
             new VariableToken(TokenType.OP, "^"),
             new VariableToken(TokenType.NUMBER, "1"),
-            new StaticToken(TokenType.RIGHT_CB)
+            rightCBToken
         );
         Parser parser = new Parser(tokens);
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
-            new ParseTree(tokens.get(0)),
+            leftCBNode,
             new ParseTree("EXPR", List.of(
                 new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(1, 4)))
             )),
-            new ParseTree(tokens.get(4))
+            rightCBNode
         ));
 
         assertEquals(expectedParseTree, parser.parseArrayLiteral());
@@ -612,29 +741,27 @@ public class TestParser {
 
     @Test
     void test_parseArrayLiteral_multiple() {
-        // {computedValue ^ 1, someFunc(), someArr()}
+        // {computedValue ^ 1, someFunc(), someArr[0]}
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.LEFT_CB),
+            leftCBToken,
             new VariableToken(TokenType.ID, "computedValue"),
             new VariableToken(TokenType.OP, "^"),
             new VariableToken(TokenType.NUMBER, "1"),
-            new StaticToken(TokenType.COMMA),
+            commaToken,
             new VariableToken(TokenType.ID, "someFunc"),
-            new StaticToken(TokenType.LEFT_PAREN),
-            new StaticToken(TokenType.RIGHT_PAREN),
-            new StaticToken(TokenType.COMMA),
+            leftParenToken,
+            rightParenToken,
+            commaToken,
             new VariableToken(TokenType.ID, "someArr"),
-            new StaticToken(TokenType.LEFT_SQB),
+            leftSQBToken,
             new VariableToken(TokenType.NUMBER, "0"),
-            new StaticToken(TokenType.RIGHT_SQB),
-            new StaticToken(TokenType.RIGHT_CB)
+            rightSQBToken,
+            rightCBToken
         );
         Parser parser = new Parser(tokens);
 
-        ParseTree commaNode = new ParseTree(tokens.get(4));
-
         ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
-            new ParseTree(tokens.get(0)),
+            leftCBNode,
             new ParseTree("EXPR", List.of(
                 new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(1, 4)))
             )),
@@ -649,7 +776,7 @@ public class TestParser {
                     new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens.subList(10, 13)))
                 ))
             )),
-            new ParseTree(tokens.get(13))
+            rightCBNode
         ));
 
         assertEquals(expectedParseTree, parser.parseArrayLiteral());

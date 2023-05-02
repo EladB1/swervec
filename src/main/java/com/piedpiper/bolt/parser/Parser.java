@@ -182,7 +182,6 @@ public class Parser {
         while (!atEnd() && current.getValue().equals("**")) {
             node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseExponent());
         }
-        System.out.println(node);
         return node;
     }
 
