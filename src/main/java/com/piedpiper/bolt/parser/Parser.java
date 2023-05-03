@@ -578,10 +578,8 @@ public class Parser {
             if (next != null && next.getName() == TokenType.KW_MUT) {
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current), parseExpectedToken(TokenType.KW_MUT, current));
             }
-            else {
-                node.appendChildren(parseImmutableArrayDeclaration());
-                return node;
-            }
+            else if (next != null)
+                return parseImmutableArrayDeclaration();
         }
         node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current));
         if (current.getValue().equals("=")) {
@@ -596,7 +594,9 @@ public class Parser {
     // VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
     public ParseTree parseVariableDeclaration() {
         ParseTree node = new ParseTree("VAR-DECL");
+        boolean isConst = false;
         if (current.getName() == TokenType.KW_CONST) {
+            isConst = true;
             if (next != null && (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR)) {
                 node.appendChildren(parseArrayDeclaration());
                 return node; // let array declaraction do the rest
@@ -608,15 +608,21 @@ public class Parser {
             if (current.getName() == TokenType.KW_MUT || current.getName() == TokenType.KW_ARR) {
                 node.appendChildren(parseArrayDeclaration());
                 return node; // let array declaraction do the rest
-            }
-            node.appendChildren(parseType());
-            if (current.getValue().equals("="))
-                node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseExpr());
+            }            
+        }
+        node.appendChildren(parseType());
+        if (next != null && next.getValue().equals("="))
+            node.appendChildren(parseExpectedToken(TokenType.ID, current), parseExpectedToken(TokenType.OP, current, "="), parseExpr());
+        else {
+            if (isConst)
+                throw new SyntaxError("Constant variable must be initialized", current.getLineNumber());
+            if (!isConst && next != null)
+                throw new SyntaxError("Expected '=' but got " + next.getName() + " ('" + next.getValue() + "')");
         }
         return node;
     }
 
-    // VAR-ASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = VALUE 
+    // VAR-ASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = EXPR 
     public ParseTree parseVariableAssignment() { // reassignment of already declared variable
         ParseTree node = new ParseTree("VAR-ASSIGN", List.of(parseExpectedToken(TokenType.ID, current)));
         if (current.getName().equals(TokenType.OP)) {
@@ -624,7 +630,7 @@ public class Parser {
                 node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
             else
                 throw new SyntaxError("Unexpected character '" + current.getValue() + "' in variable assignment", current.getLineNumber());
-            node.appendChildren(parseValue());            
+            node.appendChildren(parseExpr());            
         }
         else
             throw new SyntaxError(formComplaint("equality", current), current.getLineNumber());
@@ -735,12 +741,4 @@ public class Parser {
             TokenType.KW_BRK
         ).contains(token.getName());
     }
-
-    private boolean isArithmeticOperator(Token token) {
-        return addOps.contains(token.getValue()) || multOps.contains(token.getValue()) || comparisonOps.contains(token.getValue()) || token.getValue().equals("**");
-    }
-
-    
-
-
 }

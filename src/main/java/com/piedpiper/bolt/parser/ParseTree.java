@@ -2,6 +2,7 @@ package com.piedpiper.bolt.parser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.piedpiper.bolt.lexer.VariableToken;
 import com.piedpiper.bolt.lexer.Token;
@@ -30,6 +31,51 @@ public class ParseTree {
     public ParseTree(Token token) {
         this.type = "terminal";
         this.token = token;
+    }
+
+    public ParseTree(String type, Token token) {
+        this.type = type;
+        this.token = null;
+        this.children.add(new ParseTree(token));
+    }
+
+    public static List<ParseTree> tokensToNodes(List<Token> tokens) {
+        return tokens.stream().map((Token token) -> new ParseTree(token)).collect(Collectors.toList());
+    }
+
+    public static ParseTree createNestedTree(ParseTree tree, String... parents) {
+        ParseTree root = new ParseTree(parents[0]);
+        int end = parents.length - 1;
+        ParseTree node = root;
+        ParseTree subTree;
+        for (int i = 1; i < end; i++) {
+            subTree = new ParseTree(parents[i]);
+            node.appendChildren(subTree);
+            subTree = node;
+        }
+        node.appendChildren(
+            new ParseTree(parents[end], List.of(tree))
+        );
+        return root;
+    }
+
+    public static ParseTree createNestedTree(List<Token> tokens, String... parents) {
+        if (parents.length == 1)
+            return new ParseTree(parents[0], tokensToNodes(tokens));
+        
+        ParseTree root = new ParseTree(parents[0]);
+        int end = parents.length - 1;
+        ParseTree node = root;
+        ParseTree subTree;
+        for (int i = 1; i < end; i++) {
+            subTree = new ParseTree(parents[i]);
+            node.appendChildren(subTree);
+            subTree = node;
+        }
+        node.appendChildren(
+            new ParseTree(parents[end], tokensToNodes(tokens))
+        );
+        return root;
     }
 
     public void appendChildren(ParseTree... children) {
