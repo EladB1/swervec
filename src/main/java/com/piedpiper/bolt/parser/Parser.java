@@ -372,26 +372,14 @@ public class Parser {
         return node;
     }
 
-    // ARRAY-INDEX ::= "[" NUMBER / ARRAY-ACCESS / FUNC-CALL / ID "]"
+    // ARRAY-INDEX ::= "[" EXPR "]"
     public ParseTree parseArrayIndex() {
         ParseTree node = new ParseTree("ARRAY-INDEX", List.of(
             parseExpectedToken(TokenType.LEFT_SQB, current)
         ));
-        if (isNumber(current))
-            node.appendChildren(parseExpectedToken(TokenType.NUMBER, current));
-        else if (isID(current)) {
-            if (next.getName() == TokenType.LEFT_PAREN)
-                node.appendChildren(parseFunctionCall());
-            else if (next.getName() == TokenType.LEFT_SQB)
-                node.appendChildren(parseArrayAccess());
-            else
-                node.appendChildren(parseExpectedToken(TokenType.ID, current));
-        }
-        else {
-            String message = formComplaint(TokenType.NUMBER, current);
-            throw new SyntaxError(message, current.getLineNumber());
-        }
-        node.appendChildren(parseExpectedToken(TokenType.RIGHT_SQB, current));
+        if (atEnd() || current.getName() == TokenType.RIGHT_SQB)
+            throw new SyntaxError(formComplaint("EXPR", current));
+        node.appendChildren(parseExpr(), parseExpectedToken(TokenType.RIGHT_SQB, current));
         return node;
     }
 

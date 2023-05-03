@@ -35,6 +35,8 @@ public class TestParser {
     private final ParseTree rightParenNode = new ParseTree(rightParenToken);
     private final ParseTree leftCBNode = new ParseTree(leftCBToken);
     private final ParseTree rightCBNode = new ParseTree(rightCBToken);
+    private final ParseTree leftSQBNode = new ParseTree(leftSQBToken);
+    private final ParseTree rightSQBNode = new ParseTree(rightSQBToken);
 
 
     private void assertSyntaxError(String expectedErrorMessage, Executable executable) {
@@ -434,7 +436,11 @@ public class TestParser {
             new ParseTree(tokens.get(0)),
             new ParseTree("ARRAY-ACCESS", List.of(
                 new ParseTree(tokens.get(1)),
-                createNestedTree(tokens.subList(2, 5), "ARRAY-INDEX")
+                new ParseTree("ARRAY-INDEX", List.of(
+                    leftSQBNode,
+                    createNestedTree(tokens.get(3), "EXPR"),
+                    rightSQBNode
+                ))
             ))
         ));
 
@@ -555,7 +561,7 @@ public class TestParser {
         ParseTree expectedParseTree = new ParseTree("FUNC-CALL", List.of(
             new ParseTree(tokens.get(0)),
             new ParseTree(tokens.get(1)),
-            createNestedTree(new ParseTree(tokens.get(2)), "EXPR"),
+            createNestedTree(tokens.get(2), "EXPR"),
             new ParseTree(tokens.get(3))
         ));
 
@@ -593,7 +599,11 @@ public class TestParser {
             new ParseTree("EXPR", List.of(
                 new ParseTree("ARRAY-ACCESS", List.of(
                     new ParseTree(tokens.get(4)),
-                    createNestedTree(tokens.subList(5, 8), "ARRAY-INDEX")
+                    new ParseTree("ARRAY-INDEX", List.of(
+                        leftSQBNode,
+                        createNestedTree(tokens.get(6), "EXPR"),
+                        rightSQBNode
+                    ))
                 ))
             )),
             commaNode,
@@ -601,7 +611,7 @@ public class TestParser {
                 new ParseTree("FUNC-CALL", List.of(
                     new ParseTree(tokens.get(9)),
                     new ParseTree(tokens.get(10)),
-                    createNestedTree(new ParseTree(tokens.get(11)), "EXPR"),
+                    createNestedTree(tokens.get(11), "EXPR"),
                     rightParenNode
                 ))
             )),
@@ -623,7 +633,11 @@ public class TestParser {
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-ACCESS", List.of(
             new ParseTree(tokens.get(0)),
-            createNestedTree(tokens.subList(1, 4), "ARRAY-INDEX")
+            new ParseTree("ARRAY-INDEX", List.of(
+                leftSQBNode,
+                createNestedTree(tokens.get(2), "EXPR"),
+                rightSQBNode
+            ))
         ));
 
         Parser parser = new Parser(tokens);
@@ -640,7 +654,7 @@ public class TestParser {
             leftSQBToken
         );
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Expected NUMBER but reached EOF", () -> parser.parseArrayAccess());
+        assertSyntaxError("Expected EXPR but reached EOF", () -> parser.parseArrayAccess());
     }
 
     @Test
@@ -664,7 +678,11 @@ public class TestParser {
             rightSQBToken
         );
         Parser parser = new Parser(tokens);
-        ParseTree expectedParseTree = createNestedTree(tokens, "ARRAY-INDEX");
+        ParseTree expectedParseTree = new ParseTree("ARRAY-INDEX", List.of(
+            leftSQBNode,
+            createNestedTree(tokens.get(1), "EXPR"),
+            rightSQBNode
+        ));
         ParseTree tree = parser.parseArrayIndex();
         assertEquals(expectedParseTree, tree);
     }
@@ -681,15 +699,14 @@ public class TestParser {
     }
 
     @Test
-    void test_parseArrayIndex_wrongTokenError() {
-        // ["value"]
+    void test_parseArrayIndex_EmptyError() {
+        // []
         List<Token> tokens = List.of(
             leftSQBToken,
-            new VariableToken(TokenType.STRING, "\"value\""),
             rightSQBToken
         );
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Expected NUMBER but got STRING ('\"value\"')", () -> parser.parseArrayIndex());
+        assertSyntaxError("Expected EXPR but got RIGHT_SQB", () -> parser.parseArrayIndex());
     }
 
     // parseArrayLiteral
@@ -756,7 +773,11 @@ public class TestParser {
             new ParseTree("EXPR", List.of(
                 new ParseTree("ARRAY-ACCESS", List.of(
                     new ParseTree(tokens.get(9)),
-                    createNestedTree(tokens.subList(10, 13), "ARRAY-INDEX")
+                    new ParseTree("ARRAY-INDEX", List.of(
+                        leftSQBNode,
+                        createNestedTree(tokens.get(11), "EXPR"),
+                        rightSQBNode
+                    ))
                 ))
             )),
             rightCBNode
@@ -911,7 +932,7 @@ public class TestParser {
             new ParseTree(tokens.get(5)),
             new ParseTree("ARRAY-LIT", List.of(
                 leftCBNode,
-                createNestedTree(new ParseTree(tokens.get(7)), "EXPR"),
+                createNestedTree(tokens.get(7), "EXPR"),
                 rightCBNode
             ))
         ));
@@ -1020,9 +1041,7 @@ public class TestParser {
         ParseTree expectedParseTree = new ParseTree("VAR-ASSIGN", List.of(
             new ParseTree(tokens.get(0)),
             new ParseTree(tokens.get(1)),
-            new ParseTree("EXPR", List.of(
-                new ParseTree(tokens.get(2))
-            ))
+            createNestedTree(tokens.get(2), "EXPR")
         ));
 
         assertEquals(expectedParseTree, parser.parseVariableAssignment());

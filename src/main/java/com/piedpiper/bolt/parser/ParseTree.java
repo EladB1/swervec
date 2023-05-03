@@ -43,6 +43,7 @@ public class ParseTree {
         return tokens.stream().map((Token token) -> new ParseTree(token)).collect(Collectors.toList());
     }
 
+    // go in sequential order of parents and created nested tree nodes; the last node contains tree
     public static ParseTree createNestedTree(ParseTree tree, String... parents) {
         if (parents.length == 1)
             return new ParseTree(parents[0], List.of(tree));
@@ -62,6 +63,12 @@ public class ParseTree {
         return root;
     }
 
+    // go in sequential order of parents and created nested tree nodes; the last node contains token
+    public static ParseTree createNestedTree(Token token, String...parents) {
+        return createNestedTree(new ParseTree(token), parents);
+    }
+
+    // go in sequential order of parents and created nested tree nodes; the last node contains tokens
     public static ParseTree createNestedTree(List<Token> tokens, String... parents) {
         if (parents.length == 1)
             return new ParseTree(parents[0], tokensToNodes(tokens));
