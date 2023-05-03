@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -37,9 +36,6 @@ public class TestParser {
     private final ParseTree leftCBNode = new ParseTree(leftCBToken);
     private final ParseTree rightCBNode = new ParseTree(rightCBToken);
 
-    private List<ParseTree> tokensToTreeNodes(List<Token> tokens) {
-        return tokens.stream().map((Token token) -> new ParseTree(token)).collect(Collectors.toList());
-    }
 
     private void assertSyntaxError(String expectedErrorMessage, Executable executable) {
         SyntaxError error = assertThrows(SyntaxError.class, executable);
@@ -63,7 +59,7 @@ public class TestParser {
 
         ParseTree expectedParseTree = new ParseTree("EXPR", List.of(
             new ParseTree("TERM", List.of(
-                new ParseTree("UNARY-OP", tokensToTreeNodes(tokens.subList(0, 2))),
+                createNestedTree(tokens.subList(0, 2), "UNARY-OP"),
                 new ParseTree(tokens.get(2)),
                 new ParseTree(tokens.get(3))
             ))
@@ -90,7 +86,7 @@ public class TestParser {
         ParseTree expectedParseTree = new ParseTree("EXPR", List.of(
             new ParseTree("LOGICAL-AND", List.of(
                 new ParseTree("CMPR-EXPR", List.of(
-                    createNestedTree(tokens.subList(0, 3), "ARITH-EXPR"), //new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(0, 3))),
+                    createNestedTree(tokens.subList(0, 3), "ARITH-EXPR"),
                     new ParseTree(tokens.get(3)),
                     new ParseTree(tokens.get(4))
                 )),
@@ -126,19 +122,19 @@ public class TestParser {
         ParseTree expectedParseTree = new ParseTree("EXPR", List.of(
             new ParseTree("LOGICAL-OR", List.of(
                 new ParseTree("CMPR-EXPR", List.of(
-                    new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(0, 3))),
+                    createNestedTree(tokens.subList(0, 3), "ARITH-EXPR"),
                     new ParseTree(tokens.get(3)),
                     new ParseTree(tokens.get(4))
                 )),
                 new ParseTree(tokens.get(5)),
                 new ParseTree("LOGICAL-AND", List.of(
                     new ParseTree("CMPR-EXPR", List.of(
-                        new ParseTree("TERM", tokensToTreeNodes(tokens.subList(6, 9))),
+                        createNestedTree(tokens.subList(6, 9), "TERM"),
                         new ParseTree(tokens.get(9)),
                         new ParseTree(tokens.get(10))
                     )),
                     new ParseTree(tokens.get(11)),
-                    new ParseTree("CMPR-EXPR", tokensToTreeNodes(tokens.subList(12, 15)))
+                    createNestedTree(tokens.subList(12, 15), "CMPR-EXPR")
                 ))
             ))
                 
@@ -366,7 +362,7 @@ public class TestParser {
             new VariableToken(TokenType.ID, "x")
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = createNestedTree(tokens, "LEFT-UNARY-OP");
 
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseLeftUnaryOp();
@@ -382,7 +378,7 @@ public class TestParser {
             new VariableToken(TokenType.NUMBER, "5")
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = createNestedTree(tokens, "LEFT-UNARY-OP");
 
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseLeftUnaryOp();
@@ -397,8 +393,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_TRUE)
         );
 
-        ParseTree expectedParseTree = new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens));
-
+        ParseTree expectedParseTree = createNestedTree(tokens, "LEFT-UNARY-OP");
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseLeftUnaryOp();
 
@@ -439,8 +434,7 @@ public class TestParser {
             new ParseTree(tokens.get(0)),
             new ParseTree("ARRAY-ACCESS", List.of(
                 new ParseTree(tokens.get(1)),
-                new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens.subList(2, 5))
-                )
+                createNestedTree(tokens.subList(2, 5), "ARRAY-INDEX")
             ))
         ));
 
@@ -507,22 +501,20 @@ public class TestParser {
         Parser parser = new Parser(tokens);
         ParseTree expectedParseTree = new ParseTree("TERNARY", List.of(
             new ParseTree("CMPR-EXPR", List.of(
-                new ParseTree("TERM", tokensToTreeNodes(tokens.subList(0, 3))),
+                createNestedTree(tokens.subList(0, 3), "TERM"),
                 new ParseTree(tokens.get(3)),
                 new ParseTree(tokens.get(4))
             )),
             new ParseTree(tokens.get(5)),
             new ParseTree("EXPR", List.of(
-                new ParseTree("TERM", tokensToTreeNodes(tokens.subList(6, 9)))
+                createNestedTree(tokens.subList(6, 9), "TERM")
             )),
             new ParseTree(tokens.get(9)),
             new ParseTree("EXPR", List.of(
                 new ParseTree("TERM", List.of(
                     new ParseTree("FACTOR", List.of(
                         new ParseTree(tokens.get(10)),
-                        new ParseTree("EXPR", List.of(
-                            new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(11, 14)))
-                        )),
+                        createNestedTree(tokens.subList(11, 14), "EXPR", "ARITH-EXPR"),
                         new ParseTree(tokens.get(14))
                     )),
                     new ParseTree(tokens.get(15)),
@@ -545,7 +537,7 @@ public class TestParser {
         );
         Parser parser = new Parser(tokens);
 
-        ParseTree expectedParseTree = new ParseTree("FUNC-CALL", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = createNestedTree(tokens, "FUNC-CALL");
 
         assertEquals(expectedParseTree, parser.parseFunctionCall());
     }
@@ -563,9 +555,7 @@ public class TestParser {
         ParseTree expectedParseTree = new ParseTree("FUNC-CALL", List.of(
             new ParseTree(tokens.get(0)),
             new ParseTree(tokens.get(1)),
-            new ParseTree("EXPR", List.of(
-                new ParseTree(tokens.get(2))
-            )),
+            createNestedTree(new ParseTree(tokens.get(2)), "EXPR"),
             new ParseTree(tokens.get(3))
         ));
 
@@ -603,7 +593,7 @@ public class TestParser {
             new ParseTree("EXPR", List.of(
                 new ParseTree("ARRAY-ACCESS", List.of(
                     new ParseTree(tokens.get(4)),
-                    new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens.subList(5, 8)))
+                    createNestedTree(tokens.subList(5, 8), "ARRAY-INDEX")
                 ))
             )),
             commaNode,
@@ -611,9 +601,7 @@ public class TestParser {
                 new ParseTree("FUNC-CALL", List.of(
                     new ParseTree(tokens.get(9)),
                     new ParseTree(tokens.get(10)),
-                    new ParseTree("EXPR", List.of(
-                        new ParseTree(tokens.get(11))
-                    )),
+                    createNestedTree(new ParseTree(tokens.get(11)), "EXPR"),
                     rightParenNode
                 ))
             )),
@@ -676,7 +664,7 @@ public class TestParser {
             rightSQBToken
         );
         Parser parser = new Parser(tokens);
-        ParseTree expectedParseTree = new ParseTree("ARRAY-INDEX", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = createNestedTree(tokens, "ARRAY-INDEX");
         ParseTree tree = parser.parseArrayIndex();
         assertEquals(expectedParseTree, tree);
     }
@@ -713,7 +701,7 @@ public class TestParser {
         );
         Parser parser = new Parser(tokens);
 
-        ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", tokensToTreeNodes(tokens));
+        ParseTree expectedParseTree = createNestedTree(tokens, "ARRAY-LIT");
 
         assertEquals(expectedParseTree, parser.parseArrayLiteral());
     }
@@ -731,9 +719,7 @@ public class TestParser {
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
             leftCBNode,
-            new ParseTree("EXPR", List.of(
-                new ParseTree("ARITH-EXPR", tokensToTreeNodes(tokens.subList(1, 4)))
-            )),
+            createNestedTree(tokens.subList(1, 4), "EXPR", "ARITH-EXPR"),
             rightCBNode
         ));
 
@@ -920,12 +906,12 @@ public class TestParser {
         Parser parser = new Parser(tokens);
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-DECL", List.of(
-            new ParseTree("ARRAY-TYPE", tokensToTreeNodes(tokens.subList(0, 4))),
+            createNestedTree(tokens.subList(0, 4), "ARRAY-TYPE"),
             new ParseTree(tokens.get(4)),
             new ParseTree(tokens.get(5)),
             new ParseTree("ARRAY-LIT", List.of(
                 leftCBNode,
-                new ParseTree("EXPR", List.of(new ParseTree(tokens.get(7)))),
+                createNestedTree(new ParseTree(tokens.get(7)), "EXPR"),
                 rightCBNode
             ))
         ));
@@ -950,11 +936,7 @@ public class TestParser {
             new ParseTree(tokens.get(0)),
             new ParseTree(tokens.get(1)),
             new ParseTree(tokens.get(2)),
-            new ParseTree("EXPR", List.of(
-                new ParseTree("UNARY-OP", List.of(
-                    new ParseTree("LEFT-UNARY-OP", tokensToTreeNodes(tokens.subList(3, 5)))
-                ))
-            ))
+            createNestedTree(tokens.subList(3, 5), "EXPR", "UNARY-OP", "LEFT-UNARY-OP")
         ));
 
         assertEquals(expectedParseTree, parser.parseVariableDeclaration());
@@ -1066,7 +1048,7 @@ public class TestParser {
     @Test
     void test_parseControlFlow_successReturnOnly() {
         List<Token> token = List.of(new StaticToken(TokenType.KW_RET));
-        ParseTree expectedParseTree = new ParseTree("CONTROL-FLOW", tokensToTreeNodes(token));
+        ParseTree expectedParseTree = createNestedTree(token, "CONTROL-FLOW");
         Parser parser = new Parser(token);
         assertEquals(expectedParseTree, parser.parseControlFlow());
     }

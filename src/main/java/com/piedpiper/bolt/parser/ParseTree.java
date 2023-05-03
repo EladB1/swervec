@@ -44,6 +44,9 @@ public class ParseTree {
     }
 
     public static ParseTree createNestedTree(ParseTree tree, String... parents) {
+        if (parents.length == 1)
+            return new ParseTree(parents[0], List.of(tree));
+
         ParseTree root = new ParseTree(parents[0]);
         int end = parents.length - 1;
         ParseTree node = root;
@@ -51,7 +54,7 @@ public class ParseTree {
         for (int i = 1; i < end; i++) {
             subTree = new ParseTree(parents[i]);
             node.appendChildren(subTree);
-            subTree = node;
+            node = subTree;
         }
         node.appendChildren(
             new ParseTree(parents[end], List.of(tree))
@@ -70,7 +73,7 @@ public class ParseTree {
         for (int i = 1; i < end; i++) {
             subTree = new ParseTree(parents[i]);
             node.appendChildren(subTree);
-            subTree = node;
+            node = subTree;
         }
         node.appendChildren(
             new ParseTree(parents[end], tokensToNodes(tokens))
