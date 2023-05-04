@@ -259,6 +259,7 @@ public class Lexer {
                 case IN_OPERATOR:
                     currentSequence = handleOperatorStateChar(currentChar, nextChar, currentSequence, lineNumber);
                     if (currentSequence.toString().equals("//")) {
+                        clearState();
                         return tokens; // end the line at an inline comment
                     }
                     if (currentSequence.toString().equals("/*")) {
@@ -273,7 +274,7 @@ public class Lexer {
                 case IN_MULTILINE_COMMENT:
                     if (!line.contains("*/"))
                         return tokens;
-                    i = line.indexOf("*/") + 1;
+                    i = line.startsWith("*/") ? 2 : line.indexOf("*/") + 1;
                     if (i > 0) {
                         clearState();
                         continue;

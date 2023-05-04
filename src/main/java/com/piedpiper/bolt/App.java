@@ -11,6 +11,7 @@ import java.util.List;
 import com.piedpiper.bolt.error.CompilerError;
 import com.piedpiper.bolt.lexer.Lexer;
 import com.piedpiper.bolt.lexer.Token;
+import com.piedpiper.bolt.parser.Parser;
 
 public class App {
     public static void main(String[] args) {
@@ -29,6 +30,8 @@ public class App {
                     List<Token> tokens = lexer.lex(lines);
                     lexer.printTokens();
                     System.out.println("Number of tokens: " + tokens.size());
+                    Parser parser = new Parser(tokens);
+                    System.out.println(parser.parse());
             }
             else {
                 throw new FileNotFoundException("Could not find file '" + filePath + "'");

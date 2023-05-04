@@ -141,7 +141,7 @@ public class TestLexer {
     }
 
     @Test
-    void analyzeLine_shouldReconizeKeyword() {
+    void analyzeLine_shouldRecognizeKeyword() {
         Token token = new StaticToken(TokenType.KW_FN);
         assertOneToken("fn", token);
     }

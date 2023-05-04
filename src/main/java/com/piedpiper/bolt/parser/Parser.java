@@ -27,7 +27,7 @@ public class Parser {
      * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT / TERNARY
      * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
      * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
-     * ARRAY-INDEX ::= "[" NUMBER / ARRAY-ACCESS / FUNC-CALL / ID "]"
+     * ARRAY-INDEX ::= "[" EXPR "]"
      * ARRAY-LIT ::= "{" (EXPR ("," EXPR)* )? "}"
      * COND ::= IF ( "else" IF )* ( ELSE )?
      * IF ::= "if" "(" EXPR ")" COND-BODY
@@ -95,6 +95,7 @@ public class Parser {
     // PROGRAM ::= ( STMNT / FUNCDEF )+
     public ParseTree parse() {
         ParseTree node = new ParseTree("PROGRAM");
+
         while (!atEnd()) {
             if (current.getName() == TokenType.KW_FN) {
                 node.appendChildren(parseFunctionDefinition());
@@ -103,8 +104,10 @@ public class Parser {
                 node.appendChildren(parseStatement());
             }
         }
+
         return node;
     }
+
 
     // STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
     public ParseTree parseStatement() {
