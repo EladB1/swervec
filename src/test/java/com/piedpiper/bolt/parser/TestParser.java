@@ -795,20 +795,331 @@ public class TestParser {
     }
 
     // parseConditional
+    @Test
+    void test_parseConditional_emptyIfBlock() {
+        // if (condition) {}
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_IF),
+            leftParenToken,
+            new VariableToken(TokenType.ID, "condition"),
+            rightParenToken,
+            leftCBToken,
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
 
-    // parseIf
+        ParseTree ifNode = createNestedTree(tokens.subList(0, 4), "IF");
+        ifNode.appendChildren(createNestedTree(tokens.subList(4, 6), "COND-BODY"));
 
-    // parseElse
+        ParseTree expectedParseTree = new ParseTree("COND", List.of(ifNode));
 
-    // parseConditionalBody
+        assertEquals(expectedParseTree, parser.parseConditional());
+    }
 
-    // parseBlockBody
+    @Test
+    void test_parseConditional_singleLineIfBlock() {
+        // if (condition) { setValue(false) }
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_IF),
+            leftParenToken,
+            new VariableToken(TokenType.ID, "condition"),
+            rightParenToken,
+            leftCBToken,
+            new VariableToken(TokenType.ID, "setValue"),
+            leftParenToken,
+            new StaticToken(TokenType.KW_FALSE),
+            rightParenToken,
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree ifNode = createNestedTree(tokens.subList(0, 4), "IF");
+        ifNode.appendChildren(new ParseTree("COND-BODY", List.of(
+            leftCBNode,
+            createNestedTree(tokens.subList(5, 9), "FUNC-CALL"),
+            rightCBNode
+        )));
+
+        ParseTree expectedParseTree = new ParseTree("COND", List.of(ifNode));
+
+        assertEquals(expectedParseTree, parser.parseConditional());
+    }
+
+    @Test
+    void test_parseConditional_singleLineIfNoCB() {
+        // if (condition) setValue(false)
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_IF),
+            leftParenToken,
+            new VariableToken(TokenType.ID, "condition"),
+            rightParenToken,
+            new VariableToken(TokenType.ID, "setValue"),
+            leftParenToken,
+            new StaticToken(TokenType.KW_FALSE),
+            rightParenToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree ifNode = createNestedTree(tokens.subList(0, 4), "IF");
+        ifNode.appendChildren(
+            createNestedTree(tokens.subList(4, 8), "FUNC-CALL")
+        );
+
+        ParseTree expectedParseTree = new ParseTree("COND", List.of(ifNode));
+
+        assertEquals(expectedParseTree, parser.parseConditional());
+    }
+
+    @Test
+    void test_parseConditional_parseIfElseEmpty() {
+        /*
+            if (x < 3) {}
+            else if (x > 3) {}
+            else {}
+        */
+        Token varToken = new VariableToken(TokenType.ID, "x");
+        Token numToken = new VariableToken(TokenType.NUMBER, "3");
+        Token ifToken = new StaticToken(TokenType.KW_IF);
+        ParseTree ifNode = new ParseTree(ifToken);
+        Token elseToken = new StaticToken(TokenType.KW_ELSE);
+        ParseTree elseNode = new ParseTree(elseToken);
+
+        List<Token> tokens = List.of(
+            ifToken,
+            leftParenToken,
+            varToken,
+            new VariableToken(TokenType.OP, "<"),
+            numToken,
+            rightParenToken,
+            leftCBToken,
+            rightCBToken,
+            elseToken,
+            ifToken,
+            leftParenToken,
+            varToken,
+            new VariableToken(TokenType.OP, ">"),
+            numToken,
+            rightParenToken,
+            leftCBToken,
+            rightCBToken,
+            elseToken,
+            leftCBToken,
+            rightCBToken
+
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree condBody = new ParseTree("COND-BODY", List.of(leftCBNode, rightCBNode));
+
+        ParseTree ifBlockNode = new ParseTree("IF", List.of(
+            ifNode,
+            leftParenNode,
+            createNestedTree(tokens.subList(2, 5), "CMPR-EXPR"),
+            rightParenNode,
+            condBody
+        ));
+
+        ParseTree elseIfNode = new ParseTree("IF", List.of(
+            ifNode,
+            leftParenNode,
+            createNestedTree(tokens.subList(11, 14), "CMPR-EXPR"),
+            rightParenNode,
+            condBody
+        ));
+
+        ParseTree elseBlockNode = new ParseTree("ELSE", List.of(
+            new ParseTree(elseToken),
+            condBody
+        ));
+
+        ParseTree expectedParseTree = new ParseTree("COND", List.of(
+            ifBlockNode,
+            elseNode,
+            elseIfNode,
+            elseBlockNode
+        ));
+
+        assertEquals(expectedParseTree, parser.parseConditional());
+    }
 
     // parseLoop
+    @Test
+    void test_parseLoop_emptyWhileTrue() {
+        // while(true) {}
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_WHILE),
+            leftParenToken,
+            new StaticToken(TokenType.KW_TRUE),
+            rightParenToken,
+            leftCBToken,
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
 
-    // parseForLoop
+        ParseTree expectedParseTree = new ParseTree("LOOP", List.of(
+            createNestedTree(tokens.subList(0, 4), "WHILE-LOOP"),
+            leftCBNode,
+            rightCBNode
+        ));
 
-    // parseWhileLoop
+        assertEquals(expectedParseTree, parser.parseLoop());
+    }
+
+    @Test
+    void test_parseLoop_singleStatementWhileTrue() {
+        // while(true) { break }
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_WHILE),
+            leftParenToken,
+            new StaticToken(TokenType.KW_TRUE),
+            rightParenToken,
+            leftCBToken,
+            new StaticToken(TokenType.KW_BRK),
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("LOOP", List.of(
+            createNestedTree(tokens.subList(0, 4), "WHILE-LOOP"),
+            leftCBNode,
+            createNestedTree(tokens.get(5), "CONTROL-FLOW"),
+            rightCBNode
+        ));
+
+        assertEquals(expectedParseTree, parser.parseLoop());
+    }
+
+    @Test
+    void test_parseLoop_multiStatementWhileTrue() {
+        /*
+            while(true) {
+                var *= 5
+                break
+            }
+        */
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_WHILE),
+            leftParenToken,
+            new StaticToken(TokenType.KW_TRUE),
+            rightParenToken,
+            leftCBToken,
+            new VariableToken(TokenType.ID, "var"),
+            new VariableToken(TokenType.OP, "*="),
+            new VariableToken(TokenType.NUMBER, "5"),
+            new StaticToken(TokenType.KW_BRK),
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("LOOP", List.of(
+            createNestedTree(tokens.subList(0, 4), "WHILE-LOOP"),
+            leftCBNode,
+            createNestedTree(tokens.subList(5, 8), "VAR-ASSIGN"),
+            createNestedTree(tokens.get(8), "CONTROL-FLOW"),
+            rightCBNode
+        ));
+
+        assertEquals(expectedParseTree, parser.parseLoop());
+    }
+
+    @Test
+    void test_parseLoop_emptyWhile() {
+        // while (i < length) {}
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_WHILE),
+            leftParenToken,
+            new VariableToken(TokenType.ID, "i"),
+            new VariableToken(TokenType.OP, "<"),
+            new VariableToken(TokenType.ID, "length"),
+            rightParenToken,
+            leftCBToken,
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("LOOP", List.of(
+            new ParseTree("WHILE-LOOP", List.of(
+                new ParseTree(tokens.get(0)),
+                leftParenNode,
+                createNestedTree(tokens.subList(2, 5), "CMPR-EXPR"),
+                rightParenNode
+            )),
+            leftCBNode,
+            rightCBNode
+        ));
+
+        assertEquals(expectedParseTree, parser.parseLoop());
+    }
+
+    @Test
+    void test_parseLoop_emptyForEach() {
+        // for (int element : array) {}
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_FOR),
+            leftParenToken,
+            new StaticToken(TokenType.KW_INT),
+            new VariableToken(TokenType.ID, "element"),
+            new StaticToken(TokenType.COLON),
+            new VariableToken(TokenType.ID, "array"),
+            rightParenToken,
+            leftCBToken,
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("LOOP", List.of(
+            createNestedTree(tokens.subList(0, 7), "FOR-LOOP"),
+            leftCBNode,
+            rightCBNode
+        ));
+
+        assertEquals(expectedParseTree, parser.parseLoop());
+    }
+
+    @Test
+    void test_parseLoop_emptyForDeclaration() {
+        // for (int i = 0; i < length; i++) {}
+        Token SCToken = new StaticToken(TokenType.SC);
+        ParseTree SCNode = new ParseTree(SCToken);
+        Token varToken = new VariableToken(TokenType.ID, "i");
+
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_FOR),
+            leftParenToken,
+            new StaticToken(TokenType.KW_INT),
+            varToken,
+            new VariableToken(TokenType.OP, "="),
+            new VariableToken(TokenType.NUMBER, "0"),
+            SCToken,
+            varToken,
+            new VariableToken(TokenType.OP, "<"),
+            new VariableToken(TokenType.ID, "length"),
+            SCToken,
+            varToken,
+            new VariableToken(TokenType.OP, "++"),
+            rightParenToken,
+            leftCBToken,
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("LOOP", List.of(
+            new ParseTree("FOR-LOOP", List.of(
+                new ParseTree(tokens.get(0)),
+                leftParenNode,
+                createNestedTree(tokens.subList(2, 6), "VAR-DECL"),
+                SCNode,
+                createNestedTree(tokens.subList(7, 10), "CMPR-EXPR"),
+                SCNode,
+                createNestedTree(tokens.subList(11, 13), "UNARY-OP"),
+                rightParenNode
+            )),
+            leftCBNode,
+            rightCBNode
+        ));
+
+        assertEquals(expectedParseTree, parser.parseLoop());
+    }
 
     // parseFunctionDefinition
     @Test

@@ -108,35 +108,32 @@ public class Parser {
 
     // STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
     public ParseTree parseStatement() {
-        ParseTree node = new ParseTree("STMT");
-        
         if (current.getName() == TokenType.KW_CONST || isPrimitiveType(current) || current.getName() == TokenType.KW_ARR) {
-            node.appendChildren(parseVariableDeclaration());
-        }
-        else if (
-            current.getName() == TokenType.LEFT_PAREN 
-            || current.getName() == TokenType.LEFT_CB 
-            || leftUnaryOps.contains(current.getValue()) 
-            || isBooleanLiteral(current) 
-            || isString(current)
+            return parseVariableDeclaration();
+        } else if (
+            current.getName() == TokenType.LEFT_PAREN
+                || current.getName() == TokenType.LEFT_CB
+                || leftUnaryOps.contains(current.getValue())
+                || isBooleanLiteral(current)
+                || isString(current)
         ) {
-            node.appendChildren(parseExpr());
-        }
-        else if (current.getName() == TokenType.KW_FOR || current.getName() == TokenType.KW_WHILE) {
-            node.appendChildren(parseLoop());
-        }
-        else if (current.getName() == TokenType.KW_IF || current.getName() == TokenType.KW_ELSE) {
-            node.appendChildren(parseConditional());
-        }
-        else if (isID(current)) {
+            return parseExpr();
+        } else if (current.getName() == TokenType.KW_FOR || current.getName() == TokenType.KW_WHILE) {
+            return parseLoop();
+        } else if (current.getName() == TokenType.KW_IF || current.getName() == TokenType.KW_ELSE) {
+            return parseConditional();
+        } else if (isID(current)) {
             if (isOp(next) && assignmentOps.contains(next.getValue()))
-                node.appendChildren(parseVariableAssignment());
+                return parseVariableAssignment();
             else if (next.getName() == TokenType.LEFT_PAREN)
-                node.appendChildren(parseFunctionCall());
+                return parseFunctionCall();
             else if (next.getName() == TokenType.LEFT_SQB)
-                node.appendChildren(parseArrayAccess());
+                return parseArrayAccess();
+            else
+                return parseExpr();
         }
-        return node;
+        else
+            throw new SyntaxError("Invalid STMT", current.getLineNumber());
     }
 
     // EXPR ::= ( LOGICAL-OR / TERNARY )
@@ -437,7 +434,7 @@ public class Parser {
 
     // COND-BODY = ( ( "{" ( BLOCK-BODY )* "}" ) / BLOCK-BODY )
     public ParseTree parseConditionalBody() {
-        ParseTree node = new ParseTree("BLOCK-BODY");
+        ParseTree node = new ParseTree("COND-BODY");
         if (current.getName() == TokenType.LEFT_CB) {
             node.appendChildren(parseExpectedToken(TokenType.LEFT_CB, current));
             while (current.getName() != TokenType.RIGHT_CB) {
@@ -459,7 +456,7 @@ public class Parser {
     public ParseTree parseLoop() {
         TokenType loopType = current.getName();
         ParseTree node = new ParseTree("LOOP", List.of(
-            parseExpectedToken(loopType, current),
+            //parseExpectedToken(loopType, current),
             loopType == TokenType.KW_FOR ? parseForLoop() : parseWhileLoop(),
             parseExpectedToken(TokenType.LEFT_CB, current)
         ));
@@ -484,16 +481,44 @@ public class Parser {
     public ParseTree parseForLoop() {
         ParseTree node = new ParseTree("FOR-LOOP", List.of(
             parseExpectedToken(TokenType.KW_FOR, current),
-            parseExpectedToken(TokenType.LEFT_PAREN, current),
-            parseExpr()
+            parseExpectedToken(TokenType.LEFT_PAREN, current)
         ));
-        if (current.getName() == TokenType.SC) {
+        // look ahead to find out what type of for loop this is
+        int lookAheadPosition = position;
+        boolean isForEach = false;
+        while (lookAheadPosition != tokens.size()) {
+            if (tokens.get(lookAheadPosition).getName() == TokenType.COLON) {
+                isForEach = true;
+                break;
+            }
+            if (tokens.get(lookAheadPosition).getName() == TokenType.SC)
+                break;
+            lookAheadPosition++;
+        }
+        if (isForEach) {
             node.appendChildren(
-                parseExpectedToken(TokenType.SC, current),
-                parseExpr(), parseExpectedToken(TokenType.SC, current),
+                parseType(),
+                parseExpectedToken(TokenType.ID, current),
+                parseExpectedToken(TokenType.COLON, current),
                 parseExpr()
             );
         }
+        else {
+           node.appendChildren(
+               isPrimitiveType(current)
+               ? parseVariableDeclaration()
+               : parseVariableAssignment()
+           );
+            if (current.getName() == TokenType.SC) {
+                node.appendChildren(
+                    parseExpectedToken(TokenType.SC, current),
+                    parseExpr(),
+                    parseExpectedToken(TokenType.SC, current),
+                    parseExpr()
+                );
+            }
+        }
+
         node.appendChildren(parseExpectedToken(TokenType.RIGHT_PAREN, current));
         return node;
     }
