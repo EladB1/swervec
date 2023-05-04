@@ -10,7 +10,7 @@ public class Parser {
     /*
      * PROGRAM ::= ( STMNT / FUNC-DEF )+
      * STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
-     * EXPR ::= ( ARITH-EXPR / LOGICAL-OR )
+     * EXPR ::= ( LOGICAL-OR / TERNARY )
      * ARITH-EXPR ::= TERM (ADD-OP TERM)*
      * TERM ::= EXPO (MULT-OP TERM)*
      * EXPO ::= FACTOR ( "**" EXPO )*
@@ -139,13 +139,19 @@ public class Parser {
         return node;
     }
 
-    // EXPR ::= ( ARITH-EXPR / LOGICAL-OR )
     // EXPR ::= ( LOGICAL-OR / TERNARY )
     public ParseTree parseExpr() {
-        ParseTree node = new ParseTree("EXPR");
-        node.appendChildren(parseLogicalOr());
+        if (!(current.getName() == TokenType.LEFT_PAREN
+            || current.getName() == TokenType.LEFT_CB
+            || current.getName() == TokenType.ID
+            || leftUnaryOps.contains(current.getValue())
+            || isNumber(current)
+            || isBooleanLiteral(current)
+            || isString(current)))
+            throw new SyntaxError(formComplaint("EXPR", current), current.getLineNumber());
+        ParseTree node = parseLogicalOr();
         if (current.getValue().equals("?"))
-            node = new ParseTree("EXPR", List.of(parseTernary()));
+            node = parseTernary();
         return node;
     }
 
@@ -444,7 +450,7 @@ public class Parser {
         return node;
     }
 
-    // BLOCK-BODY = CONTROLFLOW / STMNT
+    // BLOCK-BODY ::= CONTROLFLOW / STMNT
     public ParseTree parseBlockBody() {
         return isControlFlow(current) ? parseControlFlow() : parseStatement();
     }
@@ -492,8 +498,6 @@ public class Parser {
         return node;
     }
 
-    //
-
     //  FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
     public ParseTree parseFunctionDefinition() {
         ParseTree node = new ParseTree("FUNC-DEF", List.of(
@@ -507,7 +511,7 @@ public class Parser {
             node.appendChildren(parseExpectedToken(TokenType.COMMA, current), parseFunctionParameter());
         }
         node.appendChildren(parseExpectedToken(TokenType.RIGHT_PAREN, current));
-        if (current.getValue().equals(":"))
+        if (current.getName() == TokenType.COLON)
             node.appendChildren(parseExpectedToken(TokenType.COLON, current), parseType());
         node.appendChildren(parseExpectedToken(TokenType.LEFT_CB, current));
         if (current.getName() != TokenType.RIGHT_CB) {
@@ -551,10 +555,17 @@ public class Parser {
             parseArrayType(),
             parseExpectedToken(TokenType.ID, current)
         ));
-        if (current.getName() == TokenType.RIGHT_SQB)
+        if (current.getName() == TokenType.LEFT_SQB)
             node.appendChildren(parseArrayIndex());
-        
-        node.appendChildren(parseExpectedToken("=", current), parseArrayLiteral());
+
+        if (current.getValue().equals("=")) {
+            if (next != null && next.getName() == TokenType.LEFT_CB)
+                node.appendChildren(parseExpectedToken("=", current), parseArrayLiteral());
+            else if (next != null && next.getName() == TokenType.ID)
+                node.appendChildren(parseExpectedToken("=", current), parseExpectedToken(TokenType.ID, current));
+        }
+        else
+            throw new SyntaxError("Constant array cannot be uninitialized", current.getLineNumber());
         return node;
     }
 
