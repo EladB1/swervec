@@ -2,12 +2,12 @@ package com.piedpiper.bolt.lexer;
 
 public interface Token {
     // for lombok with methods
-    public Token withName(TokenType name);
-    public Token withValue(String value);
-    public Token withLineNumber(Integer lineNumber);
+    Token withName(TokenType name);
+    Token withValue(String value);
+    Token withLineNumber(Integer lineNumber);
 
     // getters
-    public TokenType getName();
-    public String getValue();
-    public Integer getLineNumber();
+    TokenType getName();
+    String getValue();
+    Integer getLineNumber();
 }

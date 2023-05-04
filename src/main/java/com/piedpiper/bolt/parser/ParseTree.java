@@ -1,6 +1,7 @@
 package com.piedpiper.bolt.parser;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,7 +41,7 @@ public class ParseTree {
     }
 
     public static List<ParseTree> tokensToNodes(List<Token> tokens) {
-        return tokens.stream().map((Token token) -> new ParseTree(token)).collect(Collectors.toList());
+        return tokens.stream().map(ParseTree::new).collect(Collectors.toList());
     }
 
     // go in sequential order of parents and created nested tree nodes; the last node contains tree
@@ -89,9 +90,7 @@ public class ParseTree {
     }
 
     public void appendChildren(ParseTree... children) {
-        for (ParseTree child : children) {
-            this.children.add(child);
-        }
+        Collections.addAll(this.children, children);
     }
 
     @Override
@@ -103,30 +102,26 @@ public class ParseTree {
         String indentation = getNestedIndentation(indentLevel);
         StringBuilder output = new StringBuilder(indentation + "ParseTree => ");
         if (type.equals("terminal")) {
-            output.append("Token: " + token.getName());
+            output.append("Token: ").append(token.getName());
             if (token instanceof VariableToken)
-                output.append(" ('" + token.getValue() + "')");
-                if (token.getLineNumber() != 0)
-                    output.append(", line: " + token.getLineNumber());
+                output.append(" ('").append(token.getValue()).append("')");
+            if (token.getLineNumber() != 0)
+                output.append(", line: ").append(token.getLineNumber());
         }
         else {
             output.append(type);
         }
         if (!children.isEmpty()) {
             output.append(", children: [");
-            for (int i = 0; i < children.size(); i++) {
-                output.append("\n" + children.get(i).toString(indentLevel+1));
+            for (ParseTree child : children) {
+                output.append("\n").append(child.toString(indentLevel + 1));
             }
-            output.append("\n" + indentation + "]");
+            output.append("\n").append(indentation).append("]");
         }
         return output.toString();
     }
 
     private String getNestedIndentation(int indentLevel) {
-        StringBuilder indentation = new StringBuilder();
-        for (int i = 0; i < indentLevel; i++) {
-            indentation.append('\t');
-        }
-        return indentation.toString();
+        return "\t".repeat(Math.max(0, indentLevel));
     }
 }

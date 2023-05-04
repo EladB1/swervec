@@ -458,7 +458,7 @@ public class TestParser {
         );
 
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Invalid unary operator on STRING", () -> parser.parseLeftUnaryOp());
+        assertSyntaxError("Invalid unary operator on STRING", parser::parseLeftUnaryOp);
     }
 
     // parseTernary
@@ -654,7 +654,7 @@ public class TestParser {
             leftSQBToken
         );
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Expected EXPR but reached EOF", () -> parser.parseArrayAccess());
+        assertSyntaxError("Expected EXPR but reached EOF", parser::parseArrayAccess);
     }
 
     @Test
@@ -665,7 +665,7 @@ public class TestParser {
             leftParenToken
         );
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Expected LEFT_SQB but got LEFT_PAREN", () -> parser.parseArrayAccess());
+        assertSyntaxError("Expected LEFT_SQB but got LEFT_PAREN", parser::parseArrayAccess);
     }
 
     // parseArrayIndex
@@ -695,7 +695,7 @@ public class TestParser {
             new VariableToken(TokenType.NUMBER, "3")
         );
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Expected RIGHT_SQB but reached EOF", () -> parser.parseArrayIndex());
+        assertSyntaxError("Expected RIGHT_SQB but reached EOF", parser::parseArrayIndex);
     }
 
     @Test
@@ -706,7 +706,7 @@ public class TestParser {
             rightSQBToken
         );
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Expected EXPR but got RIGHT_SQB", () -> parser.parseArrayIndex());
+        assertSyntaxError("Expected EXPR but got RIGHT_SQB", parser::parseArrayIndex);
     }
 
     // parseArrayLiteral
@@ -872,7 +872,7 @@ public class TestParser {
             new VariableToken(TokenType.OP, "<")
         );
         Parser parser = new Parser(tokens);
-        assertSyntaxError("Expected < but got OP ('>')", () -> parser.parseArrayType());
+        assertSyntaxError("Expected < but got OP ('>')", parser::parseArrayType);
     }
 
     @Test
@@ -884,7 +884,7 @@ public class TestParser {
             new VariableToken(TokenType.OP, ">")
         );
         Parser parser = new Parser(tokens);
-        SyntaxError error = assertThrows(SyntaxError.class, () -> parser.parseArrayType());
+        SyntaxError error = assertThrows(SyntaxError.class, parser::parseArrayType);
         assertEquals("Expected TYPE but got ID ('integer')", error.getMessage());
     }
 
@@ -893,18 +893,27 @@ public class TestParser {
     // parseArrayDeclaration
     @Test
     void test_parseArrayDeclaration_regularNoAssignment() {
+        // Array<int> arr[5]
         List<Token> tokens = List.of(
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
             new StaticToken(TokenType.KW_INT),
             new VariableToken(TokenType.OP, ">"),
-            new VariableToken(TokenType.ID, "arr")
+            new VariableToken(TokenType.ID, "arr"),
+            leftSQBToken,
+            new VariableToken(TokenType.NUMBER, "5"),
+            rightSQBToken
         );
         Parser parser = new Parser(tokens);
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-DECL", List.of(
             createNestedTree(tokens.subList(0, 4), "ARRAY-TYPE"),
-            new ParseTree(tokens.get(4))
+            new ParseTree(tokens.get(4)),
+            new ParseTree("ARRAY-INDEX", List.of(
+                leftSQBNode,
+                createNestedTree(tokens.get(6), "EXPR"),
+                rightSQBNode
+            ))
         ));
         
         ParseTree tree = parser.parseArrayDeclaration();
@@ -919,6 +928,9 @@ public class TestParser {
             new StaticToken(TokenType.KW_FLOAT),
             new VariableToken(TokenType.OP, ">"),
             new VariableToken(TokenType.ID, "magnitudes"),
+            leftSQBToken,
+            new VariableToken(TokenType.ID, "capacity"),
+            rightSQBToken,
             new VariableToken(TokenType.OP, "="),
             leftCBToken,
             new VariableToken(TokenType.NUMBER, "0.00035"),
@@ -929,16 +941,39 @@ public class TestParser {
         ParseTree expectedParseTree = new ParseTree("ARRAY-DECL", List.of(
             createNestedTree(tokens.subList(0, 4), "ARRAY-TYPE"),
             new ParseTree(tokens.get(4)),
-            new ParseTree(tokens.get(5)),
+            new ParseTree("ARRAY-INDEX", List.of(
+                leftSQBNode,
+                createNestedTree(tokens.get(6), "EXPR"),
+                rightSQBNode
+            )),
+            new ParseTree(tokens.get(8)),
             new ParseTree("ARRAY-LIT", List.of(
                 leftCBNode,
-                createNestedTree(tokens.get(7), "EXPR"),
+                createNestedTree(tokens.get(10), "EXPR"),
                 rightCBNode
             ))
         ));
         
         ParseTree tree = parser.parseArrayDeclaration();
         assertEquals(expectedParseTree, tree);
+    }
+
+    @Test
+    void test_parseArrayDeclaration_noSizeError() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, "<"),
+            new StaticToken(TokenType.KW_FLOAT),
+            new VariableToken(TokenType.OP, ">"),
+            new VariableToken(TokenType.ID, "magnitudes"),
+            new VariableToken(TokenType.OP, "="),
+            leftCBToken,
+            new VariableToken(TokenType.NUMBER, "0.00035"),
+            rightCBToken
+        );
+        Parser parser = new Parser(tokens);
+
+        assertSyntaxError("Expected LEFT_SQB but got OP ('=')", parser::parseArrayDeclaration);
     }
 
     // parseVariableDeclaration
@@ -959,6 +994,22 @@ public class TestParser {
             new ParseTree(tokens.get(2)),
             createNestedTree(tokens.subList(3, 5), "EXPR", "UNARY-OP", "LEFT-UNARY-OP")
         ));
+
+        assertEquals(expectedParseTree, parser.parseVariableDeclaration());
+    }
+
+    @Test
+    void test_parseVariableDeclaration_string() {
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_STR),
+            new VariableToken(TokenType.ID, "str"),
+            new VariableToken(TokenType.OP, "="),
+            new VariableToken(TokenType.STRING, "\"someValue\"")
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = createNestedTree(tokens.subList(0, 3), "VAR-DECL");
+        expectedParseTree.appendChildren(createNestedTree(tokens.get(3), "EXPR"));
 
         assertEquals(expectedParseTree, parser.parseVariableDeclaration());
     }
@@ -997,7 +1048,7 @@ public class TestParser {
         Parser parser = new Parser(tokens);
 
 
-        assertSyntaxError("Expected TYPE but got ID ('count')", () -> parser.parseVariableDeclaration());
+        assertSyntaxError("Expected TYPE but got ID ('count')", parser::parseVariableDeclaration);
     }
 
     @Test
@@ -1011,7 +1062,7 @@ public class TestParser {
         Parser parser = new Parser(tokens);
 
 
-        assertSyntaxError("Expected '=' but got OP ('*=')", () -> parser.parseVariableDeclaration());
+        assertSyntaxError("Expected '=' but got OP ('*=')", parser::parseVariableDeclaration);
     }
 
     @Test
@@ -1024,7 +1075,7 @@ public class TestParser {
         Parser parser = new Parser(tokens);
 
 
-        assertSyntaxError("Constant variable must be initialized", () -> parser.parseVariableDeclaration());
+        assertSyntaxError("Constant variable must be initialized", parser::parseVariableDeclaration);
     }
 
     // parseVariableAssignment
@@ -1060,7 +1111,7 @@ public class TestParser {
     void test_parseType_fails() {
         List<Token> token = List.of(new StaticToken(TokenType.KW_FN));
         Parser parser = new Parser(token);
-        assertSyntaxError("Expected TYPE but got KW_FN", () -> parser.parseType());
+        assertSyntaxError("Expected TYPE but got KW_FN", parser::parseType);
     }
 
     // parseControlFlow

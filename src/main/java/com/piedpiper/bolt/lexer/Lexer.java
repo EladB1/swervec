@@ -10,7 +10,7 @@ import com.piedpiper.bolt.error.SyntaxError;
 
 public class Lexer {
     private LexerState state = LexerState.DEFAULT;
-    private List<Token> tokens;
+    private final List<Token> tokens;
     private StringBuilder multiLineString = new StringBuilder();
     private final Map<String, Token> reservedWords = Map.ofEntries(
         entry("const", new StaticToken(TokenType.KW_CONST)),
@@ -31,16 +31,9 @@ public class Lexer {
         entry("Array", new StaticToken(TokenType.KW_ARR)),
         entry("mut", new StaticToken(TokenType.KW_MUT))
     );
-    private final String numRegex = "[0-9]+(\\.[0-9]+)?";
-    private final String operatorRegex = "(\\+|-|\\*|/|%|\\!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==|\\!=|-=|\\*=|/=)";
-    private final String identifierRegex = "[a-zA-Z]([a-zA-Z0-9_])*";
 
     public Lexer() {
         tokens = new ArrayList<>();
-    }
-
-    public List<Token> getTokens() {
-        return tokens;
     }
 
     private void setState(final LexerState state) {
@@ -93,7 +86,7 @@ public class Lexer {
     }
 
     private boolean isOperator(char curr) {
-        return String.valueOf(curr).matches("(\\+|-|\\*|/|%|!|&|\\^|=|\\?|<|>)");
+        return String.valueOf(curr).matches("([+\\-*/%!&^=?<>])");
     }
 
     private boolean isLetter(char curr) {
@@ -114,6 +107,7 @@ public class Lexer {
 
     private void addNumberToken(StringBuilder number, int lineNumber) {
         String num = number.toString();
+        String numRegex = "[0-9]+(\\.[0-9]+)?";
         if (num.matches(numRegex)) {
             tokens.add(new VariableToken(TokenType.NUMBER, num, lineNumber));
         }
@@ -124,12 +118,14 @@ public class Lexer {
 
     private void addOperatorToken(StringBuilder operator, int lineNumber) {
         String op = operator.toString();
+        String operatorRegex = "(\\+|-|\\*|/|%|!|&|\\^|=|\\?|\\+\\+|--|\\*\\*|&&|\\|\\||\\+=|<|>|<=|>=|==|!=|-=|\\*=|/=)";
         if (op.matches(operatorRegex))
             tokens.add(new VariableToken(TokenType.OP, op, lineNumber));
     }
 
     private void addIdentifierToken(StringBuilder identifier, int lineNumber) {
         String id = identifier.toString();
+        String identifierRegex = "[a-zA-Z]([a-zA-Z0-9_])*";
         if (id.matches(identifierRegex)) {
             Optional<Token> reservedWord = getReservedWord(id);
             if (reservedWord.isEmpty()) 
@@ -248,7 +244,7 @@ public class Lexer {
                 i++;
                 continue;
             }
-            if (state == LexerState.DEFAULT) { // this needs to be outside the switch statement so it can set the state
+            if (state == LexerState.DEFAULT) { // this needs to be outside the switch statement, so it can set the state
                 if (isNumber(currentChar))
                     setState(LexerState.IN_NUMBER);
                 else if (isOperator(currentChar))
@@ -285,8 +281,8 @@ public class Lexer {
                     break;
                 case IN_MULTILINE_STRING:
                     if (currentChar != '"' && nextChar != '/') {
-                        multiLineString.append(String.valueOf(currentChar));
-                        multiLineString.append(String.valueOf(nextChar));
+                        multiLineString.append(currentChar);
+                        multiLineString.append(nextChar);
                     }
                     else if (currentChar == '"' && nextChar == '/') {
                         multiLineString.append('"');

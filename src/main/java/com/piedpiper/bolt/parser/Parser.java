@@ -47,7 +47,7 @@ public class Parser {
      * TYPE ::= "int" / "string" / "float" / "boolean" / ARRAY-TYPE
      * CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
     */
-    private List<Token> tokens;
+    private final List<Token> tokens;
     private int position = 0;
     private Token current;
     private Token next; // use this to look ahead
@@ -156,7 +156,7 @@ public class Parser {
             return term;
         ParseTree node = new ParseTree("ARITH-EXPR", List.of(term));
         while (!atEnd() && addOps.contains(current.getValue())) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
+            node.appendChildren(parseExpectedToken(current.getValue(), current), parseTerm());
         }
         return node;
     }
@@ -168,7 +168,7 @@ public class Parser {
             return exponent;
         ParseTree node = new ParseTree("TERM", List.of(exponent));
         while (!atEnd() && multOps.contains(current.getValue())) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseTerm());
+            node.appendChildren(parseExpectedToken(current.getValue(), current), parseTerm());
         }
         return node;
     }
@@ -180,7 +180,7 @@ public class Parser {
             return factor;
         ParseTree node = new ParseTree("EXPO", List.of(factor));
         while (!atEnd() && current.getValue().equals("**")) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseExponent());
+            node.appendChildren(parseExpectedToken(current.getValue(), current), parseExponent());
         }
         return node;
     }
@@ -211,7 +211,7 @@ public class Parser {
         ParseTree node = new ParseTree("LOGICAL-OR", List.of(logicalAnd));
 
         while (!atEnd() && current.getValue().equals("||")) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, "||"), parseLogicalAnd());
+            node.appendChildren(parseExpectedToken("||", current), parseLogicalAnd());
         }
 
         return node;
@@ -227,7 +227,7 @@ public class Parser {
         
         while (!atEnd() && current.getValue().equals("&&")) {
             node.appendChildren(
-                parseExpectedToken(TokenType.OP, current, "&&"),
+                parseExpectedToken("&&", current),
                 parseComparisonExpression()
             );
         }
@@ -241,7 +241,7 @@ public class Parser {
             return arithExpr;
         ParseTree node = new ParseTree("CMPR-EXPR", List.of(arithExpr));
         if (comparisonOps.contains(current.getValue())) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()), parseArithmeticExpression());
+            node.appendChildren(parseExpectedToken(current.getValue(), current), parseArithmeticExpression());
         }
         return node;
 
@@ -271,7 +271,7 @@ public class Parser {
     public ParseTree parseLeftUnaryOp() {
         ParseTree node = new ParseTree("LEFT-UNARY-OP");
         if (current.getValue().equals("++") || current.getValue().equals("--") || current.getValue().equals("-")) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
+            node.appendChildren(parseExpectedToken(current.getValue(), current));
             if (isNumber(current))
                 node.appendChildren(parseExpectedToken(TokenType.NUMBER, current));
             else if (isID(current)) {
@@ -287,7 +287,7 @@ public class Parser {
             }
         }
         else if (current.getValue().equals("!")) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
+            node.appendChildren(parseExpectedToken(current.getValue(), current));
             if (isBooleanLiteral(current))
                 node.appendChildren(parseExpectedToken(current.getName(), current));
             else if (isID(current)) {
@@ -311,7 +311,7 @@ public class Parser {
     public ParseTree parseTernary() {
         return new ParseTree("TERNARY", List.of(
             parseLogicalOr(),
-            parseExpectedToken(TokenType.OP, current, "?"),
+            parseExpectedToken("?", current),
             parseExpr(),
             parseExpectedToken(TokenType.COLON, current),
             parseExpr()
@@ -412,14 +412,13 @@ public class Parser {
 
     // IF ::= "if" "(" EXPR ")" COND-BODY
     public ParseTree parseIf() {
-        ParseTree node = new ParseTree("IF", List.of(
+        return new ParseTree("IF", List.of(
             parseExpectedToken(TokenType.KW_IF, current),
             parseExpectedToken(TokenType.LEFT_PAREN, current),
             parseExpr(),
             parseExpectedToken(TokenType.RIGHT_PAREN, current),
             parseConditionalBody()
         ));
-        return node;
     }
 
     // ELSE ::= "else" COND-BODY
@@ -527,7 +526,7 @@ public class Parser {
             parseExpectedToken(TokenType.ID, current)
         ));
         if (current.getValue().equals("=")) {
-            node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseExpr());
+            node.appendChildren(parseExpectedToken("=", current), parseExpr());
         }
         return node;
     }
@@ -537,9 +536,9 @@ public class Parser {
         ParseTree node = new ParseTree("ARRAY-TYPE");
         node.appendChildren(
             parseExpectedToken(TokenType.KW_ARR, current),
-            parseExpectedToken(TokenType.OP, current, "<"),
+            parseExpectedToken("<", current),
             parseType(),
-            parseExpectedToken(TokenType.OP, current, ">")
+            parseExpectedToken(">", current)
 
         );
         return node;
@@ -555,7 +554,7 @@ public class Parser {
         if (current.getName() == TokenType.RIGHT_SQB)
             node.appendChildren(parseArrayIndex());
         
-        node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseArrayLiteral());
+        node.appendChildren(parseExpectedToken("=", current), parseArrayLiteral());
         return node;
     }
 
@@ -569,12 +568,12 @@ public class Parser {
             else if (next != null)
                 return parseImmutableArrayDeclaration();
         }
-        node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current));
+        node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current), parseArrayIndex());
         if (current.getValue().equals("=")) {
             if (next != null && next.getName() == TokenType.LEFT_CB)
-                node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseArrayLiteral());
+                node.appendChildren(parseExpectedToken("=", current), parseArrayLiteral());
             else if (next != null && next.getName() == TokenType.ID)
-                node.appendChildren(parseExpectedToken(TokenType.OP, current, "="), parseExpectedToken(TokenType.ID, current));
+                node.appendChildren(parseExpectedToken("=", current), parseExpectedToken(TokenType.ID, current));
         }
         return node;
     }
@@ -587,7 +586,7 @@ public class Parser {
             isConst = true;
             if (next != null && (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR)) {
                 node.appendChildren(parseArrayDeclaration());
-                return node; // let array declaraction do the rest
+                return node; // let array declaration do the rest
             }
             else
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current));
@@ -595,16 +594,16 @@ public class Parser {
         else {
             if (current.getName() == TokenType.KW_MUT || current.getName() == TokenType.KW_ARR) {
                 node.appendChildren(parseArrayDeclaration());
-                return node; // let array declaraction do the rest
+                return node; // let array declaration do the rest
             }            
         }
         node.appendChildren(parseType());
         if (next != null && next.getValue().equals("="))
-            node.appendChildren(parseExpectedToken(TokenType.ID, current), parseExpectedToken(TokenType.OP, current, "="), parseExpr());
+            node.appendChildren(parseExpectedToken(TokenType.ID, current), parseExpectedToken("=", current), parseExpr());
         else {
             if (isConst)
                 throw new SyntaxError("Constant variable must be initialized", current.getLineNumber());
-            if (!isConst && next != null)
+            else if (next != null)
                 throw new SyntaxError("Expected '=' but got " + next.getName() + " ('" + next.getValue() + "')");
         }
         return node;
@@ -615,7 +614,7 @@ public class Parser {
         ParseTree node = new ParseTree("VAR-ASSIGN", List.of(parseExpectedToken(TokenType.ID, current)));
         if (current.getName().equals(TokenType.OP)) {
             if (assignmentOps.contains(current.getValue()))
-                node.appendChildren(parseExpectedToken(TokenType.OP, current, current.getValue()));
+                node.appendChildren(parseExpectedToken(current.getValue(), current));
             else
                 throw new SyntaxError("Unexpected character '" + current.getValue() + "' in variable assignment", current.getLineNumber());
             node.appendChildren(parseExpr());            
@@ -657,7 +656,7 @@ public class Parser {
     /* Utility parsing method */
     private ParseTree parseExpectedToken(TokenType expectedToken, Token actualToken) {
         ParseTree node;
-        String message = "";
+        String message;
         if (atEnd())
             message = formComplaint(expectedToken, actualToken);
         else {
@@ -675,13 +674,13 @@ public class Parser {
     }
 
       /* Utility parsing method */
-      private ParseTree parseExpectedToken(TokenType expectedToken, Token actualToken, String value) {
+      private ParseTree parseExpectedToken(String value, Token actualToken) {
         ParseTree node;
-        String message = "";
+        String message;
         if (atEnd())
-            message = formComplaint(expectedToken, actualToken);
+            message = formComplaint(TokenType.OP + " ('" + value + "')", actualToken);
         else {
-            if (actualToken.getName() == expectedToken && actualToken.getValue() == value) {
+            if (actualToken.getName() == TokenType.OP && actualToken.getValue().equals(value)) {
                 node = new ParseTree(actualToken);
                 move();
                 return node;

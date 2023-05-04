@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import com.piedpiper.bolt.error.SyntaxError;
 
 public class TestLexer {
-    private Lexer lexer = new Lexer();
+    private final Lexer lexer = new Lexer();
 
     void assertZeroTokens(String line) {
         List<Token> tokens = lexer.analyzeLine(line);
