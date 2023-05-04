@@ -497,8 +497,6 @@ public class TestParser {
         assertEquals(expectedParseTree, parser.parseTernary());
     }
 
-    // parseValue
-
     // parseFunctionCall
     @Test
     void test_parseFunctionCall_noParams() {
@@ -866,6 +864,44 @@ public class TestParser {
         );
 
         ParseTree expectedParseTree = new ParseTree("COND", List.of(ifNode));
+
+        assertEquals(expectedParseTree, parser.parseConditional());
+    }
+
+    @Test
+    void test_parseConditional_parseIfElseSimple() {
+        /*
+            if (condition)
+                return true
+            else
+                return false
+        */
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_IF),
+            leftParenToken,
+            new VariableToken(TokenType.ID, "condition"),
+            rightParenToken,
+            new StaticToken(TokenType.KW_RET),
+            new StaticToken(TokenType.KW_TRUE),
+            new StaticToken(TokenType.KW_ELSE),
+            new StaticToken(TokenType.KW_RET),
+            new StaticToken(TokenType.KW_FALSE)
+        );
+        Parser parser = new Parser(tokens);
+
+        ParseTree expectedParseTree = new ParseTree("COND", List.of(
+            new ParseTree("IF", List.of(
+                new ParseTree(tokens.get(0)),
+                leftParenNode,
+                new ParseTree(tokens.get(2)),
+                rightParenNode,
+                createNestedTree(tokens.subList(4, 6), "CONTROL-FLOW")
+            )),
+            new ParseTree("ELSE", List.of(
+                new ParseTree(tokens.get(6)),
+                createNestedTree(tokens.subList(7, 9), "CONTROL-FLOW")
+            ))
+        ));
 
         assertEquals(expectedParseTree, parser.parseConditional());
     }
