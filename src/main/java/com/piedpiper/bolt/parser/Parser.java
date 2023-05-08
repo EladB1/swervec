@@ -380,26 +380,26 @@ public class Parser {
 
     // ARRAY-INDEX ::= "[" EXPR "]"
     public ParseTree parseArrayIndex() {
+        parseExpectedToken(TokenType.LEFT_SQB, current);
         ParseTree node = new ParseTree("ARRAY-INDEX", List.of(
-            parseExpectedToken(TokenType.LEFT_SQB, current)
+            parseExpr()
         ));
-        if (atEnd() || current.getName() == TokenType.RIGHT_SQB)
-            throw formComplaint("EXPR", current);
-        node.appendChildren(parseExpr(), parseExpectedToken(TokenType.RIGHT_SQB, current));
+        parseExpectedToken(TokenType.RIGHT_SQB, current);
         return node;
     }
 
     // ARRAY-LIT ::= "{" (EXPR ("," EXPR)* )? "}"
     public ParseTree parseArrayLiteral() {
         ParseTree node = new ParseTree("ARRAY-LIT");
-        node.appendChildren(parseExpectedToken(TokenType.LEFT_CB, current));
+        parseExpectedToken(TokenType.LEFT_CB, current);
         if (current.getName() != TokenType.RIGHT_CB && current.getName() != TokenType.COMMA) {
             node.appendChildren(parseExpr());
             while (!atEnd() && current.getName() != TokenType.RIGHT_CB) {
-                node.appendChildren(parseExpectedToken(TokenType.COMMA, current), parseExpr());
+                parseExpectedToken(TokenType.COMMA, current);
+                node.appendChildren(parseExpr());
             }
         }
-        node.appendChildren(parseExpectedToken(TokenType.RIGHT_CB, current));
+        parseExpectedToken(TokenType.RIGHT_CB, current);
         return node;
     }
 
@@ -565,14 +565,10 @@ public class Parser {
 
     // ARRAY-TYPE ::= "Array" "<" TYPE ">"
     public ParseTree parseArrayType() {
-        ParseTree node = new ParseTree("ARRAY-TYPE");
-        node.appendChildren(
-            parseExpectedToken(TokenType.KW_ARR, current),
-            parseExpectedToken("<", current),
-            parseType(),
-            parseExpectedToken(">", current)
-
-        );
+        ParseTree node = parseExpectedToken(TokenType.KW_ARR, current);
+        parseExpectedToken("<", current);
+        node.appendChildren(parseType());
+        parseExpectedToken(">", current);
         return node;
     }
 

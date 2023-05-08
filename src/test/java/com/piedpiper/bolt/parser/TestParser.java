@@ -35,9 +35,6 @@ public class TestParser {
     private final ParseTree rightParenNode = new ParseTree(rightParenToken);
     private final ParseTree leftCBNode = new ParseTree(leftCBToken);
     private final ParseTree rightCBNode = new ParseTree(rightCBToken);
-    private final ParseTree leftSQBNode = new ParseTree(leftSQBToken);
-    private final ParseTree rightSQBNode = new ParseTree(rightSQBToken);
-
 
     private void assertSyntaxError(String expectedErrorMessage, Executable executable) {
         SyntaxError error = assertThrows(SyntaxError.class, executable);
@@ -414,9 +411,7 @@ public class TestParser {
             new ParseTree("ARRAY-ACCESS", List.of(
                 new ParseTree(tokens.get(1)),
                 new ParseTree("ARRAY-INDEX", List.of(
-                    leftSQBNode,
-                    new ParseTree(tokens.get(3)),
-                    rightSQBNode
+                    new ParseTree(tokens.get(3))
                 ))
             ))
         ));
@@ -556,9 +551,7 @@ public class TestParser {
             new ParseTree("ARRAY-ACCESS", List.of(
                 new ParseTree(tokens.get(4)),
                 new ParseTree("ARRAY-INDEX", List.of(
-                    leftSQBNode,
-                    new ParseTree(tokens.get(6)),
-                    rightSQBNode
+                    new ParseTree(tokens.get(6))
                 ))
             )),
             commaNode,
@@ -581,7 +574,7 @@ public class TestParser {
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-ACCESS", List.of(
             new ParseTree(tokens.get(0)),
-            createNestedTree(tokens.subList(1, 4), "ARRAY-INDEX")
+            createNestedTree(tokens.get(2), "ARRAY-INDEX")
         ));
 
         Parser parser = new Parser(tokens);
@@ -622,7 +615,7 @@ public class TestParser {
             rightSQBToken
         );
         Parser parser = new Parser(tokens);
-        ParseTree expectedParseTree = createNestedTree(tokens, "ARRAY-INDEX");
+        ParseTree expectedParseTree = createNestedTree(tokens.get(1), "ARRAY-INDEX");
         ParseTree tree = parser.parseArrayIndex();
         assertEquals(expectedParseTree, tree);
     }
@@ -658,7 +651,7 @@ public class TestParser {
         );
         Parser parser = new Parser(tokens);
 
-        ParseTree expectedParseTree = createNestedTree(tokens, "ARRAY-LIT");
+        ParseTree expectedParseTree = new ParseTree("ARRAY-LIT");
 
         assertEquals(expectedParseTree, parser.parseArrayLiteral());
     }
@@ -675,9 +668,7 @@ public class TestParser {
         Parser parser = new Parser(tokens);
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
-            leftCBNode,
-            createNestedTree(tokens.subList(1, 4), "ARITH-EXPR"),
-            rightCBNode
+            createNestedTree(tokens.subList(1, 4), "ARITH-EXPR")
         ));
 
         assertEquals(expectedParseTree, parser.parseArrayLiteral());
@@ -705,16 +696,12 @@ public class TestParser {
         Parser parser = new Parser(tokens);
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
-            leftCBNode,
             createNestedTree(tokens.subList(1, 4), "ARITH-EXPR"),
-            commaNode,
             createNestedTree(tokens.subList(5, 8), "FUNC-CALL"),
-            commaNode,
             new ParseTree("ARRAY-ACCESS", List.of(
                 new ParseTree(tokens.get(9)),
-                createNestedTree(tokens.subList(10, 13), "ARRAY-INDEX")
-            )),
-            rightCBNode
+                createNestedTree(tokens.get(11), "ARRAY-INDEX")
+            ))
         ));
 
         assertEquals(expectedParseTree, parser.parseArrayLiteral());
@@ -736,11 +723,8 @@ public class TestParser {
         Parser parser = new Parser(tokens);
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-LIT", List.of(
-            leftCBNode,
-            createNestedTree(tokens.subList(1, 3), "ARRAY-LIT"),
-            commaNode,
-            createNestedTree(tokens.subList(4, 7), "ARRAY-LIT"),
-            rightCBNode
+            new ParseTree("ARRAY-LIT"),
+            createNestedTree(tokens.get(5), "ARRAY-LIT")
         ));
 
         assertEquals(expectedParseTree, parser.parseArrayLiteral());
@@ -1232,7 +1216,8 @@ public class TestParser {
             new StaticToken(TokenType.KW_INT),
             new VariableToken(TokenType.OP, ">")
         );
-        ParseTree expectedParseTree = createNestedTree(tokens, "ARRAY-TYPE");
+        ParseTree expectedParseTree = new ParseTree(tokens.get(0));
+        expectedParseTree.appendChildren(new ParseTree(tokens.get(2)));
         Parser parser = new Parser(tokens);
         ParseTree tree = parser.parseArrayType();
         assertEquals(expectedParseTree, tree);
@@ -1277,10 +1262,12 @@ public class TestParser {
             new VariableToken(TokenType.ID, "someId")
         );
         Parser parser = new Parser(tokens);
+        ParseTree arrayType = new ParseTree(tokens.get(1));
+        arrayType.appendChildren(new ParseTree(tokens.get(3)));
 
         ParseTree expectedParseTree = new ParseTree("IMMUTABLE-ARRAY-DECL", List.of(
             new ParseTree(tokens.get(0)),
-            createNestedTree(tokens.subList(1, 5), "ARRAY-TYPE"),
+            arrayType,
             new ParseTree(tokens.get(5)),
             new ParseTree(tokens.get(6)),
             new ParseTree(tokens.get(7))
@@ -1305,12 +1292,14 @@ public class TestParser {
             new VariableToken(TokenType.ID, "someId")
         );
         Parser parser = new Parser(tokens);
+        ParseTree arrayType = new ParseTree(tokens.get(1));
+        arrayType.appendChildren(new ParseTree(tokens.get(3)));
 
         ParseTree expectedParseTree = new ParseTree("IMMUTABLE-ARRAY-DECL", List.of(
             new ParseTree(tokens.get(0)),
-            createNestedTree(tokens.subList(1, 5), "ARRAY-TYPE"),
+            arrayType,
             new ParseTree(tokens.get(5)),
-            createNestedTree(tokens.subList(6, 9), "ARRAY-INDEX"),
+            createNestedTree(tokens.get(7), "ARRAY-INDEX"),
             new ParseTree(tokens.get(9)),
             new ParseTree(tokens.get(10))
         ));
@@ -1349,11 +1338,13 @@ public class TestParser {
             rightSQBToken
         );
         Parser parser = new Parser(tokens);
+        ParseTree arrayType = new ParseTree(tokens.get(0));
+        arrayType.appendChildren(new ParseTree(tokens.get(2)));
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-DECL", List.of(
-            createNestedTree(tokens.subList(0, 4), "ARRAY-TYPE"),
+            arrayType,
             new ParseTree(tokens.get(4)),
-            createNestedTree(tokens.subList(5, 8), "ARRAY-INDEX")
+            createNestedTree(tokens.get(6), "ARRAY-INDEX")
         ));
         
         ParseTree tree = parser.parseArrayDeclaration();
@@ -1362,6 +1353,7 @@ public class TestParser {
 
     @Test
     void test_parseArrayDeclaration_regular() {
+        // Array<float> magnitudes = {0.00035}
         List<Token> tokens = List.of(
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
@@ -1377,13 +1369,15 @@ public class TestParser {
             rightCBToken
         );
         Parser parser = new Parser(tokens);
+        ParseTree arrayType = new ParseTree(tokens.get(0));
+        arrayType.appendChildren(new ParseTree(tokens.get(2)));
 
         ParseTree expectedParseTree = new ParseTree("ARRAY-DECL", List.of(
-            createNestedTree(tokens.subList(0, 4), "ARRAY-TYPE"),
+            arrayType,
             new ParseTree(tokens.get(4)),
-            createNestedTree(tokens.subList(5, 8), "ARRAY-INDEX"),
+            createNestedTree(tokens.get(6), "ARRAY-INDEX"),
             new ParseTree(tokens.get(8)),
-            createNestedTree(tokens.subList(9, 12), "ARRAY-LIT")
+            createNestedTree(tokens.get(10), "ARRAY-LIT")
         ));
         
         ParseTree tree = parser.parseArrayDeclaration();
@@ -1406,12 +1400,15 @@ public class TestParser {
         );
         Parser parser = new Parser(tokens);
 
+        ParseTree arrayType = new ParseTree(tokens.get(2));
+        arrayType.appendChildren(new ParseTree(tokens.get(4)));
+
         ParseTree expectedParseTree = new ParseTree("ARRAY-DECL", List.of(
             new ParseTree(tokens.get(0)),
             new ParseTree(tokens.get(1)),
-            createNestedTree(tokens.subList(2, 6), "ARRAY-TYPE"),
+            arrayType,
             new ParseTree(tokens.get(6)),
-            createNestedTree(tokens.subList(7, 10), "ARRAY-INDEX")
+            createNestedTree(tokens.get(8), "ARRAY-INDEX")
         ));
 
         assertEquals(expectedParseTree, parser.parseArrayDeclaration());
