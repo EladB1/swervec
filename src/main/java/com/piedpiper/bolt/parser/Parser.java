@@ -24,7 +24,7 @@ public class Parser {
      * MULT-OP ::= "*" / "/" / "%"
      * CMPR-OP ::= "<" / ">" / "<=" / ">=" / "!=" / "=="
      * TERNARY ::= LOGICAL-OR "?" EXPR ":" EXPR
-     * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT / TERNARY
+     * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT
      * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
      * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
      * ARRAY-INDEX ::= "[" EXPR "]"
@@ -76,19 +76,19 @@ public class Parser {
         }
     }
 
-    private String formComplaint(String expected, Token token) {
+    private SyntaxError formComplaint(String expected, Token token) {
         String messageStart = "Expected " + expected + " but ";
-        String messageEnd = atEnd() 
+        String messageEnd = atEnd() || token == null
             ? "reached EOF" 
             : "got " + token.getName() + ( 
                 token.getValue().isBlank()
                 ? ""
                 : " ('" + token.getValue() + "')"
             );
-        return messageStart + messageEnd;
+        return new SyntaxError(messageStart + messageEnd, token == null ? 0 : token.getLineNumber());
     }
 
-    private String formComplaint(TokenType expected, Token token) {
+    private SyntaxError formComplaint(TokenType expected, Token token) {
         return formComplaint(expected.toString(), token);
     }
 
@@ -148,7 +148,7 @@ public class Parser {
             || isNumber(current)
             || isBooleanLiteral(current)
             || isString(current)))
-            throw new SyntaxError(formComplaint("EXPR", current), current.getLineNumber());
+            throw formComplaint("EXPR", current);
         ParseTree node = parseLogicalOr();
         if (current.getValue().equals("?"))
             node = parseTernary();
@@ -309,7 +309,7 @@ public class Parser {
             }
         }
         else
-            throw new SyntaxError(formComplaint("LEFTUNARYOP", current), current.getLineNumber());
+            throw formComplaint("LEFTUNARYOP", current);
         return node;
     }
 
@@ -344,7 +344,7 @@ public class Parser {
         }
         return new ParseTree(current);
         //else
-            //throw new SyntaxError(formComplaint("VALUE", current), current.getLineNumber());
+            //throw formComplaint("VALUE", current);
     }
 
     // FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
@@ -368,7 +368,7 @@ public class Parser {
         ParseTree node = new ParseTree("ARRAY-ACCESS");
         boolean hasLeftSQB = next != null && next.getName() == TokenType.LEFT_SQB;
         if (!hasLeftSQB) {
-            throw new SyntaxError(formComplaint("LEFT_SQB", next), next.getLineNumber());
+            throw formComplaint("LEFT_SQB", next);
         }
         node.appendChildren(parseExpectedToken(TokenType.ID, current));
         while (hasLeftSQB) {
@@ -384,7 +384,7 @@ public class Parser {
             parseExpectedToken(TokenType.LEFT_SQB, current)
         ));
         if (atEnd() || current.getName() == TokenType.RIGHT_SQB)
-            throw new SyntaxError(formComplaint("EXPR", current));
+            throw formComplaint("EXPR", current);
         node.appendChildren(parseExpr(), parseExpectedToken(TokenType.RIGHT_SQB, current));
         return node;
     }
@@ -659,7 +659,7 @@ public class Parser {
             node.appendChildren(parseExpr());            
         }
         else
-            throw new SyntaxError(formComplaint("equality", current), current.getLineNumber());
+            throw formComplaint("equality", current);
         return node;
     }
 
@@ -670,7 +670,7 @@ public class Parser {
         if (isPrimitiveType(current)) {
             return parseExpectedToken(current.getName(), current);
         }
-        throw new SyntaxError(formComplaint("TYPE", current), current.getLineNumber());
+        throw formComplaint("TYPE", current);
     }
 
     // CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
@@ -687,7 +687,7 @@ public class Parser {
             }
         }
         else {
-            throw new SyntaxError(formComplaint("KW_CNT, KW_BRK, or KW_RET EXPR", current), current.getLineNumber());
+            throw formComplaint("KW_CNT, KW_BRK, or KW_RET EXPR", current);
         }
         return node;
     }
@@ -695,9 +695,9 @@ public class Parser {
     /* Utility parsing method */
     private ParseTree parseExpectedToken(TokenType expectedToken, Token actualToken) {
         ParseTree node;
-        String message;
+        SyntaxError error;
         if (atEnd())
-            message = formComplaint(expectedToken, actualToken);
+            error = formComplaint(expectedToken, actualToken);
         else {
             if (actualToken.getName() == expectedToken) {
                 node = new ParseTree(actualToken);
@@ -705,19 +705,19 @@ public class Parser {
                 return node;
             }
             else {
-                message = formComplaint(expectedToken, actualToken);
+                error = formComplaint(expectedToken, actualToken);
                 
             }
         }
-        throw new SyntaxError(message, actualToken.getLineNumber());
+        throw error;
     }
 
       /* Utility parsing method */
       private ParseTree parseExpectedToken(String value, Token actualToken) {
         ParseTree node;
-        String message;
+        SyntaxError error;
         if (atEnd())
-            message = formComplaint(TokenType.OP + " ('" + value + "')", actualToken);
+            error = formComplaint(TokenType.OP + " ('" + value + "')", actualToken);
         else {
             if (actualToken.getName() == TokenType.OP && actualToken.getValue().equals(value)) {
                 node = new ParseTree(actualToken);
@@ -725,10 +725,10 @@ public class Parser {
                 return node;
             }
             else {
-                message = formComplaint(value, actualToken);
+                error = formComplaint(value, actualToken);
             }
         }
-        throw new SyntaxError(message, actualToken.getLineNumber());
+        throw error;
     }
 
     private boolean isNumber(Token token) {
