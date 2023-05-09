@@ -86,7 +86,7 @@ public class Lexer {
     }
 
     private boolean isOperator(char curr) {
-        return String.valueOf(curr).matches("([+\\-*/%!&^=?<>])");
+        return String.valueOf(curr).matches("([+\\-*/%!&^=?<>||&&])");
     }
 
     private boolean isLetter(char curr) {

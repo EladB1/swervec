@@ -40,6 +40,12 @@ public class ParseTree {
         this.children.add(new ParseTree(token));
     }
 
+    public ParseTree(Token token, List<ParseTree> children) {
+        this.type = "terminal";
+        this.token = token;
+        this.children.addAll(children);
+    }
+
     public static List<ParseTree> tokensToNodes(List<Token> tokens) {
         return tokens.stream().map(ParseTree::new).collect(Collectors.toList());
     }
