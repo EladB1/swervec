@@ -367,18 +367,18 @@ public class TestLexer {
     }
 
     @Test
-    void analyzeLine_shouldIngoreMultilineComment() {
+    void analyzeLine_shouldIgnoreMultilineComment() {
         assertZeroTokens("/*This is a comment*/");
     }
 
     @Test
-    void analyzeLine_shouldIngoreMultilineCommentButHandleToken() {
+    void analyzeLine_shouldIgnoreMultilineCommentButHandleToken() {
         Token token = new VariableToken(TokenType.NUMBER, "5");
         assertOneToken("/*This is a comment*/5", token);
     }
 
     @Test
-    void analyzeLine_shouldIngoreMultilineCommentButHandleSeveralTokens() {
+    void analyzeLine_shouldIgnoreMultilineCommentButHandleSeveralTokens() {
         List<Token> expectedTokens = List.of(
             new VariableToken(TokenType.ID, "y"),
             new VariableToken(TokenType.OP, "="),

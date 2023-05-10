@@ -965,11 +965,7 @@ public class TestParser {
 
     @Test
     void test_parseConditional_parseIfElseEmpty() {
-        /*
-            if (x < 3) {}
-            else if (x > 3) {}
-            else {}
-        */
+        // if (x < 3) {} else if (x > 3) {} else {}
         Token varToken = new VariableToken(TokenType.ID, "x");
         Token numToken = new VariableToken(TokenType.NUMBER, "3");
         Token ifToken = new StaticToken(TokenType.KW_IF);
