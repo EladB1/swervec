@@ -1331,7 +1331,6 @@ public class TestParser {
             new AbstractSyntaxTree(tokens.get(0)),
             arrayType,
             new AbstractSyntaxTree(tokens.get(5)),
-            //new ParseTree(tokens.get(6)),
             new AbstractSyntaxTree(tokens.get(7))
         ));
 
@@ -1362,7 +1361,6 @@ public class TestParser {
             )),
             new AbstractSyntaxTree(tokens.get(5)),
             createNestedTree(tokens.get(7), "ARRAY-INDEX"),
-            //new ParseTree(tokens.get(9)),
             new AbstractSyntaxTree(tokens.get(10))
         ));
 
@@ -1438,7 +1436,6 @@ public class TestParser {
             arrayType,
             new AbstractSyntaxTree(tokens.get(4)),
             createNestedTree(tokens.get(6), "ARRAY-INDEX"),
-            //new ParseTree(tokens.get(8)),
             createNestedTree(tokens.get(10), "ARRAY-LIT")
         ));
         
@@ -1510,7 +1507,6 @@ public class TestParser {
         AbstractSyntaxTree expectedAbstractSyntaxTree = new AbstractSyntaxTree("VAR-DECL", List.of(
             new AbstractSyntaxTree(tokens.get(0)),
             new AbstractSyntaxTree(tokens.get(1)),
-            //new ParseTree(tokens.get(2)),
             createNestedTree(tokens.subList(3, 5), "UNARY-OP")
         ));
 
