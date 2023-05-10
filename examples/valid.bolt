@@ -1,5 +1,5 @@
 string str = "someValue"
-int someInteger = 10
+int someInteger = 10 + 2 + 3
 const float PI = 3.14
 string todo = /"
     - write some code 
@@ -18,15 +18,28 @@ const mut Array<int> primes[10] = {2, 19}
 
 // non-const arrays are mutable by default so mut is unnecessary
 Array<int> evens[5]
-evens = {2, 4, 6}
+evens = {2, 4, -6}
 
 fn concat(string first, string second) : string {
     return first + second
+}
+
+fn strtok(Array<string> strings, string delim=",") {
+  string output = ""
+  int length = length(strings)
+  for (int i = 0; i < length - 1; i++) {
+    output += strings[i] + delim
+  }
+  output += strings[length-1]
+  return output
 }
 
 fn main() {
     print(someValue)
     float y = someInteger * PI + 1
     print(y++)
+    y *= evens[1]
+    const int x = (2 + 4) / 3
+    PI ** 2 ** 3 < 50 || y > 10
     someValue
 }

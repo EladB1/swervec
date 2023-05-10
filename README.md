@@ -21,6 +21,10 @@ The goal is to create a somewhat practical language that is statically typed and
 
 __Parsing Strategy__: Recursive Descent, LL(1)
 
+The parser produces an AST. 
+
+Examples of the AST structure can be found [here](ast-examples.md).
+
 ## Language specification
 
 ### Reserved words:
