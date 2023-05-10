@@ -141,7 +141,7 @@ const Array<int> arr[3] = {1, 2, 3}
                         /   |   \
                        1    2    3
 
-                       
+
 const mut Array<int> arr[3] = {1, 2, 3}
 
                   =
@@ -187,6 +187,16 @@ fn test(int i, int j): int {
           *
         /   \
        i     j
+
+                        fn
+            /     /          \      \
+           test  params     int     body
+                /    |               |
+                i    j              return
+                |     \               |
+                int   int             *
+                                     / \
+                                    i   j
 
 fn sample(int x, int y=2): int {
     return (x + y) * 4

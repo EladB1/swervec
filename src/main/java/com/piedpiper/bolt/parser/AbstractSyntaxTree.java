@@ -13,89 +13,89 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Data
-public class ParseTree {
+public class AbstractSyntaxTree {
     private String type;
     private Token token;
-    private List<ParseTree> children = new ArrayList<>();
+    private List<AbstractSyntaxTree> children = new ArrayList<>();
 
-    public ParseTree(String type) {
+    public AbstractSyntaxTree(String type) {
         this.type = type;
         this.token = null;
     }
 
-    public ParseTree(String type, List<ParseTree> children) {
+    public AbstractSyntaxTree(String type, List<AbstractSyntaxTree> children) {
         this.type = type;
         this.token = null;
         this.children.addAll(children); // setting this.children = children causes the list to become immutable
     }
 
-    public ParseTree(Token token) {
+    public AbstractSyntaxTree(Token token) {
         this.type = "terminal";
         this.token = token;
     }
 
-    public ParseTree(String type, Token token) {
+    public AbstractSyntaxTree(String type, Token token) {
         this.type = type;
         this.token = null;
-        this.children.add(new ParseTree(token));
+        this.children.add(new AbstractSyntaxTree(token));
     }
 
-    public ParseTree(Token token, List<ParseTree> children) {
+    public AbstractSyntaxTree(Token token, List<AbstractSyntaxTree> children) {
         this.type = "terminal";
         this.token = token;
         this.children.addAll(children);
     }
 
-    public static List<ParseTree> tokensToNodes(List<Token> tokens) {
-        return tokens.stream().map(ParseTree::new).collect(Collectors.toList());
+    public static List<AbstractSyntaxTree> tokensToNodes(List<Token> tokens) {
+        return tokens.stream().map(AbstractSyntaxTree::new).collect(Collectors.toList());
     }
 
     // go in sequential order of parents and created nested tree nodes; the last node contains tree
-    public static ParseTree createNestedTree(ParseTree tree, String... parents) {
+    public static AbstractSyntaxTree createNestedTree(AbstractSyntaxTree tree, String... parents) {
         if (parents.length == 1)
-            return new ParseTree(parents[0], List.of(tree));
+            return new AbstractSyntaxTree(parents[0], List.of(tree));
 
-        ParseTree root = new ParseTree(parents[0]);
+        AbstractSyntaxTree root = new AbstractSyntaxTree(parents[0]);
         int end = parents.length - 1;
-        ParseTree node = root;
-        ParseTree subTree;
+        AbstractSyntaxTree node = root;
+        AbstractSyntaxTree subTree;
         for (int i = 1; i < end; i++) {
-            subTree = new ParseTree(parents[i]);
+            subTree = new AbstractSyntaxTree(parents[i]);
             node.appendChildren(subTree);
             node = subTree;
         }
         node.appendChildren(
-            new ParseTree(parents[end], List.of(tree))
+            new AbstractSyntaxTree(parents[end], List.of(tree))
         );
         return root;
     }
 
     // go in sequential order of parents and created nested tree nodes; the last node contains token
-    public static ParseTree createNestedTree(Token token, String...parents) {
-        return createNestedTree(new ParseTree(token), parents);
+    public static AbstractSyntaxTree createNestedTree(Token token, String...parents) {
+        return createNestedTree(new AbstractSyntaxTree(token), parents);
     }
 
     // go in sequential order of parents and created nested tree nodes; the last node contains tokens
-    public static ParseTree createNestedTree(List<Token> tokens, String... parents) {
+    public static AbstractSyntaxTree createNestedTree(List<Token> tokens, String... parents) {
         if (parents.length == 1)
-            return new ParseTree(parents[0], tokensToNodes(tokens));
+            return new AbstractSyntaxTree(parents[0], tokensToNodes(tokens));
         
-        ParseTree root = new ParseTree(parents[0]);
+        AbstractSyntaxTree root = new AbstractSyntaxTree(parents[0]);
         int end = parents.length - 1;
-        ParseTree node = root;
-        ParseTree subTree;
+        AbstractSyntaxTree node = root;
+        AbstractSyntaxTree subTree;
         for (int i = 1; i < end; i++) {
-            subTree = new ParseTree(parents[i]);
+            subTree = new AbstractSyntaxTree(parents[i]);
             node.appendChildren(subTree);
             node = subTree;
         }
         node.appendChildren(
-            new ParseTree(parents[end], tokensToNodes(tokens))
+            new AbstractSyntaxTree(parents[end], tokensToNodes(tokens))
         );
         return root;
     }
 
-    public void appendChildren(ParseTree... children) {
+    public void appendChildren(AbstractSyntaxTree... children) {
         Collections.addAll(this.children, children);
     }
 
@@ -106,7 +106,7 @@ public class ParseTree {
 
     private String toString(int indentLevel) {
         String indentation = getNestedIndentation(indentLevel);
-        StringBuilder output = new StringBuilder(indentation + "ParseTree => ");
+        StringBuilder output = new StringBuilder(indentation + "AST => ");
         if (type.equals("terminal")) {
             output.append("Token: ").append(token.getName());
             if (token instanceof VariableToken)
@@ -119,7 +119,7 @@ public class ParseTree {
         }
         if (!children.isEmpty()) {
             output.append(", children: [");
-            for (ParseTree child : children) {
+            for (AbstractSyntaxTree child : children) {
                 output.append("\n").append(child.toString(indentLevel + 1));
             }
             output.append("\n").append(indentation).append("]");
