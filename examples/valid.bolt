@@ -6,6 +6,7 @@ string todo = /"
     - test code
 "/
 
+2 + 3 * 2 ** 4 - 5
 
 const Array<string> langs[4] = {"C", "Java", "Python", "Typescript"} // 
 /*
