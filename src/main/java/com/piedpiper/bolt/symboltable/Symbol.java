@@ -19,7 +19,8 @@ public class Symbol {
     private List<TokenType> subReturnTypes = new ArrayList<>();
     // arrays only
     private List<TokenType> subTypes = new ArrayList<>();
-    private int scope;
+    private Integer scope;
+    // TODO: store variable value (or function body?)
 
     public Symbol(Integer scope, String name, TokenType type) {
         this.scope = scope;

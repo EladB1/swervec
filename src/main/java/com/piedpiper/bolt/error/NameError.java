@@ -1,18 +1,13 @@
 package com.piedpiper.bolt.error;
 
-import lombok.Getter;
-import lombok.With;
-
-@Getter
-@With
-public class NameError extends RuntimeException {
+public class NameError extends SourceCodeError {
     String message;
 
     public NameError(String message) {
-        this.message = message;
+        super(message);
     }
 
     public NameError(String message, int lineNumber) {
-        this.message = lineNumber != 0 ? "Line " + lineNumber + "\n\t" + message : message;
+        super(message, lineNumber);
     }
 }
