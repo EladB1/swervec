@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.Stack;
 
 public class SymbolTable {
-    private Map<String, List<Symbol>> table = new HashMap<>();
-    private Stack<Integer> scopes = new Stack<>();
+    private final Map<String, List<Symbol>> table = new HashMap<>();
+    private final Stack<Integer> scopes = new Stack<>();
     private int scopeLevel = 1;
 
     private int scopeSerial = 1;

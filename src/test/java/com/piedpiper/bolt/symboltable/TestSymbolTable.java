@@ -11,7 +11,7 @@ import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.lexer.TokenType;
 
 public class TestSymbolTable {
-    private SymbolTable table = new SymbolTable();
+    private final SymbolTable table = new SymbolTable();
 
     @Test
     void test_getScopeLevel_default() {

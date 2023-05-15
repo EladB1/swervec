@@ -1,9 +1,10 @@
 package com.piedpiper.bolt.error;
 
 
-/**
- * Base class for any source code related errors (syntax errors, name errors, etc.) 
+/*
+  Base class for any source code related errors (syntax errors, name errors, etc.)
 */
+
 import lombok.Getter;
 
 @Getter
