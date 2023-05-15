@@ -31,5 +31,6 @@ public enum TokenType {
     KW_TRUE,
     KW_FALSE,
     KW_ARR,
-    KW_MUT
+    KW_MUT,
+    KW_NULL
 }

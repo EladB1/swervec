@@ -24,7 +24,7 @@ public class Parser {
      * MULT-OP ::= "*" / "/" / "%"
      * CMPR-OP ::= "<" / ">" / "<=" / ">=" / "!=" / "=="
      * TERNARY ::= LOGICAL-OR "?" EXPR ":" EXPR
-     * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT
+     * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT / null
      * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
      * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
      * ARRAY-INDEX ::= "[" EXPR "]"
@@ -325,7 +325,7 @@ public class Parser {
         return node;
     }
 
-    // VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT 
+    // VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT / null
     private AbstractSyntaxTree parseValue() {
         if (isNumber(current))
             return parseExpectedToken(TokenType.NUMBER, current);
@@ -342,6 +342,9 @@ public class Parser {
                 return parseFunctionCall();
             else
                 return parseExpectedToken(TokenType.ID, current);
+        }
+        else if (current.getName() == TokenType.KW_NULL) {
+            return parseExpectedToken(TokenType.KW_NULL, current);
         }
         return new AbstractSyntaxTree(current);
         //else
