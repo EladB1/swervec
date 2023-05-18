@@ -71,15 +71,13 @@ public class SymbolTable {
         String name = fnSymbol.getName();
         if (!functionTable.containsKey(name)) {
             functionTable.put(name, List.of(fnSymbol));
+            return;
         }
+
+        if (lookup(name, fnSymbol.getParamTypes()) != null)
+            throw new NameError("Function '" + fnSymbol.formFnSignature() + "' is already defined");
 
         List<FunctionSymbol> functionSymbols = functionTable.get(name);
-
-        for (FunctionSymbol fnSym : functionSymbols) {
-            if (fnSym.getParamTypes() != fnSymbol.getParamTypes()) {
-                throw new NameError("Function '" + fnSymbol.formFnSignature() + "' is already defined");
-            }
-        }
 
         functionSymbols = new ArrayList<>(functionSymbols);
         functionSymbols.add(fnSymbol);
@@ -100,16 +98,12 @@ public class SymbolTable {
         return null;
     }
 
-    /*public FunctionSymbol lookup(String name, AbstractSyntaxTree type) {
-        AbstractSyntaxTree[] types = {type};
-        return lookup(name, types);
-    }*/
-
     public FunctionSymbol lookup(String name, AbstractSyntaxTree[] types) {
         if (!functionTable.containsKey(name))
             return null;
         List<FunctionSymbol> matchingFunctions = functionTable.get(name);
         for (FunctionSymbol fnSymbol : matchingFunctions) {
+            System.out.println(Arrays.equals(fnSymbol.getParamTypes(), types));
             if (fnSymbol.getName().equals(name) && Arrays.equals(fnSymbol.getParamTypes(), types))
                 return fnSymbol;
         }
@@ -126,7 +120,9 @@ public class SymbolTable {
             output.append("\t").append(symbol.getKey()).append(": ").append(symbol.getValue()).append("\n");
         }
         output.append("}\nfunction table: {\n");
-
+        for (Map.Entry<String, List<FunctionSymbol>> symbol : functionTable.entrySet()) {
+            output.append("\t").append(symbol.getKey()).append(": ").append(symbol.getValue()).append("\n");
+        }
         output.append("}");
         return output.toString();
     }

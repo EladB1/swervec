@@ -162,3 +162,32 @@ Examples:
         return
     }
   ```
+
+Function names can be reused only with different parameters.
+
+
+  Valid Example:
+
+  - ```
+      fn toString(int value): string {
+        // ...
+      }
+
+      fn toString(float value): string {
+        // ...
+      }
+    ```
+
+Invalid Example:
+
+ - ```
+      fn toString(int value): string {
+        // ...
+      }
+
+      fn toString(int value): string {
+        // ...
+      }
+    ```
+
+The order of function declarations matter so if you have a function calling another one, the caller must be defined after the called function
