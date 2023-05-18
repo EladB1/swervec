@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.lexer.VariableToken;
 import com.piedpiper.bolt.lexer.Token;
 
@@ -32,6 +33,18 @@ public class AbstractSyntaxTree {
     public AbstractSyntaxTree(Token token) {
         this.type = "terminal";
         this.token = token;
+    }
+
+    public TokenType getName() {
+        if (token == null)
+            return null;
+        return token.getName();
+    }
+
+    public String getValue() {
+        if (token == null)
+            return null;
+        return token.getValue();
     }
 
     public AbstractSyntaxTree(String type, Token token) {

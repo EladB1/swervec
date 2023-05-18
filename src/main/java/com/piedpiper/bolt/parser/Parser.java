@@ -39,7 +39,7 @@ public class Parser {
      * WHILE-LOOP ::= "while" "(" EXPR ")"
      * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ( ";" EXPR ";" EXPR )? ) / TYPE ID : EXPR ) ")"
      * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
-     * FUNC-PARAM ::= TYPE ID ("=" EXPR )?
+     * FUNC-PARAM ::= TYPE ID
      * ARRAY-TYPE ::= "Array" "<" TYPE ">"
      * IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" EXPR
      * ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
@@ -583,17 +583,12 @@ public class Parser {
         return node;
     }
 
-    // FUNC-PARAM ::= TYPE ID ("=" EXPR )?
+    // FUNC-PARAM ::= TYPE ID
     private AbstractSyntaxTree parseFunctionParameter() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("FUNC-PARAM", List.of(
+        return new AbstractSyntaxTree("FUNC-PARAM", List.of(
             parseType(),
             parseExpectedToken(TokenType.ID, current)
         ));
-        if (current.getValue().equals("=")) {
-            parseExpectedToken("=", current);
-            node.appendChildren(parseExpr());
-        }
-        return node;
     }
 
     // ARRAY-TYPE ::= "Array" "<" TYPE ">"

@@ -1285,58 +1285,6 @@ public class TestParser {
     }
 
     @Test
-    void test_parseFunctionDefinition_defaultValueParam() {
-        // fn concat (string var1, string var2 = "") : string { return var1 + var2 }
-        Token var1Token = new VariableToken(TokenType.ID, "var1");
-        Token var2Token = new VariableToken(TokenType.ID, "var2");
-
-        List<Token> tokens = List.of(
-            new StaticToken(TokenType.KW_FN),
-            new VariableToken(TokenType.ID, "concat"),
-            leftParenToken,
-            new StaticToken(TokenType.KW_STR),
-            var1Token,
-            new StaticToken(TokenType.COMMA),
-            new StaticToken(TokenType.KW_STR),
-            var2Token,
-            new VariableToken(TokenType.OP, "="),
-            new VariableToken(TokenType.STRING, "\"\""),
-            rightParenToken,
-            new StaticToken(TokenType.COLON),
-            new StaticToken(TokenType.KW_STR),
-            leftCBToken,
-            new StaticToken(TokenType.KW_RET),
-            var1Token,
-            new VariableToken(TokenType.OP, "+"),
-            var2Token,
-            rightCBToken
-        );
-
-        AbstractSyntaxTree defaultValueParamNode = createNestedTree(tokens.subList(6, 8), "FUNC-PARAM");
-        defaultValueParamNode.appendChildren(new AbstractSyntaxTree(tokens.get(9)));
-
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
-            new AbstractSyntaxTree(tokens.get(1)),
-            new AbstractSyntaxTree("FUNC-PARAMS", List.of(
-                createNestedTree(tokens.subList(3, 5), "FUNC-PARAM"),
-                defaultValueParamNode
-            )),
-
-            new AbstractSyntaxTree(tokens.get(12)),
-            new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                new AbstractSyntaxTree("CONTROL-FLOW", List.of(
-                    new AbstractSyntaxTree(tokens.get(14)),
-                    new AbstractSyntaxTree(tokens.get(16), List.of(
-                        new AbstractSyntaxTree(tokens.get(15)),
-                        new AbstractSyntaxTree(tokens.get(17))
-                    ))
-                ))
-            ))
-        ));
-        assertAST(expectedAST, tokens);
-    }
-
-    @Test
     void test_parseFunctionDefinition_voidReturn() {
         // fn test() { return }
         List<Token> tokens = List.of(
