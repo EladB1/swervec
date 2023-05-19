@@ -27,13 +27,13 @@ public class Symbol {
         List<AbstractSyntaxTree> children = node.getChildren();
         this.isConstant = children.get(0).getToken().getName() == TokenType.KW_CONST;
         int offset = isConstant ? 1 : 0;
-        if (node.getType().equals("VAR-DECL")) {
+        if (node.getLabel().equals("VAR-DECL")) {
             this.type = children.get(offset);
             this.name = children.get(offset + 1).getToken().getValue();
             if (children.size() == offset + 3)
                 this.valueNodes = children.get(offset + 2);
         }
-        else if (node.getType().equals("ARRAY-DECL")) {
+        else if (node.getLabel().equals("ARRAY-DECL")) {
             this.isMutableArray = children.get(offset).getToken().getName() == TokenType.KW_MUT;
             if (isMutableArray)
                 offset++;
@@ -41,7 +41,7 @@ public class Symbol {
             this.name = children.get(offset + 1).getToken().getValue();
             if (isConstant && !isMutableArray) {
                 // handle potential dynamic array sizing
-                if (children.get(offset + 2).getType().equals("ARRAY-INDEX")) {
+                if (children.get(offset + 2).getLabel().equals("ARRAY-INDEX")) {
                     // TODO: handle array size
                     offset += 2;
                 }
@@ -53,7 +53,7 @@ public class Symbol {
                     this.valueNodes = children.get(offset + 3);
             }
         }
-        else if (node.getType().equals("FUNC-PARAM")) {
+        else if (node.getLabel().equals("FUNC-PARAM")) {
             this.type = children.get(0);
             this.name = children.get(1).getToken().getValue();
             if (children.size() == 3)

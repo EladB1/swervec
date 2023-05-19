@@ -15,23 +15,23 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Data
 public class AbstractSyntaxTree {
-    private String type;
+    private String label;
     private Token token;
     private List<AbstractSyntaxTree> children = new ArrayList<>();
 
-    public AbstractSyntaxTree(String type) {
-        this.type = type;
+    public AbstractSyntaxTree(String label) {
+        this.label = label;
         this.token = null;
     }
 
-    public AbstractSyntaxTree(String type, List<AbstractSyntaxTree> children) {
-        this.type = type;
+    public AbstractSyntaxTree(String label, List<AbstractSyntaxTree> children) {
+        this.label = label;
         this.token = null;
         this.children.addAll(children); // setting this.children = children causes the list to become immutable
     }
 
     public AbstractSyntaxTree(Token token) {
-        this.type = "terminal";
+        this.label = "terminal";
         this.token = token;
     }
 
@@ -47,14 +47,14 @@ public class AbstractSyntaxTree {
         return token.getValue();
     }
 
-    public AbstractSyntaxTree(String type, Token token) {
-        this.type = type;
+    public AbstractSyntaxTree(String label, Token token) {
+        this.label = label;
         this.token = null;
         this.children.add(new AbstractSyntaxTree(token));
     }
 
     public AbstractSyntaxTree(Token token, List<AbstractSyntaxTree> children) {
-        this.type = "terminal";
+        this.label = "terminal";
         this.token = token;
         this.children.addAll(children);
     }
@@ -120,7 +120,7 @@ public class AbstractSyntaxTree {
     private String toString(int indentLevel) {
         String indentation = getNestedIndentation(indentLevel);
         StringBuilder output = new StringBuilder(indentation + "AST => ");
-        if (type.equals("terminal")) {
+        if (label.equals("terminal")) {
             output.append("Token: ").append(token.getName());
             if (token instanceof VariableToken)
                 output.append(" ('").append(token.getValue()).append("')");
@@ -128,7 +128,7 @@ public class AbstractSyntaxTree {
                 output.append(", line: ").append(token.getLineNumber());
         }
         else {
-            output.append(type);
+            output.append(label);
         }
         if (!children.isEmpty()) {
             output.append(", children: [");

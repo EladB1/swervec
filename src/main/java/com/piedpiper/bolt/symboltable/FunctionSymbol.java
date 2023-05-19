@@ -35,7 +35,7 @@ public class FunctionSymbol {
 
     public FunctionSymbol(String name, AbstractSyntaxTree node) { // node can be a return type or function body
         this.name = name;
-        if (node.getType().equals("BLOCK-BODY"))
+        if (node.getLabel().equals("BLOCK-BODY"))
             this.fnBodyNode = node;
         else
             throw new TypeError("Function should return " + node.getName() + " but returns nothing");
@@ -55,14 +55,13 @@ public class FunctionSymbol {
     public FunctionSymbol(String name, AbstractSyntaxTree[] paramTypes, AbstractSyntaxTree node) { // node can be a return type or function body
         this.name = name;
         this.paramTypes = paramTypes;
-        if (node.getType().equals("BLOCK-BODY"))
+        if (node.getLabel().equals("BLOCK-BODY"))
             this.fnBodyNode = node;
         else
             throw new TypeError("Function should return " + node.getName() + " but returns nothing");
     }
 
     public FunctionSymbol(List<AbstractSyntaxTree> fnDetails, SymbolTable table) {
-        table.enterScope(); // enter the function's parameter scope
         this.name = fnDetails.get(0).getValue();
         int size = fnDetails.size();
         if (size == 1)
@@ -70,10 +69,10 @@ public class FunctionSymbol {
 
         switch(size) {
             case 2:
-                if (fnDetails.get(1).getType().equals("FUNC-PARAMS")) {
+                if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
                     this.paramTypes = extractParamData(fnDetails.get(1), table);
                 }
-                else if (fnDetails.get(1).getType().equals("BLOCK-BODY")) {
+                else if (fnDetails.get(1).getLabel().equals("BLOCK-BODY")) {
                     this.fnBodyNode = fnDetails.get(1); // analyze the function body separately
                 }
                 else {
@@ -81,9 +80,9 @@ public class FunctionSymbol {
                 }
                 break;
             case 3:
-                if (fnDetails.get(1).getType().equals("FUNC-PARAMS")) {
+                if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
                     this.paramTypes = extractParamData(fnDetails.get(1), table);
-                    if (fnDetails.get(2).getType().equals("BLOCK-BODY")) {
+                    if (fnDetails.get(2).getLabel().equals("BLOCK-BODY")) {
                         this.fnBodyNode = fnDetails.get(2);
                     }
                     else {
