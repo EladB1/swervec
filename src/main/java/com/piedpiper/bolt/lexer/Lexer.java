@@ -268,6 +268,13 @@ public class Lexer {
                         if (!line.contains("*/"))
                             return tokens;
                     }
+                    if (currentSequence.toString().equals(">") && nextChar == '>') {
+                        tokens.add(new VariableToken(TokenType.OP, ">"));
+                        //tokens.add(new VariableToken(TokenType.OP, ">"));
+                        currentSequence = new StringBuilder();
+                        //i += 2;
+                        //continue;
+                    }
                     break;
                 case IN_IDENTIFIER:
                     currentSequence = handleIdentifierStateChar(currentChar, nextChar, currentSequence, lineNumber);

@@ -223,6 +223,41 @@ public class TestLexer {
     }
 
     @Test
+    void analyzeLine_shouldRecognizeArrayDeclarationMultiDimensional() {
+        List<Token> expectedTokens = List.of(
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, "<"),
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, "<"),
+            new StaticToken(TokenType.KW_INT),
+            new VariableToken(TokenType.OP, ">"),
+            new VariableToken(TokenType.OP, ">"),
+            new VariableToken(TokenType.ID, "myList"),
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "3"),
+            new StaticToken(TokenType.RIGHT_SQB),
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "1"),
+            new StaticToken(TokenType.RIGHT_SQB),
+            new VariableToken(TokenType.OP, "="),
+            new StaticToken(TokenType.LEFT_CB),
+            new StaticToken(TokenType.LEFT_CB),
+            new VariableToken(TokenType.NUMBER, "10"),
+            new StaticToken(TokenType.RIGHT_CB),
+            new StaticToken(TokenType.COMMA),
+            new StaticToken(TokenType.LEFT_CB),
+            new VariableToken(TokenType.NUMBER, "20"),
+            new StaticToken(TokenType.RIGHT_CB),
+            new StaticToken(TokenType.COMMA),
+            new StaticToken(TokenType.LEFT_CB),
+            new VariableToken(TokenType.NUMBER, "30"),
+            new StaticToken(TokenType.RIGHT_CB),
+            new StaticToken(TokenType.RIGHT_CB)
+        );
+        assertManyTokens("Array<Array<int>> myList[3][1] = {{10}, {20}, {30}}", expectedTokens);
+    }
+
+    @Test
     void analyzeLine_shouldRecognizeArrayIndex() {
         List<Token> expectedTokens = List.of(
             new StaticToken(TokenType.KW_CONST),
