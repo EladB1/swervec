@@ -623,7 +623,7 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree("ARRAY-INDEX", List.of(
                 new AbstractSyntaxTree(tokens.get(2), List.of(
-                    new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(5))
+                    new AbstractSyntaxTree(tokens.get(5))
                 ))
             ))
         ));
@@ -1492,6 +1492,7 @@ public class TestParser {
 
     @Test
     void test_parseArrayDeclaration_noSizeError() {
+        // Array<float> magnitudes = {0.00035}
         List<Token> tokens = List.of(
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
@@ -1506,6 +1507,60 @@ public class TestParser {
 
 
         assertSyntaxError("Expected LEFT_SQB but got OP ('=')", tokens);
+    }
+
+    @Test
+    void test_parseArrayDeclaration_Nested() {
+        // Array<Array<int>> values[2][3] = {{4}, {1}}
+        List<Token> tokens = List.of(
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, "<"),
+            new StaticToken(TokenType.KW_ARR),
+            new VariableToken(TokenType.OP, "<"),
+            new StaticToken(TokenType.KW_INT),
+            new VariableToken(TokenType.OP, ">"),
+            new VariableToken(TokenType.OP, ">"),
+            new VariableToken(TokenType.ID, "values"),
+            leftSQBToken,
+            new VariableToken(TokenType.NUMBER, "2"),
+            rightSQBToken,
+            leftSQBToken,
+            new VariableToken(TokenType.NUMBER, "3"),
+            rightSQBToken,
+            new VariableToken(TokenType.OP, "="),
+            leftCBToken,
+            leftCBToken,
+            new VariableToken(TokenType.NUMBER, "4"),
+            rightCBToken,
+            commaToken,
+            leftCBToken,
+            new VariableToken(TokenType.NUMBER, "1"),
+            rightCBToken,
+            rightCBToken
+        );
+
+        AbstractSyntaxTree arrayType = new AbstractSyntaxTree(tokens.get(0));
+        arrayType.appendChildren(new AbstractSyntaxTree(tokens.get(2)));
+
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-DECL", List.of(
+            new AbstractSyntaxTree(tokens.get(0), List.of(
+                new AbstractSyntaxTree(tokens.get(2), List.of(
+                    new AbstractSyntaxTree(tokens.get(4))
+                ))
+            )),
+            new AbstractSyntaxTree(tokens.get(7)),
+            new AbstractSyntaxTree("ARRAY-INDEX", List.of(
+                new AbstractSyntaxTree(tokens.get(9), List.of(
+                    new AbstractSyntaxTree(tokens.get(12))
+                ))
+            )),
+            new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                new AbstractSyntaxTree("ARRAY-LIT", tokens.get(17)),
+                new AbstractSyntaxTree("ARRAY-LIT", tokens.get(21))
+            ))
+        ));
+
+        assertAST(expectedAST, tokens);
     }
 
     // parseVariableDeclaration

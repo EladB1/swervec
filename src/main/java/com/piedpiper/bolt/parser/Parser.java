@@ -26,8 +26,8 @@ public class Parser {
      * TERNARY ::= LOGICAL-OR "?" EXPR ":" EXPR
      * VALUE ::=  FUNC-CALL / ARRAY-ACCESS / ID / STRING-LIT / NUMBER / BOOLEAN / ARRAY-LIT / null
      * FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
-     * ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
-     * ARRAY-INDEX ::= "[" EXPR "]"
+     * ARRAY-ACCESS ::= ID ARRAY-INDEX
+     * ARRAY-INDEX ::= ( "[" EXPR "]" )+
      * ARRAY-LIT ::= "{" (EXPR ("," EXPR)* )? "}"
      * COND ::= IF ( ELSEIF )* ( ELSE )?
      * IF ::= "if" "(" EXPR ")" COND-BODY
@@ -369,32 +369,29 @@ public class Parser {
         return node;
     }
 
-    // ARRAY-ACCESS ::= ID ( ARRAY-INDEX )+
+    // ARRAY-ACCESS ::= ID ARRAY-INDEX
     private AbstractSyntaxTree parseArrayAccess() {
         boolean hasLeftSQB = next != null && next.getName() == TokenType.LEFT_SQB;
         if (!hasLeftSQB) {
             throw formComplaint("LEFT_SQB", next);
         }
         AbstractSyntaxTree node = parseExpectedToken(TokenType.ID, current);
-        AbstractSyntaxTree currNode = node;
-        AbstractSyntaxTree index;
-        while (hasLeftSQB) {
-            index = parseArrayIndex();
-            currNode.appendChildren(index);
-            currNode = index.getChildren().get(0);
-            // code => AST: array[ind1][ind2] => array->ARRAY-INDEX->ind1->ARRAY-INDEX->ind2
-            hasLeftSQB = !atEnd() && current.getName() == TokenType.LEFT_SQB;
-        }
+        node.appendChildren(parseArrayIndex());
         return node;
     }
 
-    // ARRAY-INDEX ::= "[" EXPR "]"
+    // ARRAY-INDEX ::= ( "[" EXPR "]" )+
     private AbstractSyntaxTree parseArrayIndex() {
-        parseExpectedToken(TokenType.LEFT_SQB, current);
-        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-INDEX", List.of(
-            parseExpr()
-        ));
-        parseExpectedToken(TokenType.RIGHT_SQB, current);
+        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-INDEX");
+        AbstractSyntaxTree currNode = node;
+        if (!atEnd() && current.getName() != TokenType.LEFT_SQB)
+            throw formComplaint("LEFT_SQB", current);
+        while (!atEnd() && current.getName() == TokenType.LEFT_SQB) {
+            parseExpectedToken(TokenType.LEFT_SQB, current);
+            currNode.appendChildren(parseExpr());
+            parseExpectedToken(TokenType.RIGHT_SQB, current);
+            currNode = currNode.getChildren().get(0); // code => AST: array[ind1][ind2] => array->ARRAY-INDEX->ind1->ind2
+        }
         return node;
     }
 
