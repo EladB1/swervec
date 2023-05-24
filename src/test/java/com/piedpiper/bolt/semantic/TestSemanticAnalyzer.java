@@ -9,10 +9,13 @@ import com.piedpiper.bolt.lexer.VariableToken;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -94,5 +97,46 @@ public class TestSemanticAnalyzer {
 
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.evaluateType(AST));
         assertEquals("Cannot compare INT with STRING using >", error.getMessage());
+    }
+
+    private static Stream<Arguments> binaryOperatorProvider() {
+        AbstractSyntaxTree num = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
+        AbstractSyntaxTree bool = new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE));
+        return Stream.of(
+            Arguments.of(num, num),
+            Arguments.of(bool, bool),
+            Arguments.of(num, bool),
+            Arguments.of(bool, num)
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("binaryOperatorProvider")
+    void test_evaluateType_binaryOperator_simple(AbstractSyntaxTree left, AbstractSyntaxTree right) {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "^"), List.of(left, right));
+        assertEquals(NodeType.INT, semanticAnalyzer.evaluateType(AST));
+    }
+
+    @Test
+    void test_evaluateType_binaryOperator_complex() {
+        // 2 ^ (2 < 2)
+        AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
+        AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "^"), List.of(
+            numNode,
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, ">"), List.of(
+                numNode,
+                numNode
+            ))
+        ));
+        assertEquals(NodeType.INT, semanticAnalyzer.evaluateType(AST));
+    }
+
+    @Test
+    void test_evaluateType_binaryOperator_invalid() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "&"), List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"false\""))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.evaluateType(AST));
+        assertEquals("Binary expression (&) with BOOLEAN and STRING is not valid", error.getMessage());
     }
 }

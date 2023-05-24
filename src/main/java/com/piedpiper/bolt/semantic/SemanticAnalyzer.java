@@ -155,6 +155,8 @@ public class SemanticAnalyzer {
             return NodeType.NULL;
         if (nonEqualityComparisons.contains(node.getValue()))
             return handleComparison(node);
+        if (node.getValue().equals("&") || node.getValue().equals("^"))
+            return handleBinaryOperator(node);
         // TODO: handle array literals
         return NodeType.NONE;
     }
@@ -170,5 +172,15 @@ public class SemanticAnalyzer {
         if (!(acceptedTypes.contains(leftType) && acceptedTypes.contains(rightType)))
             throw new TypeError("Cannot compare " + leftType + " with " + rightType + " using " + comparisonOperator);
         return NodeType.BOOLEAN;
+    }
+
+    private NodeType handleBinaryOperator(AbstractSyntaxTree rootNode) {
+        String comparisonOperator = rootNode.getValue();
+        NodeType leftType = evaluateType(rootNode.getChildren().get(0));
+        NodeType rightType = evaluateType(rootNode.getChildren().get(1));
+        Set<NodeType> acceptedTypes = Set.of(NodeType.INT, NodeType.BOOLEAN);
+        if (!(acceptedTypes.contains(leftType) && acceptedTypes.contains(rightType)))
+            throw new TypeError("Binary expression (" + comparisonOperator + ") with " + leftType + " and " + rightType + " is not valid");
+        return NodeType.INT;
     }
 }
