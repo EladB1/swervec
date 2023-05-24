@@ -126,9 +126,9 @@
                       array-decl
 
                 /     |   \   \      \
-               const  int  arr index  array-lit
-                                  \    /   |   \
-                                   3   1    2    3
+               const Array arr index  array-lit
+                      |           \    /   |   \
+                     int           3   1    2    3
 ```
 
 **Code**:
@@ -140,11 +140,29 @@
 ```
                       array-decl
 
-                /     |      |   \   \      \
-               const  mut   int  arr index  array-lit
-                                        |    /   |   \
-                                        3   1    2    3
+                /     |      |    \   \      \
+               const  mut   Array  arr index  array-lit
+                             |           |    /   |   \
+                            int          3   1    2    3
 ```
+
+**Code**:
+
+`mut Array<Array<string>> arr[4][5] = {}`
+
+**AST**:
+
+```
+                      array-decl
+
+                   /      |    \   \      \
+                 mut   Array  arr index  array-lit
+                         |          |   
+                       Array        4
+                         |          |
+                       string       5   
+```
+
 
 ## Function declarations
 
@@ -166,28 +184,6 @@ fn test(int i, int j): int {
               param   param         return
               |  |    \   |           |
              int i    int  j          *
-                                     / \
-                                    i   j
-```
-
-**Code**:
-
-```
-fn test(int i, int j=1): int {
-    return i * j
-}
-```
-
-**AST**:
-
-```
-                        fn
-            /     /          \      \
-           test  params     int     body
-                /     |               |
-              param   param         return
-              |  |    |  | \          |
-             int i   int j  1         *
                                      / \
                                     i   j
 ```
@@ -341,7 +337,6 @@ fn test(int i, int j=1): int {
           index
             |
             3
-          index
             |
             0
 ```

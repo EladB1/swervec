@@ -2,17 +2,21 @@ package com.piedpiper.bolt.semantic;
 
 import com.piedpiper.bolt.error.CompilerError;
 import com.piedpiper.bolt.error.NameError;
+import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import com.piedpiper.bolt.symboltable.FunctionSymbol;
 import com.piedpiper.bolt.symboltable.Symbol;
 import com.piedpiper.bolt.symboltable.SymbolTable;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public class SemanticAnalyzer {
 
     private final SymbolTable symbolTable = new SymbolTable();
+    private final List<String> nonEqualityComparisons = List.of("<", "<=", ">", ">=");
 
     /**
      * Try to do as much as possible at compile time but defer some checks to runtime
@@ -134,23 +138,37 @@ public class SemanticAnalyzer {
         }
     }
 
-    private TokenType evaluateType(AbstractSyntaxTree node) {
+    public NodeType evaluateType(AbstractSyntaxTree node) {
         if (node.getName() == TokenType.ID) {
             // TODO: handle array indexing
             Symbol symbol = symbolTable.lookup(node.getValue());
         }
         if (isIntegerLiteral(node))
-            return TokenType.KW_INT;
+            return NodeType.INT;
         if (isFloatLiteral(node))
-            return TokenType.KW_FLOAT;
+            return NodeType.FLOAT;
         if (isStringLiteral(node))
-            return TokenType.KW_STR; // STRING represents string literals but KW_STR is the string keyword (for variables, funcs, etc.)
+            return NodeType.STRING;
         if (isBooleanLiteral(node))
-            return TokenType.KW_BOOL;
+            return NodeType.BOOLEAN;
+        if (node.getName() == TokenType.KW_NULL)
+            return NodeType.NULL;
+        if (nonEqualityComparisons.contains(node.getValue()))
+            return handleComparison(node);
         // TODO: handle array literals
-        return null;
+        return NodeType.NONE;
     }
     private TokenType handleArrayIndexExpression(AbstractSyntaxTree rootNode) {
         return null;
+    }
+
+    private NodeType handleComparison(AbstractSyntaxTree rootNode) {
+        String comparisonOperator = rootNode.getValue();
+        NodeType leftType = evaluateType(rootNode.getChildren().get(0));
+        NodeType rightType = evaluateType(rootNode.getChildren().get(1));
+        Set<NodeType> acceptedTypes = Set.of(NodeType.INT, NodeType.FLOAT);
+        if (!(acceptedTypes.contains(leftType) && acceptedTypes.contains(rightType)))
+            throw new TypeError("Cannot compare " + leftType + " with " + rightType + " using " + comparisonOperator);
+        return NodeType.BOOLEAN;
     }
 }

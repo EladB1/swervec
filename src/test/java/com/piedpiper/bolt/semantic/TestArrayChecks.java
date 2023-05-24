@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class TestArrayChecks {
-    private static AbstractSyntaxTree[] asts = {
+    private static final AbstractSyntaxTree[] asts = {
         // {}
         new AbstractSyntaxTree("ARRAY-LIT"),
         // {5, 10}

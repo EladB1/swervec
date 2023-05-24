@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -19,7 +20,7 @@ public class Symbol {
     private Integer scope;
     private boolean isConstant = false;
     private boolean isMutableArray = false;
-    private Integer arraySize = 0;
+    private List<Integer> arraySizes = List.of(0);
     private AbstractSyntaxTree valueNodes = null;
 
     public Symbol(AbstractSyntaxTree node, Integer scope) {
@@ -42,8 +43,17 @@ public class Symbol {
             if (isConstant && !isMutableArray) {
                 // handle potential dynamic array sizing
                 if (children.get(offset + 2).getLabel().equals("ARRAY-INDEX")) {
-                    // TODO: handle array size
+                    AbstractSyntaxTree current = children.get(offset+2).getChildren().get(0);
+                    List<Integer> sizes = new ArrayList<>();
+                    while (current != null) {
+                        sizes.add(Integer.valueOf(current.getValue()));
+                        // TODO: type check each child and handle more complex nodes
+                        current = current.getChildren().get(0);
+                    }
                     offset += 2;
+                }
+                else {
+
                 }
                 this.valueNodes = children.get(offset);
             }
