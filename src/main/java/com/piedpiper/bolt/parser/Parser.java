@@ -363,7 +363,7 @@ public class Parser {
                 params.appendChildren(parseExpr());
             }
         }
-        if (!params.getChildren().isEmpty())
+        if (!params.hasChildren())
             node.appendChildren(params);
         parseExpectedToken(TokenType.RIGHT_PAREN, current);
         return node;
@@ -480,7 +480,7 @@ public class Parser {
         while (current.getName() != TokenType.RIGHT_CB) {
             bodyNode.appendChildren(parseBlockBody());
         }
-        if (!bodyNode.getChildren().isEmpty())
+        if (!bodyNode.hasChildren())
             node.appendChildren(bodyNode);
         parseExpectedToken(TokenType.RIGHT_CB, current);
         return node;
@@ -561,7 +561,7 @@ public class Parser {
             paramsNode.appendChildren(parseFunctionParameter());
         }
         parseExpectedToken(TokenType.RIGHT_PAREN, current);
-        if (!paramsNode.getChildren().isEmpty())
+        if (!paramsNode.hasChildren())
             node.appendChildren(paramsNode);
         if (current.getName() == TokenType.COLON) {
             parseExpectedToken(TokenType.COLON, current);
@@ -573,7 +573,7 @@ public class Parser {
             while(current.getName() != TokenType.RIGHT_CB) {
                 bodyNode.appendChildren(parseBlockBody());
             }
-            if (!bodyNode.getChildren().isEmpty())
+            if (!bodyNode.hasChildren())
                 node.appendChildren(bodyNode);
         }
         parseExpectedToken(TokenType.RIGHT_CB, current);

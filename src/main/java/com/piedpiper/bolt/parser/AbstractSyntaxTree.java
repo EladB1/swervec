@@ -112,6 +112,22 @@ public class AbstractSyntaxTree {
         Collections.addAll(this.children, children);
     }
 
+    public boolean hasChildren() {
+        return this.children.isEmpty();
+    }
+
+    public int approximateLineNumber() {
+        // TODO: make this more efficient by limiting recursion or change how parser does this
+        // in the future, may, possibly pass in the parent node
+        if (token == null) {
+            if (this.hasChildren())
+                return children.get(0).approximateLineNumber();
+            else
+                return 0;
+        }
+        return token.getLineNumber();
+    }
+
     @Override
     public String toString() {
         return toString(0);

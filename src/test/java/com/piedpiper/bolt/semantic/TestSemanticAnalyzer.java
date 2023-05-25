@@ -40,31 +40,6 @@ public class TestSemanticAnalyzer {
         assertEquals("Symbol 'var' is already defined in this scope", error.getMessage());
     }
 
-    @Test
-    void test_semanticAnalyzer_intAddition() {
-        AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
-        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
-            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
-              numNode,
-              numNode
-            ))
-        ));
-        assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
-    }
-
-    @Test
-    void test_semanticAnalyzer_additionError() {
-        AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
-        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
-            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
-                numNode,
-                new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"2\""))
-            ))
-        ));
-        NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));
-        assertEquals("Some error", error.getMessage());
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {"2", "2.0"})
     void test_evaluateType_nonEqualityComparison_twoSameTypes(String num) {
@@ -99,7 +74,7 @@ public class TestSemanticAnalyzer {
         assertEquals("Cannot compare INT with STRING using >", error.getMessage());
     }
 
-    private static Stream<Arguments> binaryOperatorProvider() {
+    private static Stream<Arguments> bitwiseProvider() {
         AbstractSyntaxTree num = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
         AbstractSyntaxTree bool = new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE));
         return Stream.of(
@@ -110,14 +85,14 @@ public class TestSemanticAnalyzer {
         );
     }
     @ParameterizedTest
-    @MethodSource("binaryOperatorProvider")
-    void test_evaluateType_binaryOperator_simple(AbstractSyntaxTree left, AbstractSyntaxTree right) {
+    @MethodSource("bitwiseProvider")
+    void test_evaluateType_bitwise_simple(AbstractSyntaxTree left, AbstractSyntaxTree right) {
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "^"), List.of(left, right));
         assertEquals(NodeType.INT, semanticAnalyzer.evaluateType(AST));
     }
 
     @Test
-    void test_evaluateType_binaryOperator_complex() {
+    void test_evaluateType_bitwise_complex() {
         // 2 ^ (2 < 2)
         AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "^"), List.of(
@@ -131,12 +106,56 @@ public class TestSemanticAnalyzer {
     }
 
     @Test
-    void test_evaluateType_binaryOperator_invalid() {
+    void test_evaluateType_bitwise_invalid() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "&"), List.of(
             new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE)),
             new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"false\""))
         ));
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.evaluateType(AST));
         assertEquals("Binary expression (&) with BOOLEAN and STRING is not valid", error.getMessage());
+    }
+
+    private static Stream<Arguments> multiplicationOperatorProvider() {
+        AbstractSyntaxTree intNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
+        AbstractSyntaxTree floatNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2.78"));
+        AbstractSyntaxTree stringNode = new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"a\""));
+        return Stream.of(
+            Arguments.of(intNode, intNode, NodeType.INT),
+            Arguments.of(floatNode, floatNode, NodeType.FLOAT),
+            Arguments.of(intNode, floatNode, NodeType.FLOAT),
+            Arguments.of(floatNode, intNode, NodeType.FLOAT),
+            Arguments.of(stringNode, intNode, NodeType.STRING),
+            Arguments.of(intNode, stringNode, NodeType.STRING)
+        );
+    }
+    @ParameterizedTest
+    @MethodSource("multiplicationOperatorProvider")
+    void test_evaluateType_multiplicationOperator_simple(AbstractSyntaxTree left, AbstractSyntaxTree right, NodeType expectedType) {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), List.of(left, right));
+        assertEquals(expectedType, semanticAnalyzer.evaluateType(AST));
+    }
+
+    @Test
+    void test_evaluateType_multiplicationOperator_wrongMix() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3.14")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"a\""))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.evaluateType(AST));
+        assertEquals("Cannot multiply FLOAT with STRING", error.getMessage());
+    }
+
+    @Test
+    void test_evaluateType_multiplicationOperator_completelyWrongTypes() {
+        AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
+        AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, ">"), List.of(
+                numNode,
+                numNode
+            ))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.evaluateType(AST));
+        assertEquals("Cannot multiply NULL with BOOLEAN", error.getMessage());
     }
 }

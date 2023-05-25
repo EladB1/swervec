@@ -1,7 +1,7 @@
 package com.piedpiper.bolt.semantic;
 
 import com.piedpiper.bolt.error.CompilerError;
-import com.piedpiper.bolt.error.NameError;
+import com.piedpiper.bolt.error.ReferenceError;
 import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
@@ -9,7 +9,6 @@ import com.piedpiper.bolt.symboltable.FunctionSymbol;
 import com.piedpiper.bolt.symboltable.Symbol;
 import com.piedpiper.bolt.symboltable.SymbolTable;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -17,6 +16,7 @@ public class SemanticAnalyzer {
 
     private final SymbolTable symbolTable = new SymbolTable();
     private final List<String> nonEqualityComparisons = List.of("<", "<=", ">", ">=");
+    private final List<String> arithmeticOperators = List.of("-", "-=", "/", "/=", "%", "**");
 
     /**
      * Try to do as much as possible at compile time but defer some checks to runtime
@@ -83,8 +83,6 @@ public class SemanticAnalyzer {
             if (matchesLabelNode(subTree, "VAR-DECL") || matchesLabelNode(subTree, "ARRAY-DECL")) {
                 handleVariableDeclaration(subTree);
             }
-            if (matchesVariableToken(subTree, TokenType.OP))
-                handleBinaryExpression(subTree);
             if (matchesStaticToken(subTree, TokenType.KW_FN)) {
                 if (isFunctionBody)
                     throw new CompilerError("Cannot define nested functions");
@@ -96,28 +94,6 @@ public class SemanticAnalyzer {
     private void handleVariableDeclaration(AbstractSyntaxTree node) {
         int scope = symbolTable.getScopeLevel();
         symbolTable.insert(new Symbol(node, scope));
-    }
-
-    private TokenType handleBinaryExpression(AbstractSyntaxTree rootNode) {
-        // return the type of the result of the expression
-        if (matchesVariableToken(rootNode, "+")) {
-            return handlePlusExpression(rootNode.getChildren());
-        }
-        return null;
-    }
-
-    private TokenType handlePlusExpression(List<AbstractSyntaxTree> operands) {
-        if (isIntegerLiteral(operands.get(0)) && isIntegerLiteral(operands.get(1)))
-            return TokenType.KW_INT;
-        if (
-            (isIntegerLiteral(operands.get(0)) && isFloatLiteral(operands.get(1)))
-            || (isFloatLiteral(operands.get(0)) && isIntegerLiteral(operands.get(1)))
-        )
-            return TokenType.KW_FLOAT;
-        if (isStringLiteral(operands.get(0)) && isStringLiteral(operands.get(1)))
-            return TokenType.STRING;
-        else
-            throw new NameError("Some error");
     }
 
     private void handleFunctionDefinitionExpression(List<AbstractSyntaxTree> fnDetails) {
@@ -138,6 +114,22 @@ public class SemanticAnalyzer {
         }
     }
 
+    private void handleFunctionCall() {
+
+    }
+
+    private void handleForLoop() {
+
+    }
+
+    private void handleWhileLoop() {
+
+    }
+
+    private void handleConditionalBlock() {
+
+    }
+
     public NodeType evaluateType(AbstractSyntaxTree node) {
         if (node.getName() == TokenType.ID) {
             // TODO: handle array indexing
@@ -155,13 +147,21 @@ public class SemanticAnalyzer {
             return NodeType.NULL;
         if (nonEqualityComparisons.contains(node.getValue()))
             return handleComparison(node);
+        if (node.getValue().equals("==") || node.getValue().equals("!="))
+            return handleEqualityComparison(node);
+        if (arithmeticOperators.contains(node.getValue()))
+            return handleArithmetic(node);
         if (node.getValue().equals("&") || node.getValue().equals("^"))
-            return handleBinaryOperator(node);
+            return handleBitwise(node);
+        if (node.getValue().equals("*") || node.getValue().equals("*="))
+            return handleMultiplication(node);
+        if (node.getValue().equals("+") || node.getValue().equals("+="))
+            return handleAddition(node);
+        if (node.getLabel().equals("UNARY-OP"))
+            return handleUnaryOp(node);
+        //if (node.getLabel().equals("FUNC-CALL"))
         // TODO: handle array literals
         return NodeType.NONE;
-    }
-    private TokenType handleArrayIndexExpression(AbstractSyntaxTree rootNode) {
-        return null;
     }
 
     private NodeType handleComparison(AbstractSyntaxTree rootNode) {
@@ -174,7 +174,7 @@ public class SemanticAnalyzer {
         return NodeType.BOOLEAN;
     }
 
-    private NodeType handleBinaryOperator(AbstractSyntaxTree rootNode) {
+    private NodeType handleBitwise(AbstractSyntaxTree rootNode) {
         String comparisonOperator = rootNode.getValue();
         NodeType leftType = evaluateType(rootNode.getChildren().get(0));
         NodeType rightType = evaluateType(rootNode.getChildren().get(1));
@@ -182,5 +182,109 @@ public class SemanticAnalyzer {
         if (!(acceptedTypes.contains(leftType) && acceptedTypes.contains(rightType)))
             throw new TypeError("Binary expression (" + comparisonOperator + ") with " + leftType + " and " + rightType + " is not valid");
         return NodeType.INT;
+    }
+
+    private NodeType handleMultiplication(AbstractSyntaxTree rootNode) {
+        NodeType leftType = evaluateType(rootNode.getChildren().get(0));
+        NodeType rightType = evaluateType(rootNode.getChildren().get(1));
+        if (leftType == NodeType.INT) {
+            if (rightType == NodeType.INT)
+                return NodeType.INT;
+            if (rightType == NodeType.FLOAT)
+                return NodeType.FLOAT;
+            if (rightType == NodeType.STRING)
+                return NodeType.STRING;
+        }
+        else if (leftType == NodeType.FLOAT) {
+            if (rightType == NodeType.FLOAT || rightType == NodeType.INT)
+                return NodeType.FLOAT;
+        }
+        else if (leftType == NodeType.STRING) {
+            if (rightType == NodeType.INT)
+                return NodeType.STRING;
+        }
+        throw new TypeError("Cannot multiply " + leftType + " with " + rightType);
+    }
+
+    private NodeType handleArithmetic(AbstractSyntaxTree rootNode) {
+        String operator = rootNode.getValue();
+        NodeType leftType = evaluateType(rootNode.getChildren().get(0));
+        NodeType rightType = evaluateType(rootNode.getChildren().get(1));
+        if (leftType == NodeType.INT) {
+            if (rightType == NodeType.INT)
+                return NodeType.INT;
+            if (rightType == NodeType.FLOAT)
+                return NodeType.FLOAT;
+        }
+        else if (leftType == NodeType.FLOAT) {
+            if (rightType == NodeType.FLOAT || rightType == NodeType.INT)
+                return NodeType.FLOAT;
+        }
+        throw new TypeError("Arithmetic expression (" + operator + ") with " + leftType + " and " + rightType + " is not valid");
+    }
+
+    private NodeType handleAddition(AbstractSyntaxTree rootNode) {
+        NodeType leftType = evaluateType(rootNode.getChildren().get(0));
+        NodeType rightType = evaluateType(rootNode.getChildren().get(1));
+        if (leftType == NodeType.INT) {
+            if (rightType == NodeType.INT)
+                return NodeType.INT;
+            if (rightType == NodeType.FLOAT)
+                return NodeType.FLOAT;
+        }
+        else if (leftType == NodeType.FLOAT) {
+            if (rightType == NodeType.FLOAT || rightType == NodeType.INT)
+                return NodeType.FLOAT;
+        }
+        else if (leftType == NodeType.STRING && rightType == NodeType.STRING)
+            return NodeType.STRING;
+        // TODO: handle arrays
+        throw new TypeError("Cannot add " + leftType + " with " + rightType);
+    }
+
+    private NodeType handleEqualityComparison(AbstractSyntaxTree rootNode) {
+        // TODO: handle arrays
+        NodeType leftType = evaluateType(rootNode.getChildren().get(0));
+        NodeType rightType = evaluateType(rootNode.getChildren().get(1));
+        if (
+            leftType == rightType
+            || (leftType == NodeType.NULL || rightType == NodeType.NULL)
+            || (
+                (leftType == NodeType.INT && rightType == NodeType.FLOAT)
+                || (leftType == NodeType.FLOAT && rightType == NodeType.INT)
+            )
+        )
+            return NodeType.BOOLEAN;
+        throw new TypeError("Cannot check for equality between " + leftType + " and " + rightType);
+    }
+
+    private NodeType handleUnaryOp(AbstractSyntaxTree rootNode) {
+        // TODO: handle variable or not for ++ and --
+        AbstractSyntaxTree left = rootNode.getChildren().get(0);
+        AbstractSyntaxTree right = rootNode.getChildren().get(1);
+        NodeType leftType = evaluateType(left);
+        NodeType rightType = evaluateType(right);
+        if (left.getValue().equals("!") && rightType == NodeType.BOOLEAN)
+            return NodeType.BOOLEAN;
+        if (left.getValue().equals("-") && (rightType == NodeType.INT || rightType == NodeType.FLOAT))
+            return rightType;
+        if (left.getValue().equals("++") || left.getValue().equals("--")) {
+            if (rightType == NodeType.INT || rightType == NodeType.FLOAT) {
+                // TODO: handle array indexes
+                if (right.getName() != TokenType.ID)
+                    throw new ReferenceError("Cannot perform prefix expression(" + left.getValue() + ") on " + right.getName());
+                return rightType;
+            }
+        }
+        if (right.getValue().equals("++") || right.getValue().equals("--")) {
+            if (leftType == NodeType.INT || leftType == NodeType.FLOAT) {
+                if (left.getName() != TokenType.ID)
+                    throw new ReferenceError("Cannot perform postfix expression(" + right.getValue() + ") on " + left.getName());
+                return leftType;
+            }
+        }
+        String unaryOp = leftType == NodeType.NONE ? left.getValue() : right.getValue();
+        NodeType type = leftType == NodeType.NONE ? rightType: leftType;
+        throw new TypeError("Cannot perform unary operator (" + unaryOp + ") on " + type);
     }
 }
