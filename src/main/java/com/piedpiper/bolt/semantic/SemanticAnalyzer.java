@@ -149,11 +149,11 @@ public class SemanticAnalyzer {
 
         List<AbstractSyntaxTree> children = node.getChildren();
         // non-nested array literal
-        if (!children.get(0).getLabel().equals("ARRAY-LIT")) {
+        if (!isArrayLiteral(children.get(0))) {
             NodeType type = evaluateType(children.get(0));
             NodeType currentType;
             for (int i = 1; i < children.size(); i++) {
-                if (children.get(i).getLabel().equals("ARRAY-LIT"))
+                if (isArrayLiteral(children.get(i)))
                     throw new TypeError("Cannot mix non-array elements with nested array elements in array literal");
                 currentType = evaluateType(children.get(i));
                 if (type == NodeType.NULL && currentType != NodeType.NULL)
