@@ -327,7 +327,7 @@ fn test(int i, int j): int {
 
 **Code**:
 
-`arr[3][0]`
+`arr[3][0][i+1]`
 
 **AST**:
 
@@ -335,8 +335,12 @@ fn test(int i, int j): int {
            arr
             |
           index
-            |
-            3
-            |
-            0
+         /     \
+        3      index
+              /     \
+             0      index
+                      |
+                      +
+                     / \
+                    i   1
 ```

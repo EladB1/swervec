@@ -619,12 +619,10 @@ public class TestParser {
             rightSQBToken
         );
 
-
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree("ARRAY-INDEX", List.of(
-                new AbstractSyntaxTree(tokens.get(2), List.of(
-                    new AbstractSyntaxTree(tokens.get(5))
-                ))
+                new AbstractSyntaxTree(tokens.get(2)),
+                new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(5))
             ))
         ));
 
@@ -1550,9 +1548,8 @@ public class TestParser {
             )),
             new AbstractSyntaxTree(tokens.get(7)),
             new AbstractSyntaxTree("ARRAY-INDEX", List.of(
-                new AbstractSyntaxTree(tokens.get(9), List.of(
-                    new AbstractSyntaxTree(tokens.get(12))
-                ))
+                new AbstractSyntaxTree(tokens.get(9)),
+                new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(12))
             )),
             new AbstractSyntaxTree("ARRAY-LIT", List.of(
                 new AbstractSyntaxTree("ARRAY-LIT", tokens.get(17)),

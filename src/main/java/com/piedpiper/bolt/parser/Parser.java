@@ -380,18 +380,28 @@ public class Parser {
         return node;
     }
 
+    /* 
+            code: array[ind1][ind2]
+            AST:
+               array
+                 |
+             ARRAY-INDEX
+            /           \
+           ind1     ARRAY-INDEX
+                         |
+                        ind2
+    */ 
+
     // ARRAY-INDEX ::= ( "[" EXPR "]" )+
     private AbstractSyntaxTree parseArrayIndex() {
         AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-INDEX");
-        AbstractSyntaxTree currNode = node;
         if (!atEnd() && current.getName() != TokenType.LEFT_SQB)
             throw formComplaint("LEFT_SQB", current);
-        while (!atEnd() && current.getName() == TokenType.LEFT_SQB) {
-            parseExpectedToken(TokenType.LEFT_SQB, current);
-            currNode.appendChildren(parseExpr());
-            parseExpectedToken(TokenType.RIGHT_SQB, current);
-            currNode = currNode.getChildren().get(0); // code => AST: array[ind1][ind2] => array->ARRAY-INDEX->ind1->ind2
-        }
+        parseExpectedToken(TokenType.LEFT_SQB, current);
+        node.appendChildren(parseExpr());
+        parseExpectedToken(TokenType.RIGHT_SQB, current);
+        if (!atEnd() && current.getName() == TokenType.LEFT_SQB)
+            node.appendChildren(parseArrayIndex());
         return node;
     }
 
