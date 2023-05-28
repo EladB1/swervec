@@ -124,12 +124,40 @@ public class SemanticAnalyzer {
 
     }
 
-    private void handleWhileLoop() {
+    private void handleWhileLoop(AbstractSyntaxTree node) {
+        AbstractSyntaxTree conditional = node.getChildren().get(0);
+        if (evaluateType(conditional) != NodeType.BOOLEAN)
+            throw new TypeError("While loop condition must evaluate to boolean");
 
     }
 
-    private void handleConditionalBlock() {
+    private void handleConditionalBlock(AbstractSyntaxTree node) {
+        for (AbstractSyntaxTree child : node.getChildren()) {
+            handleConditional(child);
+        }
+    }
 
+    private void handleConditional(AbstractSyntaxTree node) {
+        if (node.getName() == TokenType.KW_IF || node.getLabel().equals("ELSE IF")) {
+            if (!node.hasChildren() || evaluateType(node.getChildren().get(0)) != NodeType.BOOLEAN)
+                throw new TypeError("Condition in if must evaluate to boolean");
+        }
+        if (node.getName() == TokenType.KW_ELSE) {
+            // TODO: handle any potential errors
+        }
+    }
+
+    private NodeType handleTernary(AbstractSyntaxTree node) {
+        if (evaluateType(node.getChildren().get(0)) != NodeType.BOOLEAN)
+            throw new TypeError("Ternary expression must start with boolean expression");
+        // the left and right must be compatible types
+        NodeType leftType = evaluateType(node.getChildren().get(1));
+        NodeType rightType = evaluateType(node.getChildren().get(2));
+        if (leftType == rightType)
+            return leftType;
+        if (leftType == NodeType.NULL || rightType == NodeType.NULL)
+            return leftType == NodeType.NULL ? rightType : leftType;
+        throw new TypeError("Ternary expression cannot evaluate to different types");
     }
 
     private boolean isSubList(List<?> list, List<?> subList) {
@@ -217,6 +245,8 @@ public class SemanticAnalyzer {
             return handleUnaryOp(node);
         //if (node.getLabel().equals("FUNC-CALL"))
         // TODO: handle array literals
+        if (node.getLabel().equals("TERNARY"))
+            return handleTernary(node);
         return NodeType.NONE;
     }
 
