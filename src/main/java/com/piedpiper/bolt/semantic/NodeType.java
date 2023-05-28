@@ -7,4 +7,5 @@ public enum NodeType {
     FLOAT,
     BOOLEAN,
     STRING,
+    ARRAY
 }

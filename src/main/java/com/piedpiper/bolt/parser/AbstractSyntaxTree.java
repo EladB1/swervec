@@ -113,7 +113,7 @@ public class AbstractSyntaxTree {
     }
 
     public boolean hasChildren() {
-        return this.children.isEmpty();
+        return !this.children.isEmpty();
     }
 
     public int approximateLineNumber() {

@@ -158,4 +158,124 @@ public class TestSemanticAnalyzer {
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.evaluateType(AST));
         assertEquals("Cannot multiply NULL with BOOLEAN", error.getMessage());
     }
+
+    @Test
+    void test_estimateArrayTypes_emptyArray() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT");
+        assertEquals(List.of(NodeType.ARRAY), semanticAnalyzer.estimateArrayTypes(AST));
+    }
+
+    @Test
+    void test_estimateArrayTypes_simpleIntArray() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
+        ));
+        assertEquals(List.of(NodeType.ARRAY, NodeType.INT), semanticAnalyzer.estimateArrayTypes(AST));
+    }
+
+    @Test
+    void test_estimateArrayTypes_simpleArrayContainsNull() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
+        ));
+        assertEquals(List.of(NodeType.ARRAY, NodeType.INT), semanticAnalyzer.estimateArrayTypes(AST));
+    }
+
+    @Test
+    void test_estimateArrayTypes_simpleArrayContainsExpression() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "%"), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2.78")),
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+            )),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3.14"))
+        ));
+        assertEquals(List.of(NodeType.ARRAY, NodeType.FLOAT), semanticAnalyzer.estimateArrayTypes(AST));
+    }
+
+    @Test
+    void test_estimateArrayTypes_nestedEmptyArrays() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree("ARRAY-LIT"),
+            new AbstractSyntaxTree("ARRAY-LIT")
+        ));
+        assertEquals(List.of(NodeType.ARRAY, NodeType.ARRAY), semanticAnalyzer.estimateArrayTypes(AST));
+    }
+
+    @Test
+    void test_estimateArrayTypes_nestedArrays() {
+        // { { {"Typescript"}, {"C", "C++"} }, { {"PostgreSQL", "MongoDB"} } }
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"Typescript\""))
+                )),
+                new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"C\"")),
+                    new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"C++\""))
+                ))
+            )),
+            new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"PostgreSQL\"")),
+                    new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"MongoDB\""))
+                ))
+            ))
+        ));
+        assertEquals(List.of(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.STRING), semanticAnalyzer.estimateArrayTypes(AST));
+    }
+
+    @Test
+    void test_estimateArrayTypes_mixedDepths() {
+        // { {}, { {true, true}, {} }, { {}, {true} } }
+        AbstractSyntaxTree trueNode = new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE));
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree("ARRAY-LIT"),
+            new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                    trueNode,
+                    trueNode
+                )),
+                new AbstractSyntaxTree("ARRAY-LIT")
+            )),
+            new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                new AbstractSyntaxTree("ARRAY-LIT"),
+                new AbstractSyntaxTree("ARRAY-LIT", List.of(trueNode))
+            ))
+        ));
+        assertEquals(List.of(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.BOOLEAN), semanticAnalyzer.estimateArrayTypes(AST));
+    }
+
+    @Test
+    void test_estimateArrayTypes_simpleArrayError() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"2\"")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(error.getMessage(), "Cannot mix INT elements with STRING elements in array literal");
+    }
+
+    @Test
+    void test_estimateArrayTypes_improperNestingError() {
+        // {1, {1, 1}, 1}
+        AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"));
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            numNode,
+            new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                numNode,
+                numNode
+            )),
+            numNode
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(error.getMessage(), "Cannot mix non-array elements with nested array elements in array literal");
+    }
 }

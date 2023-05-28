@@ -17,7 +17,7 @@ public class ArrayChecks {
     }
 
     private static int getMaxDepth(AbstractSyntaxTree arrayNode, int depth) {
-        if (arrayNode.hasChildren() || !isArrayLit(arrayNode.getChildren().get(0)))
+        if (!arrayNode.hasChildren() || !isArrayLit(arrayNode.getChildren().get(0)))
             return depth;
         int max_depth = 0;
         for (AbstractSyntaxTree element : arrayNode.getChildren()) {

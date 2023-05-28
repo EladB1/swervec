@@ -9,6 +9,8 @@ import com.piedpiper.bolt.symboltable.FunctionSymbol;
 import com.piedpiper.bolt.symboltable.Symbol;
 import com.piedpiper.bolt.symboltable.SymbolTable;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -128,6 +130,60 @@ public class SemanticAnalyzer {
 
     private void handleConditionalBlock() {
 
+    }
+
+    private boolean isSubList(List<?> list, List<?> subList) {
+        if (list.size() < subList.size())
+            return false;
+        for (int i = 0; i < subList.size(); i++) {
+            if (!subList.get(i).equals(list.get(i)))
+                return false;
+        }
+        return true;
+    }
+
+    public List<NodeType> estimateArrayTypes(AbstractSyntaxTree node) {
+        // empty array literal
+        if (!node.hasChildren())
+            return List.of(NodeType.ARRAY);
+
+        List<AbstractSyntaxTree> children = node.getChildren();
+        // non-nested array literal
+        if (!children.get(0).getLabel().equals("ARRAY-LIT")) {
+            NodeType type = evaluateType(children.get(0));
+            NodeType currentType;
+            for (int i = 1; i < children.size(); i++) {
+                if (children.get(i).getLabel().equals("ARRAY-LIT"))
+                    throw new TypeError("Cannot mix non-array elements with nested array elements in array literal");
+                currentType = evaluateType(children.get(i));
+                if (type == NodeType.NULL && currentType != NodeType.NULL)
+                    type = currentType;
+                else if (currentType != NodeType.NULL && type != currentType)
+                    throw new TypeError("Cannot mix " + type + " elements with " + currentType + " elements in array literal");
+            }
+            return type == NodeType.NULL ? List.of(NodeType.ARRAY) : List.of(NodeType.ARRAY, type);
+        }
+        // nested array literal
+        List<NodeType> types;
+        if (children.get(0).hasChildren())
+            types = estimateArrayTypes(children.get(0));
+        else {
+            int i = 1;
+            while (i < children.size() && !children.get(i).hasChildren()) {
+                i++;
+            }
+            types = i < children.size() ? estimateArrayTypes(children.get(i)) : List.of(NodeType.ARRAY);
+        }
+        List<NodeType> currentTypes;
+        for (AbstractSyntaxTree child : children) {
+            currentTypes = estimateArrayTypes(child);
+            if (!isSubList(types, currentTypes))
+                throw new TypeError("Cannot mix types of arrays");
+        }
+        List<NodeType> arrayTypes = new ArrayList<>();
+        arrayTypes.add(NodeType.ARRAY);
+        arrayTypes.addAll(types);
+        return arrayTypes;
     }
 
     public NodeType evaluateType(AbstractSyntaxTree node) {
