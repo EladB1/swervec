@@ -44,7 +44,7 @@ public class Parser {
      * IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" EXPR
      * ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
      * VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
-     * VAR-ASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = VALUE 
+     * VAR-ASSIGN ::= ( ID / ARRAY-ACCESS )  ( "+" / "-" / "*" / "/" )? = EXPR
      * TYPE ::= "int" / "string" / "float" / "boolean" / ARRAY-TYPE
      * CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
     */
@@ -132,8 +132,18 @@ public class Parser {
                 return parseVariableAssignment();
             else if (next.getName() == TokenType.LEFT_PAREN)
                 return parseFunctionCall();
-            else if (next.getName() == TokenType.LEFT_SQB)
+            else if (next.getName() == TokenType.LEFT_SQB) {
+                int line = current.getLineNumber();
+                int currPos = position + 2; // skip next
+                Token lookahead = tokens.get(currPos);
+                while (lookahead.getLineNumber() == line && currPos < tokens.size()) { // look for assignment operator
+                    if (assignmentOps.contains(lookahead.getValue()))
+                        return parseVariableAssignment();
+                    currPos++;
+                    lookahead = tokens.get(currPos);
+                }
                 return parseArrayAccess();
+            }
             else
                 return parseExpr();
         }
@@ -681,12 +691,13 @@ public class Parser {
         return node;
     }
 
-    // VAR-ASSIGN ::= ID ( "+" / "-" / "*" / "/" )? = EXPR 
+    // VAR-ASSIGN ::= ( ID / ARRAY-ACCESS )  ( "+" / "-" / "*" / "/" )? = EXPR
     private AbstractSyntaxTree parseVariableAssignment() { // reassignment of already declared variable
-        AbstractSyntaxTree IdNode = parseExpectedToken(TokenType.ID, current);
+        AbstractSyntaxTree left = next.getName() == TokenType.LEFT_SQB ? parseArrayAccess() : parseExpectedToken(TokenType.ID, current);
+
         if (current.getName() == TokenType.OP && assignmentOps.contains(current.getValue())) {
             AbstractSyntaxTree node = parseExpectedToken(current.getValue(), current);
-            node.appendChildren(IdNode, parseExpr());
+            node.appendChildren(left, parseExpr());
             return node;
         }
         else

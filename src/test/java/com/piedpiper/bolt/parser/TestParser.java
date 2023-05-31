@@ -1659,4 +1659,32 @@ public class TestParser {
 
         assertAST(expectedAST, tokens);
     }
+
+    @Test
+    void test_variableAssignmentArrayIndex() {
+        // arr[0][2] = 0.001
+        List<Token> tokens = List.of(
+            new VariableToken(TokenType.ID, "arr"),
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "0"),
+            new StaticToken(TokenType.RIGHT_SQB),
+            new StaticToken(TokenType.LEFT_SQB),
+            new VariableToken(TokenType.NUMBER, "2"),
+            new StaticToken(TokenType.RIGHT_SQB),
+            new VariableToken(TokenType.OP, "="),
+            new VariableToken(TokenType.NUMBER, "0.001")
+        );
+
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(7), List.of(
+            new AbstractSyntaxTree(tokens.get(0), List.of(
+                new AbstractSyntaxTree("ARRAY-INDEX", List.of(
+                    new AbstractSyntaxTree(tokens.get(2)),
+                    new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(5))
+                ))
+            )),
+            new AbstractSyntaxTree(tokens.get(8))
+        ));
+
+        assertAST(expectedAST, tokens);
+    }
 }
