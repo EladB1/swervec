@@ -1,8 +1,9 @@
 package com.piedpiper.bolt.semantic;
 
-import com.piedpiper.bolt.error.CompilerError;
+import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.ReferenceError;
 import com.piedpiper.bolt.error.TypeError;
+import com.piedpiper.bolt.error.UnreachableCodeError;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import com.piedpiper.bolt.symboltable.FunctionSymbol;
@@ -10,7 +11,6 @@ import com.piedpiper.bolt.symboltable.Symbol;
 import com.piedpiper.bolt.symboltable.SymbolTable;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -76,21 +76,59 @@ public class SemanticAnalyzer {
         return matchesLabelNode(node, "ARRAY-LIT");
     }
 
-    public void analyze(AbstractSyntaxTree AST) { // AST should be the top-level ("PROGRAM") node of abstract syntax tree
-        analyze(AST, false);
-    }
+    // use analyze() to handle bodies of different structures (program, function, loop, conditional)
+    // this should handle nesting and embedded elements
+    // will be recursive
+    // should return true if a return is found in the specific block (with right context and positioning)
 
-    public void analyze(AbstractSyntaxTree AST, Boolean isFunctionBody) {
+    public void analyze(AbstractSyntaxTree AST) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
             if (matchesLabelNode(subTree, "VAR-DECL") || matchesLabelNode(subTree, "ARRAY-DECL")) {
                 handleVariableDeclaration(subTree);
             }
-            if (matchesStaticToken(subTree, TokenType.KW_FN)) {
-                if (isFunctionBody)
-                    throw new CompilerError("Cannot define nested functions");
-                handleFunctionDefinitionExpression(subTree.getChildren());
+            if (isLoopControl(subTree)) { // TODO: handle correct context
+                TokenType loopControl = getControlFlowType(subTree.getChildren().get(0));
+                throw new IllegalStatementError("Cannot use " + loopControl  + " outside of a loop");
+            }
+
+            if (isReturn(subTree)) // TODO: handle correct context
+                throw new IllegalStatementError("Cannot return outside of a function");
+
+            // TODO: handle conditionals, loops, and functions then recurse
+            // conditional
+            if (AST.getLabel().equals("COND")) {
+                // check condition is boolean
+                // analyze body
+            }
+
+            // loop
+            if (AST.getName() == TokenType.KW_FOR || AST.getName() == TokenType.KW_WHILE) {
+                // check loop signature
+                // analyze body
+            }
+
+            // function
+            if (AST.getName() == TokenType.KW_FN) {
+                // check function declaration signature
+                // analyze body
             }
         }
+    }
+
+    private TokenType getControlFlowType(AbstractSyntaxTree controlFlow) {
+        return controlFlow.getName();
+    }
+    private boolean isLoopControl(AbstractSyntaxTree node) {
+        if (!node.getLabel().equals("CONTROL-FLOW"))
+            return false;
+        TokenType controlFlow = getControlFlowType(node.getChildren().get(0));
+        return controlFlow == TokenType.KW_CNT || controlFlow == TokenType.KW_BRK;
+    }
+
+    private boolean isReturn(AbstractSyntaxTree node) {
+        if (!node.getLabel().equals("CONTROL-FLOW"))
+            return false;
+        return node.getChildren().get(0).getName() == TokenType.KW_RET;
     }
 
     private void handleVariableDeclaration(AbstractSyntaxTree node) {
@@ -110,7 +148,7 @@ public class SemanticAnalyzer {
         }
         if (index != -1) {
             symbolTable.enterScope();
-            analyze(fnDetails.get(index), true);
+            analyze(fnDetails.get(index));
             symbolTable.leaveScope();
             symbolTable.leaveScope();
         }
@@ -120,15 +158,36 @@ public class SemanticAnalyzer {
 
     }
 
-    private void handleForLoop() {
+    private void handleForLoop(AbstractSyntaxTree node) {
 
     }
 
     private void handleWhileLoop(AbstractSyntaxTree node) {
+        // TODO: handle loop inside function
         AbstractSyntaxTree conditional = node.getChildren().get(0);
         if (evaluateType(conditional) != NodeType.BOOLEAN)
             throw new TypeError("While loop condition must evaluate to boolean");
-
+        // check for breaks/continues
+        List<AbstractSyntaxTree> body = node.getChildren().get(1).getChildren();
+        int length = body.size();
+        AbstractSyntaxTree current;
+        for (int i = 0; i < length; i++) {
+            current = body.get(i);
+            if (current.getName() == TokenType.KW_WHILE)
+                handleWhileLoop(current);
+            else if (current.getName() == TokenType.KW_FOR)
+                handleForLoop(current);
+            else if (current.getLabel().equals("COND"))
+                handleConditional(current);
+            else if (current.getLabel().equals("CONTROL-FLOW")) {
+                if (i != length - 1) { // there are nodes after the current one
+                    throw new UnreachableCodeError(current.getChildren().get(0) + " used before end of loop so code after cannot be reached");
+                }
+                if (current.getChildren().get(0).getName() == TokenType.KW_RET) {
+                    throw new IllegalStatementError("Cannot return outside of a function");
+                }
+            }
+        }
     }
 
     private void handleConditionalBlock(AbstractSyntaxTree node) {
@@ -145,6 +204,7 @@ public class SemanticAnalyzer {
         if (node.getName() == TokenType.KW_ELSE) {
             // TODO: handle any potential errors
         }
+        // handle cases where inside loop and/or function
     }
 
     private NodeType handleTernary(AbstractSyntaxTree node) {
