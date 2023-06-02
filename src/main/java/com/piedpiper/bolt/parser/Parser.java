@@ -133,10 +133,12 @@ public class Parser {
             else if (next.getName() == TokenType.LEFT_PAREN)
                 return parseFunctionCall();
             else if (next.getName() == TokenType.LEFT_SQB) {
+                if (position >= tokens.size() - 2)
+                    throw new SyntaxError("Expected EXPR but reached EOF", current.getLineNumber());
                 int line = current.getLineNumber();
                 int currPos = position + 2; // skip next
                 Token lookahead = tokens.get(currPos);
-                while (lookahead.getLineNumber() == line && currPos < tokens.size()) { // look for assignment operator
+                while (currPos != tokens.size() - 1 && lookahead.getLineNumber() == line) { // look for assignment operator
                     if (assignmentOps.contains(lookahead.getValue()))
                         return parseVariableAssignment();
                     currPos++;
