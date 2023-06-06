@@ -448,4 +448,80 @@ public class TestSemanticAnalyzer {
         ));
         assertFalse(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, NodeType.BOOLEAN));
     }
+
+    /*
+
+    if (0 <= 1) {
+        if (0 == 1)
+          return true
+        else if (1 == 1)
+          return true
+        else
+          return false
+    }
+    else
+        return false
+     */
+
+    @Test
+    void test_conditionalBlockReturns_nested_true() {
+        Token equalityToken = new VariableToken(TokenType.OP, "==");
+        AbstractSyntaxTree zeroNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0"));
+        AbstractSyntaxTree oneNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"));
+
+        AbstractSyntaxTree conditionalBlock = new AbstractSyntaxTree("COND", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "<="), List.of(
+                    zeroNode,
+                    oneNode
+                )),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("COND", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF), List.of(
+                            new AbstractSyntaxTree(equalityToken, List.of(
+                                zeroNode,
+                                oneNode
+                            )),
+                            new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                                new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE))
+                                ))
+                            ))
+                        )),
+                        new AbstractSyntaxTree("ELSE IF", List.of(
+                            new AbstractSyntaxTree(equalityToken, List.of(
+                                zeroNode,
+                                zeroNode
+                            )),
+                            new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                                new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE))
+                                ))
+                            ))
+                        )),
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ELSE), List.of(
+                            new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                                new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE))
+                                ))
+                            ))
+                        ))
+                    ))
+                ))
+            )),
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_ELSE), List.of(
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE))
+                    ))
+                ))
+            ))
+        ));
+
+        assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, NodeType.BOOLEAN));
+    }
 }

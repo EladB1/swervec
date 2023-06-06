@@ -154,6 +154,16 @@ public class SemanticAnalyzer {
                     return true;
                 }
             }
+            if (node.getName() == TokenType.KW_FOR || node.getName() == TokenType.KW_WHILE) {
+                AbstractSyntaxTree lastChild = node.getChildren().get(node.getChildren().size() - 1);
+                if (lastChild.getLabel().equals("BLOCK-BODY")) {
+                    if (functionReturns(lastChild, returnType)) {
+                        if (i < length - 1)
+                            throw new UnreachableCodeError("Unreachable statement following returning " +  node.getName() + " loop", contents.get(i+1).getLineNumber());
+                        return true;
+                    }
+                }
+            }
             if (isReturn(node) && i < length - 1)
                 throw new UnreachableCodeError("Unreachable statement following return", contents.get(i+1).getLineNumber());
             else if (isReturn(node)) {
