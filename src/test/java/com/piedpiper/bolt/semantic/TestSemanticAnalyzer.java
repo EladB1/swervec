@@ -2,6 +2,7 @@ package com.piedpiper.bolt.semantic;
 
 import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.error.TypeError;
+import com.piedpiper.bolt.error.UnreachableCodeError;
 import com.piedpiper.bolt.lexer.StaticToken;
 import com.piedpiper.bolt.lexer.Token;
 import com.piedpiper.bolt.lexer.TokenType;
@@ -19,7 +20,9 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestSemanticAnalyzer {
     private final SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
@@ -277,5 +280,132 @@ public class TestSemanticAnalyzer {
         ));
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.estimateArrayTypes(AST));
         assertEquals(error.getMessage(), "Cannot mix non-array elements with nested array elements in array literal");
+    }
+
+    @Test
+    void test_functionReturns_voidNoExplicitReturn() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+            ))
+        ));
+        NodeType expectedReturnType = NodeType.NONE;
+        assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+    }
+
+    @Test
+    void test_functionReturns_voidExplicitReturn() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+            )),
+            new AbstractSyntaxTree("CONTROL-FLOW", new StaticToken(TokenType.KW_RET))
+        ));
+        NodeType expectedReturnType = NodeType.NONE;
+        assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+    }
+
+    @Test
+    void test_functionReturns_voidExplicitNullReturn() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+            )),
+            new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL))
+            ))
+        ));
+        NodeType expectedReturnType = NodeType.NONE;
+        assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+    }
+
+    @Test
+    void test_functionReturns_voidReturnTypeError() {
+        // { return 2 + 2 }, NONE
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+                ))
+            ))
+        ));
+
+        NodeType expectedReturnType = NodeType.NONE;
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        assertEquals("Cannot return INT from void function", error.getMessage());
+    }
+
+    @Test
+    void test_functionReturns_returnWrongPlace() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET))
+            )),
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+            ))
+        ));
+
+        NodeType expectedReturnType = NodeType.NONE;
+        UnreachableCodeError error = assertThrows(UnreachableCodeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        assertEquals("Unreachable statement following return", error.getMessage());
+    }
+
+    @Test
+    void test_functionReturns_nonVoidProperReturn() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
+                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+                ))
+            ))
+        ));
+
+        NodeType expectedReturnType = NodeType.INT;
+        assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+    }
+
+    @Test
+    void test_functionReturns_nonVoidReturnTypeError() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"+\""))
+            ))
+        ));
+
+        NodeType expectedReturnType = NodeType.INT;
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        assertEquals("Expected INT to be returned but got STRING", error.getMessage());
+    }
+
+    @Test
+    void test_functionReturns_nonVoidMissingReturnValue() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET))
+            ))
+        ));
+
+        NodeType expectedReturnType = NodeType.INT;
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        assertEquals("Expected return type INT but didn't return a value", error.getMessage());
+    }
+
+    @Test
+    void test_functionReturns_nonVoidMissingReturn() {
+        AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", new StaticToken(TokenType.KW_TRUE));
+
+        NodeType expectedReturnType = NodeType.INT;
+        assertFalse(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 }

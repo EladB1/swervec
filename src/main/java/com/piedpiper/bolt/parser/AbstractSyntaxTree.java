@@ -47,6 +47,12 @@ public class AbstractSyntaxTree {
         return token.getValue();
     }
 
+    public int getLineNumber() {
+        if (token == null)
+            return 0;
+        return token.getLineNumber();
+    }
+
     public AbstractSyntaxTree(String label, Token token) {
         this.label = label;
         this.token = null;

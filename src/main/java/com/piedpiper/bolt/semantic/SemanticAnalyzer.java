@@ -115,6 +115,43 @@ public class SemanticAnalyzer {
         }
     }
 
+    public boolean functionReturns(AbstractSyntaxTree functionBody, NodeType returnType) {
+        List<AbstractSyntaxTree> contents = functionBody.getChildren();
+        AbstractSyntaxTree node;
+        int length = contents.size();
+        for (int i = 0; i < length; i++) {
+            node = contents.get(i);
+            if (isReturn(node) && i < length - 1)
+                throw new UnreachableCodeError("Unreachable statement following return", contents.get(i+1).getLineNumber());
+            else if (isReturn(node)) {
+                if (returnType == NodeType.NONE) {
+                    if (node.getChildren().size() == 1)
+                        return true;
+                    else {
+                        AbstractSyntaxTree returnValue = node.getChildren().get(1);
+                        if (returnValue.getName() == TokenType.KW_NULL)
+                            return true;
+                        else {
+                            NodeType type = evaluateType(returnValue);
+                            throw new TypeError("Cannot return " + type + " from void function", returnValue.getLineNumber());
+                        }
+                    }
+
+                }
+                else {
+                    if (node.getChildren().size() == 1)
+                        throw new TypeError("Expected return type " + returnType + " but didn't return a value", node.getChildren().get(0).getLineNumber());
+                    AbstractSyntaxTree returnValue = node.getChildren().get(1);
+                    NodeType actualReturnType = evaluateType(returnValue);
+                    if (actualReturnType != returnType && returnValue.getName() != TokenType.KW_NULL)
+                        throw new TypeError("Expected " + returnType + " to be returned but got " + actualReturnType, returnValue.getLineNumber());
+                    return true;
+                }
+            }
+        }
+        return returnType == NodeType.NONE;
+    }
+
     private TokenType getControlFlowType(AbstractSyntaxTree controlFlow) {
         return controlFlow.getName();
     }

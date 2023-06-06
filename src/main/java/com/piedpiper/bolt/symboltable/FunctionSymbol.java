@@ -76,7 +76,7 @@ public class FunctionSymbol {
                     this.fnBodyNode = fnDetails.get(1); // analyze the function body separately
                 }
                 else {
-                    throw new TypeError("Function does not return expected type", fnDetails.get(0).getToken().getLineNumber());
+                    throw new TypeError("Function does not return expected type", fnDetails.get(0).getLineNumber());
                 }
                 break;
             case 3:
@@ -86,7 +86,7 @@ public class FunctionSymbol {
                         this.fnBodyNode = fnDetails.get(2);
                     }
                     else {
-                        throw new TypeError("Function does not return expected type", fnDetails.get(0).getToken().getLineNumber());
+                        throw new TypeError("Function does not return expected type", fnDetails.get(0).getLineNumber());
                     }
                 }
                 else { // contains type and body
