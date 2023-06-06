@@ -115,41 +115,68 @@ public class SemanticAnalyzer {
         }
     }
 
+    private void validateReturn(AbstractSyntaxTree controlFlow, NodeType returnType) {
+        // make sure return is done properly
+        if (returnType == NodeType.NONE) {
+            if (controlFlow.getChildren().size() == 1)
+                return;
+            else {
+                AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
+                if (returnValue.getName() == TokenType.KW_NULL)
+                    return;
+                else {
+                    NodeType type = evaluateType(returnValue);
+                    throw new TypeError("Cannot return " + type + " from void function", returnValue.getLineNumber());
+                }
+            }
+
+        }
+        else {
+            if (controlFlow.getChildren().size() == 1)
+                throw new TypeError("Expected return type " + returnType + " but didn't return a value", controlFlow.getChildren().get(0).getLineNumber());
+            AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
+            NodeType actualReturnType = evaluateType(returnValue);
+            if (actualReturnType != returnType && returnValue.getName() != TokenType.KW_NULL)
+                throw new TypeError("Expected " + returnType + " to be returned but got " + actualReturnType, returnValue.getLineNumber());
+        }
+    }
+
     public boolean functionReturns(AbstractSyntaxTree functionBody, NodeType returnType) {
         List<AbstractSyntaxTree> contents = functionBody.getChildren();
         AbstractSyntaxTree node;
         int length = contents.size();
         for (int i = 0; i < length; i++) {
             node = contents.get(i);
-            if (isReturn(node) && i < length - 1)
-                throw new UnreachableCodeError("Unreachable statement following return", contents.get(i+1).getLineNumber());
-            else if (isReturn(node)) {
-                if (returnType == NodeType.NONE) {
-                    if (node.getChildren().size() == 1)
-                        return true;
-                    else {
-                        AbstractSyntaxTree returnValue = node.getChildren().get(1);
-                        if (returnValue.getName() == TokenType.KW_NULL)
-                            return true;
-                        else {
-                            NodeType type = evaluateType(returnValue);
-                            throw new TypeError("Cannot return " + type + " from void function", returnValue.getLineNumber());
-                        }
-                    }
-
-                }
-                else {
-                    if (node.getChildren().size() == 1)
-                        throw new TypeError("Expected return type " + returnType + " but didn't return a value", node.getChildren().get(0).getLineNumber());
-                    AbstractSyntaxTree returnValue = node.getChildren().get(1);
-                    NodeType actualReturnType = evaluateType(returnValue);
-                    if (actualReturnType != returnType && returnValue.getName() != TokenType.KW_NULL)
-                        throw new TypeError("Expected " + returnType + " to be returned but got " + actualReturnType, returnValue.getLineNumber());
+            if (node.getLabel().equals("COND")) {
+                if (conditionalBlockReturns(node, returnType)) {
+                    if (i < length - 1)
+                        throw new UnreachableCodeError("Unreachable statement following returning conditional block", contents.get(i+1).getLineNumber());
                     return true;
                 }
             }
+            if (isReturn(node) && i < length - 1)
+                throw new UnreachableCodeError("Unreachable statement following return", contents.get(i+1).getLineNumber());
+            else if (isReturn(node)) {
+                validateReturn(node, returnType);
+                return true;
+            }
         }
         return returnType == NodeType.NONE;
+    }
+
+    public boolean conditionalBlockReturns(AbstractSyntaxTree conditionalBlock, NodeType returnType) {
+        List<AbstractSyntaxTree> conditionals = conditionalBlock.getChildren();
+        if (conditionals.size() == 0)
+            return false;
+        if (conditionals.get(conditionals.size()-1).getName() != TokenType.KW_ELSE)
+            return false;
+        boolean returns = true;
+        AbstractSyntaxTree bodyNode;
+        for (AbstractSyntaxTree conditional : conditionals) {
+            bodyNode = conditional.getName() == TokenType.KW_ELSE ? conditional.getChildren().get(0) : conditional.getChildren().get(1);
+            returns = returns && functionReturns(bodyNode, returnType);
+        }
+        return returns;
     }
 
     private TokenType getControlFlowType(AbstractSyntaxTree controlFlow) {

@@ -408,4 +408,44 @@ public class TestSemanticAnalyzer {
         NodeType expectedReturnType = NodeType.INT;
         assertFalse(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
+
+    @Test
+    void test_conditionalBlockReturns_simple_true() {
+        AbstractSyntaxTree conditionalBlock = new AbstractSyntaxTree("COND", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF), List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE))
+                    ))
+                ))
+            )),
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_ELSE), List.of(
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE))
+                    ))
+                ))
+            ))
+        ));
+        assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, NodeType.BOOLEAN));
+    }
+
+    @Test
+    void test_conditionalBlockReturns_simple_false() {
+        AbstractSyntaxTree conditionalBlock = new AbstractSyntaxTree("COND", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF), List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE))
+                    ))
+                ))
+            ))
+        ));
+        assertFalse(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, NodeType.BOOLEAN));
+    }
 }
