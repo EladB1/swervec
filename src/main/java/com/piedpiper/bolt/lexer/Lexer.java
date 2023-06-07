@@ -270,10 +270,7 @@ public class Lexer {
                     }
                     if (currentSequence.toString().equals(">") && nextChar == '>') {
                         tokens.add(new VariableToken(TokenType.OP, ">"));
-                        //tokens.add(new VariableToken(TokenType.OP, ">"));
                         currentSequence = new StringBuilder();
-                        //i += 2;
-                        //continue;
                     }
                     break;
                 case IN_IDENTIFIER:
@@ -285,6 +282,9 @@ public class Lexer {
                     i = line.startsWith("*/") ? 2 : line.indexOf("*/") + 1;
                     if (i > 0) {
                         clearState();
+                        if (line.endsWith("*/")) {
+                            return tokens;
+                        }
                         continue;
                     }
                     break;

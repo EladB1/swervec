@@ -169,6 +169,95 @@
 **Code**:
 
 ```
+fn test() {}
+```
+
+**AST**:
+
+```
+               fn
+               |
+              test
+```
+
+
+**Code**:
+
+```
+fn test(): int {}
+```
+
+**AST**:
+
+```
+               fn
+              /  \
+           test int
+```
+
+**Code**:
+
+```
+fn test(int i, int j): int {}
+```
+
+**AST**:
+
+```
+                        fn
+            /     /          \
+           test  params     int
+                /     |            
+              param   param 
+              |  |    \   |
+             int i    int  j
+```
+
+**Code**:
+
+```
+fn test(): int {
+    return 5 * 3
+}
+```
+
+**AST**:
+
+```
+                        fn
+            /         /    \      
+           test    int     body
+                            |
+                          return
+                            |
+                            *
+                           / \
+                          5   3
+```
+
+**Code**:
+
+```
+fn test(int i, int j) {
+    i * j
+}
+```
+
+**AST**:
+
+```
+                        fn
+            /          /       \
+           test  params         body
+                /     |           |
+              param   param       *
+              |  |    \   |      / \
+             int i    int  j    i   j
+```
+
+**Code**:
+
+```
 fn test(int i, int j): int {
     return i * j
 }
