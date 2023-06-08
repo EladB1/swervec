@@ -11,6 +11,7 @@ import com.piedpiper.bolt.symboltable.Symbol;
 import com.piedpiper.bolt.symboltable.SymbolTable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -105,12 +106,11 @@ public class SemanticAnalyzer {
 
     public void analyze(AbstractSyntaxTree AST, boolean inLoop, boolean inFunc, NodeType returnType) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
-            System.out.println(subTree);
             if (matchesLabelNode(subTree, "VAR-DECL")) {
                 handleVariableDeclaration(subTree);
             }
-            if (matchesLabelNode(subTree, "ARRAY-DECL")) {}
-            if (subTree.getLabel().equals("CONTROL-FLOW")) {
+            else if (matchesLabelNode(subTree, "ARRAY-DECL")) {}
+            else if (subTree.getLabel().equals("CONTROL-FLOW")) {
                 if (!inFunc && isReturn(subTree))
                     throw new IllegalStatementError("Cannot return outside of a function");
                 if (!inLoop && !isReturn(subTree)) {
@@ -122,7 +122,7 @@ public class SemanticAnalyzer {
 
             // TODO: handle conditionals, loops, and functions then recurse
             // conditional
-            if (subTree.getLabel().equals("COND")) {
+            else if (subTree.getLabel().equals("COND")) {
                 List<AbstractSyntaxTree> conditionals = subTree.getChildren();
                 int length = conditionals.size();
                 NodeType condition;
@@ -164,7 +164,7 @@ public class SemanticAnalyzer {
             }
 
             // loop
-            if (subTree.getName() == TokenType.KW_WHILE) {
+            else if (subTree.getName() == TokenType.KW_WHILE) {
                 // check loop signature
                 NodeType condition = evaluateType(subTree.getChildren().get(0));
                 if (condition != NodeType.BOOLEAN) {
@@ -181,16 +181,16 @@ public class SemanticAnalyzer {
 
             }
 
-            if (subTree.getName() == TokenType.KW_FOR) {
+            else if (subTree.getName() == TokenType.KW_FOR) {
 
             }
 
             // function
-            if (subTree.getName() == TokenType.KW_FN) {
+            else if (subTree.getName() == TokenType.KW_FN) {
                 List<AbstractSyntaxTree> fnDetails = subTree.getChildren();
                 int length = fnDetails.size();
                 String name = fnDetails.get(0).getValue();
-                NodeType fnReturnType = null;
+                NodeType fnReturnType = NodeType.NONE;
                 AbstractSyntaxTree body = null;
                 NodeType[] types = {};
                 Symbol[] params = {};
@@ -246,10 +246,13 @@ public class SemanticAnalyzer {
                 symbolTable.enterScope(); // enter function body scope
                 analyze(body, inLoop, true, fnReturnType);
                 symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
-                if (!functionReturns(body, fnReturnType))
-                    throw new TypeError("Function " + name + " expected to return " + returnType + " but does not return for all branches", subTree.getLineNumber());
+                if (fnReturnType != NodeType.NONE && !functionReturns(body, fnReturnType))
+                    throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", subTree.getLineNumber());
                 symbolTable.leaveScope(); // leave function body scope
                 symbolTable.leaveScope(); // leave function parameter scope
+            }
+            else {
+                evaluateType(subTree);
             }
         }
     }
@@ -386,7 +389,6 @@ public class SemanticAnalyzer {
 
     private void handleVariableDeclaration(AbstractSyntaxTree node) {
         int scope = symbolTable.getScopeLevel();
-        System.out.println(node);
         symbolTable.insert(new Symbol(node, scope));
     }
 
@@ -481,7 +483,6 @@ public class SemanticAnalyzer {
         if (node.getName() == TokenType.ID) {
             if (!node.hasChildren()) {
                 Symbol symbol = symbolTable.lookup(node.getValue());
-                //System.out.println(symbolTable);
                 if (symbol == null)
                     throw new ReferenceError("Variable '" + node.getValue() + "' used before being defined in current scope", node.getLineNumber());
                 return typeMappings.get(symbol.getType().getName());
@@ -497,21 +498,44 @@ public class SemanticAnalyzer {
             return NodeType.BOOLEAN;
         if (node.getName() == TokenType.KW_NULL)
             return NodeType.NULL;
-        if (nonEqualityComparisons.contains(node.getValue()))
-            return handleComparison(node);
-        if (node.getValue().equals("==") || node.getValue().equals("!="))
-            return handleEqualityComparison(node);
-        if (arithmeticOperators.contains(node.getValue()))
-            return handleArithmetic(node);
-        if (node.getValue().equals("&") || node.getValue().equals("^"))
-            return handleBitwise(node);
-        if (node.getValue().equals("*") || node.getValue().equals("*="))
-            return handleMultiplication(node);
-        if (node.getValue().equals("+") || node.getValue().equals("+="))
-            return handleAddition(node);
+        if (node.getToken() != null) {
+            if (nonEqualityComparisons.contains(node.getValue()))
+                return handleComparison(node);
+            if (node.getValue().equals("==") || node.getValue().equals("!="))
+                return handleEqualityComparison(node);
+            if (arithmeticOperators.contains(node.getValue()))
+                return handleArithmetic(node);
+            if (node.getValue().equals("&") || node.getValue().equals("^"))
+                return handleBitwise(node);
+            if (node.getValue().equals("*") || node.getValue().equals("*="))
+                return handleMultiplication(node);
+            if (node.getValue().equals("+") || node.getValue().equals("+="))
+                return handleAddition(node);
+        }
+
         if (node.getLabel().equals("UNARY-OP"))
             return handleUnaryOp(node);
-        //if (node.getLabel().equals("FUNC-CALL"))
+        if (node.getLabel().equals("FUNC-CALL")) {
+            List<AbstractSyntaxTree> children = node.getChildren();
+            String name = children.get(0).getValue();
+            FunctionSymbol matchingDefinition = null;
+            NodeType[] types = {};
+            if (children.size() == 1) {
+                matchingDefinition = symbolTable.lookup(name, types);
+            }
+            else {
+                List<AbstractSyntaxTree> funcParams = children.get(1).getChildren();
+                 types = new NodeType[funcParams.size()];
+                for (int i = 0; i < funcParams.size(); i++) {
+                    types[i] = evaluateType(funcParams.get(i));
+                }
+                matchingDefinition = symbolTable.lookup(name, types);
+            }
+            System.out.println(name + ": " + matchingDefinition);
+            if (matchingDefinition == null)
+                throw new ReferenceError("Could not find definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
+            return matchingDefinition.getReturnType();
+        }
         // TODO: handle array literals
         if (node.getLabel().equals("TERNARY"))
             return handleTernary(node);
@@ -524,7 +548,7 @@ public class SemanticAnalyzer {
         NodeType rightType = evaluateType(rootNode.getChildren().get(1));
         Set<NodeType> acceptedTypes = Set.of(NodeType.INT, NodeType.FLOAT);
         if (!(acceptedTypes.contains(leftType) && acceptedTypes.contains(rightType)))
-            throw new TypeError("Cannot compare " + leftType + " with " + rightType + " using " + comparisonOperator);
+            throw new TypeError("Cannot compare " + leftType + " with " + rightType + " using " + comparisonOperator, rootNode.getLineNumber());
         return NodeType.BOOLEAN;
     }
 
@@ -534,7 +558,7 @@ public class SemanticAnalyzer {
         NodeType rightType = evaluateType(rootNode.getChildren().get(1));
         Set<NodeType> acceptedTypes = Set.of(NodeType.INT, NodeType.BOOLEAN);
         if (!(acceptedTypes.contains(leftType) && acceptedTypes.contains(rightType)))
-            throw new TypeError("Binary expression (" + comparisonOperator + ") with " + leftType + " and " + rightType + " is not valid");
+            throw new TypeError("Binary expression (" + comparisonOperator + ") with " + leftType + " and " + rightType + " is not valid", rootNode.getLineNumber());
         return NodeType.INT;
     }
 
@@ -557,7 +581,7 @@ public class SemanticAnalyzer {
             if (rightType == NodeType.INT)
                 return NodeType.STRING;
         }
-        throw new TypeError("Cannot multiply " + leftType + " with " + rightType);
+        throw new TypeError("Cannot multiply " + leftType + " with " + rightType, rootNode.getLineNumber());
     }
 
     private NodeType handleArithmetic(AbstractSyntaxTree rootNode) {
@@ -574,7 +598,7 @@ public class SemanticAnalyzer {
             if (rightType == NodeType.FLOAT || rightType == NodeType.INT)
                 return NodeType.FLOAT;
         }
-        throw new TypeError("Arithmetic expression (" + operator + ") with " + leftType + " and " + rightType + " is not valid");
+        throw new TypeError("Arithmetic expression (" + operator + ") with " + leftType + " and " + rightType + " is not valid", rootNode.getLineNumber());
     }
 
     private NodeType handleAddition(AbstractSyntaxTree rootNode) {
@@ -593,7 +617,7 @@ public class SemanticAnalyzer {
         else if (leftType == NodeType.STRING && rightType == NodeType.STRING)
             return NodeType.STRING;
         // TODO: handle arrays
-        throw new TypeError("Cannot add " + leftType + " with " + rightType);
+        throw new TypeError("Cannot add " + leftType + " with " + rightType, rootNode.getLineNumber());
     }
 
     private NodeType handleEqualityComparison(AbstractSyntaxTree rootNode) {
@@ -609,7 +633,7 @@ public class SemanticAnalyzer {
             )
         )
             return NodeType.BOOLEAN;
-        throw new TypeError("Cannot check for equality between " + leftType + " and " + rightType);
+        throw new TypeError("Cannot check for equality between " + leftType + " and " + rightType, rootNode.getLineNumber());
     }
 
     private NodeType handleUnaryOp(AbstractSyntaxTree rootNode) {
@@ -626,7 +650,7 @@ public class SemanticAnalyzer {
             if (rightType == NodeType.INT || rightType == NodeType.FLOAT) {
                 // TODO: handle array indexes
                 if (right.getName() != TokenType.ID)
-                    throw new ReferenceError("Cannot perform prefix expression(" + left.getValue() + ") on " + right.getName());
+                    throw new ReferenceError("Cannot perform prefix expression(" + left.getValue() + ") on " + right.getName(), left.getLineNumber());
                 return rightType;
             }
         }
