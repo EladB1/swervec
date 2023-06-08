@@ -1,7 +1,9 @@
 package com.piedpiper.bolt.symboltable;
 
 import com.piedpiper.bolt.error.NameError;
+import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
+import com.piedpiper.bolt.semantic.NodeType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,18 +35,20 @@ public class SymbolTable {
         return scopes.search(scope) != -1;
     }
 
-    public void enterScope() {
+    public int enterScope() {
         scopeLevel = scopeSerial + 1;
         scopeSerial++;
         scopes.push(scopeLevel);
+        return scopeLevel;
     }
 
-    public void leaveScope() {
+    public int leaveScope() {
         if (scopeLevel <= 1)
-            return;
+            return scopeLevel;
         scopes.pop();
         scopeLevel = scopes.peek(); // go back to the last scope still on the stack
         // leave scopeSerial as is
+        return scopeLevel;
     }
 
     public void insert(Symbol symbol) {
@@ -74,6 +78,16 @@ public class SymbolTable {
             return;
         }
 
+        if (functionTable.get(name).get(0).getReturnType() != fnSymbol.getReturnType()) {
+            String message = String.format(
+                "Function '%s' cannot have return type %s because another definition returns type %s",
+                name,
+                fnSymbol.getReturnType(),
+                functionTable.get(name).get(0).getReturnType()
+            );
+            throw new TypeError(message);
+        }
+
         if (lookup(name, fnSymbol.getParamTypes()) != null)
             throw new NameError("Function '" + fnSymbol.formFnSignature() + "' is already defined");
 
@@ -98,7 +112,7 @@ public class SymbolTable {
         return null;
     }
 
-    public FunctionSymbol lookup(String name, AbstractSyntaxTree[] types) {
+    public FunctionSymbol lookup(String name, NodeType[] types) {
         if (!functionTable.containsKey(name))
             return null;
         List<FunctionSymbol> matchingFunctions = functionTable.get(name);

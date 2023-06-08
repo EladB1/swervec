@@ -66,8 +66,6 @@ public class Symbol {
         else if (node.getLabel().equals("FUNC-PARAM")) {
             this.type = children.get(0);
             this.name = children.get(1).getToken().getValue();
-            if (children.size() == 3)
-                this.valueNodes = children.get(2);
         }
     }
 }

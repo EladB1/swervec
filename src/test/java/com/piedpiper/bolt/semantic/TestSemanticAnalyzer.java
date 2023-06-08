@@ -454,7 +454,7 @@ public class TestSemanticAnalyzer {
     if (0 <= 1) {
         if (0 == 1)
           return true
-        else if (1 == 1)
+        else if (0 == 0)
           return true
         else
           return false

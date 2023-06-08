@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.piedpiper.bolt.lexer.StaticToken;
 import com.piedpiper.bolt.lexer.VariableToken;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
+import com.piedpiper.bolt.semantic.NodeType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,22 +35,18 @@ public class TestSymbolTable {
     @Test
     void test_enterScope_incrementsScope() {
         assertEquals(1, table.getScopeLevel());
-        table.enterScope();
-        assertEquals(2, table.getScopeLevel());
+        assertEquals(2, table.enterScope());
     }
 
     @Test
     void test_leaveScope_doesNothingOnGlobalScope() {
-        table.leaveScope();
-        assertEquals(1, table.getScopeLevel());
+        assertEquals(1, table.leaveScope());
     }
 
     @Test
     void test_leaveScope_decrementsScope() {
-        table.enterScope();
-        assertEquals(2, table.getScopeLevel());
-        table.leaveScope();
-        assertEquals(1, table.getScopeLevel());
+        assertEquals(2, table.enterScope());
+        assertEquals(1, table.leaveScope());
     }
 
     @Test
@@ -106,8 +103,8 @@ public class TestSymbolTable {
                 new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"\""))
             ))
         ));
-        AbstractSyntaxTree[] params = {};
-        FunctionSymbol function = new FunctionSymbol("test", typeNode, funcBody);
+        NodeType[] params = {};
+        FunctionSymbol function = new FunctionSymbol("test", NodeType.STRING, funcBody);
         table.insert(function);
         FunctionSymbol storedSymbol = table.lookup("test", params);
         assertNotNull(storedSymbol);
@@ -122,8 +119,8 @@ public class TestSymbolTable {
                 new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"\""))
             ))
         ));
-        AbstractSyntaxTree[] params = {typeNode};
-        FunctionSymbol function = new FunctionSymbol("test", typeNode, funcBody);
+        NodeType[] params = {NodeType.STRING};
+        FunctionSymbol function = new FunctionSymbol("test", NodeType.STRING, funcBody);
         table.insert(function);
         FunctionSymbol storedSymbol = table.lookup("test", params);
         assertNull(storedSymbol);
@@ -131,14 +128,14 @@ public class TestSymbolTable {
 
     @Test
     void test_lookup_functionNotFound() {
-        AbstractSyntaxTree[] params = {typeNode};
+        NodeType[] params = {NodeType.STRING};
         FunctionSymbol storedSymbol = table.lookup("test", params);
         assertNull(storedSymbol);
     }
 
     @Test
     void test_insertAndLookup_functionWithParams() {
-        AbstractSyntaxTree[] params = {typeNode, typeNode};
+        NodeType[] params = {NodeType.STRING, NodeType.STRING};
         FunctionSymbol fnSymbol = new FunctionSymbol("concat", params);
         table.insert(fnSymbol);
         FunctionSymbol symbol = table.lookup("concat", params);
@@ -148,8 +145,8 @@ public class TestSymbolTable {
 
     @Test
     void test_insert_multipleFunctions() {
-        AbstractSyntaxTree[] params1 = {typeNode, typeNode};
-        AbstractSyntaxTree[] params2 = {typeNode, typeNode, typeNode};
+        NodeType[] params1 = {NodeType.STRING, NodeType.STRING};
+        NodeType[] params2 = {NodeType.STRING, NodeType.STRING, NodeType.STRING};
         FunctionSymbol fnSymbol1 = new FunctionSymbol("concat", params1);
         FunctionSymbol fnSymbol2 = new FunctionSymbol("concat", params2);
         table.insert(fnSymbol1);

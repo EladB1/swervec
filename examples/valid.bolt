@@ -28,7 +28,7 @@ fn concat(string first, string second) : string {
     return first + second
 }
 
-fn strtok(Array<string> strings, string delim) {
+fn strtok(Array<string> strings, string delim): string {
   string output = ""
   int length = length(strings)
   for (int i = 0; i < length - 1; i++) {
@@ -38,7 +38,7 @@ fn strtok(Array<string> strings, string delim) {
   return output
 }
 
-fn strtok(Array<string> strings) {
+fn strtok(Array<string> strings): string {
     return strtok(strings, ",")
 }
 
