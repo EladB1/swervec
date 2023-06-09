@@ -22,7 +22,8 @@ public class SemanticAnalyzer {
 
     private final SymbolTable symbolTable = new SymbolTable();
     private final List<String> nonEqualityComparisons = List.of("<", "<=", ">", ">=");
-    private final List<String> arithmeticOperators = List.of("-", "-=", "/", "/=", "%", "**");
+    private final List<String> arithmeticOperators = List.of("-", "/", "%", "**");
+    private final List<String> assignmentOperators = List.of("=", "+=", "-=", "*=", "/=");
 
     private final Map<TokenType, NodeType> typeMappings = Map.ofEntries(
         entry(TokenType.KW_BOOL, NodeType.BOOLEAN),
@@ -55,18 +56,6 @@ public class SemanticAnalyzer {
 
     private boolean matchesStaticToken(AbstractSyntaxTree node, TokenType value) {
         return node.getName() == value;
-    }
-
-    private boolean matchesVariableToken(AbstractSyntaxTree node, String value) {
-        return node.getValue().equals(value);
-    }
-
-    private boolean matchesVariableToken(AbstractSyntaxTree node, TokenType type) {
-        return node.getName() == type;
-    }
-
-    private boolean matchesVariableToken(AbstractSyntaxTree node, TokenType type, String value) {
-        return node.getName() == type && node.getValue().equals(value);
     }
 
     private boolean isFloatLiteral(AbstractSyntaxTree node) {
@@ -182,11 +171,84 @@ public class SemanticAnalyzer {
             }
 
             else if (subTree.getName() == TokenType.KW_FOR) {
+                int scope = symbolTable.enterScope();
+                int lineNum = subTree.getLineNumber();
+                List<AbstractSyntaxTree> loopDetails = subTree.getChildren();
+                int length = loopDetails.size();
+                AbstractSyntaxTree body = null;
+                switch (length) {
+                    case 2: // for (int i = 0) {}
+                        if (loopDetails.get(0).getValue().equals("=")) {
+                            Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
+                            if (symbol == null)
+                                throw new ReferenceError("Variable " + loopDetails.get(0).getValue() + " used before being defined in current scope", lineNum);
+                            validateAssignment(loopDetails.get(1));
+                        }
+                        else if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
+                            if (loopDetails.get(0).getChildren().size() != 3)
+                                throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
+                            symbolTable.insert(new Symbol(loopDetails.get(0), scope));
+                        }
+                        else {
+                            throw new IllegalStatementError("For loop must start with variable declaration or assignment", lineNum);
+                        }
+                        body = loopDetails.get(1);
+                        break;
+                    case 3: // for (float element : array) {}
+                        if (!loopDetails.get(0).getLabel().equals("VAR-DECL"))
+                            throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
+                        if (loopDetails.get(0).getChildren().size() != 2)
+                            throw new IllegalStatementError("Loop variable must be non-constant and not-initialized", lineNum);
+                        Symbol loopVar = new Symbol(loopDetails.get(0), scope);
+                        NodeType loopVarType = typeMappings.get(loopVar.getType().getName());
 
+                        Symbol container = symbolTable.lookup(loopDetails.get(1).getValue());
+                        if (container == null)
+                            throw new ReferenceError("Variable " + loopDetails.get(1).getValue() + " used before being defined in current scope", lineNum);
+                        NodeType containerType = typeMappings.get(container.getType().getName());
+                        if (containerType != NodeType.ARRAY && containerType != NodeType.STRING)
+                            throw new TypeError("Cannot use for (each) loop on non-container type: " + containerType, lineNum);
+
+                        if (loopVarType != NodeType.STRING && containerType == NodeType.STRING) {
+                            throw new TypeError("Cannot loop over string with type " + loopVarType, lineNum);
+                        }
+                        symbolTable.insert(loopVar);
+                        body = loopDetails.get(2);
+                        break;
+                    case 4: // for (int i = 0; i < 10; i++) {}
+                        NodeType varType;
+                        if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
+                            Symbol symbol = new Symbol(loopDetails.get(0), scope);
+                            varType = typeMappings.get(symbol.getType().getName());
+                            if (loopDetails.get(0).getChildren().size() != 3)
+                                throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
+                            symbolTable.insert(symbol);
+                        }
+                        else if (loopDetails.get(0).getValue().equals("=")) {
+                            Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
+                            if (symbol == null)
+                                throw new ReferenceError("Variable " + loopDetails.get(0).getValue() + " used before being defined in current scope", lineNum);
+                            varType = typeMappings.get(symbol.getType().getName());
+                            validateAssignment(loopDetails.get(1));
+                        }
+                        else {
+                            throw new IllegalStatementError("For loop must start with variable declaration or assignment", lineNum);
+                        }
+                        if (evaluateType(loopDetails.get(1)) != NodeType.BOOLEAN)
+                            throw new IllegalStatementError("Middle for loop expression must be boolean", lineNum);
+                        NodeType thirdPartType = evaluateType(loopDetails.get(2));
+                        if (varType != thirdPartType)
+                            throw new IllegalStatementError("End for loop expression must match type " + varType + " but was " + thirdPartType, lineNum);
+                        body = loopDetails.get(3);
+                        break;
+                }
+                analyze(body, true, inFunc, returnType);
+                symbolTable.leaveScope();
             }
 
             // function
             else if (subTree.getName() == TokenType.KW_FN) {
+                int scope = symbolTable.enterScope();
                 List<AbstractSyntaxTree> fnDetails = subTree.getChildren();
                 int length = fnDetails.size();
                 String name = fnDetails.get(0).getValue();
@@ -194,10 +256,10 @@ public class SemanticAnalyzer {
                 AbstractSyntaxTree body = null;
                 NodeType[] types = {};
                 Symbol[] params = {};
-                FunctionSymbol functionSymbol;
                 switch (length) {
                     case 1:
                         symbolTable.insert(new FunctionSymbol(name));
+                        symbolTable.leaveScope();
                         continue;
                     case 2:
                         if (isTypeLabel(fnDetails.get(1))) // has a returnType but no function body
@@ -206,9 +268,8 @@ public class SemanticAnalyzer {
                                 subTree.getLineNumber()
                             );
                         else if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
-                            fnReturnType = NodeType.NONE;
                             types = getParamTypes(fnDetails.get(1).getChildren());
-                            params = paramsToSymbols(fnDetails.get(1).getChildren(), symbolTable.enterScope()); // enter function parameter scope
+                            params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
                         }
                         else {
                             body = fnDetails.get(1);
@@ -217,14 +278,13 @@ public class SemanticAnalyzer {
                     case 3:
                         if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
                             types = getParamTypes(fnDetails.get(1).getChildren());
-                            params = paramsToSymbols(fnDetails.get(1).getChildren(), symbolTable.enterScope()); // enter function parameter scope
+                            params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
                             if (isTypeLabel(fnDetails.get(2)))
                                 throw new TypeError(
                                     "Function " + name + "expected to return " + typeMappings.get(fnDetails.get(1).getName()) + " but returns nothing",
                                     subTree.getLineNumber()
                                 );
                             else {
-                                fnReturnType = NodeType.NONE;
                                 body = fnDetails.get(2);
                             }
                         }
@@ -235,7 +295,7 @@ public class SemanticAnalyzer {
                         break;
                     case 4:
                         types = getParamTypes(fnDetails.get(1).getChildren());
-                        params = paramsToSymbols(fnDetails.get(1).getChildren(), symbolTable.enterScope()); // enter function parameter scope
+                        params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
                         fnReturnType = typeMappings.get(fnDetails.get(2).getName());
                         body = fnDetails.get(3);
                         break;
@@ -243,13 +303,13 @@ public class SemanticAnalyzer {
                 for (Symbol param : params) {
                     symbolTable.insert(param);
                 }
-                symbolTable.enterScope(); // enter function body scope
+                //symbolTable.enterScope(); // enter function body scope
                 analyze(body, inLoop, true, fnReturnType);
                 symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
                 if (fnReturnType != NodeType.NONE && !functionReturns(body, fnReturnType))
                     throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", subTree.getLineNumber());
-                symbolTable.leaveScope(); // leave function body scope
-                symbolTable.leaveScope(); // leave function parameter scope
+                symbolTable.leaveScope();
+                //symbolTable.leaveScope();
             }
             else {
                 evaluateType(subTree);
@@ -479,6 +539,32 @@ public class SemanticAnalyzer {
         return arrayTypes;
     }
 
+    public void validateAssignment(AbstractSyntaxTree assignmentNode) {
+        String varName = assignmentNode.getChildren().get(0).getValue();
+        Symbol symbol = symbolTable.lookup(varName);
+        if (symbol == null)
+            throw new ReferenceError("Variable " + varName + " is used before being defined in current scope", assignmentNode.getLineNumber());
+        NodeType varType = typeMappings.get(symbol.getType().getName());
+        AbstractSyntaxTree rightHandSide = assignmentNode.getChildren().get(1);
+        NodeType rhsType = evaluateType(rightHandSide);
+        switch (assignmentNode.getValue()) {
+            case "=":
+                if (rhsType != NodeType.NULL && rhsType != varType)
+                    throw new TypeError("Cannot assign " + rhsType + " to variable of type " + varType, assignmentNode.getLineNumber());
+                break;
+            case "+=":
+                handleAddition(assignmentNode);
+                break;
+            case "-=":
+            case "/=":
+                handleArithmetic(assignmentNode);
+                break;
+            case "*=":
+                handleMultiplication(assignmentNode);
+                break;
+        }
+    }
+
     public NodeType evaluateType(AbstractSyntaxTree node) {
         if (node.getName() == TokenType.ID) {
             if (!node.hasChildren()) {
@@ -507,10 +593,12 @@ public class SemanticAnalyzer {
                 return handleArithmetic(node);
             if (node.getValue().equals("&") || node.getValue().equals("^"))
                 return handleBitwise(node);
-            if (node.getValue().equals("*") || node.getValue().equals("*="))
+            if (node.getValue().equals("*"))
                 return handleMultiplication(node);
-            if (node.getValue().equals("+") || node.getValue().equals("+="))
+            if (node.getValue().equals("+"))
                 return handleAddition(node);
+            if (assignmentOperators.contains(node.getValue()))
+                validateAssignment(node);
         }
 
         if (node.getLabel().equals("UNARY-OP"))
@@ -518,19 +606,16 @@ public class SemanticAnalyzer {
         if (node.getLabel().equals("FUNC-CALL")) {
             List<AbstractSyntaxTree> children = node.getChildren();
             String name = children.get(0).getValue();
-            FunctionSymbol matchingDefinition = null;
+            FunctionSymbol matchingDefinition;
             NodeType[] types = {};
-            if (children.size() == 1) {
-                matchingDefinition = symbolTable.lookup(name, types);
-            }
-            else {
+            if (children.size() != 1) {
                 List<AbstractSyntaxTree> funcParams = children.get(1).getChildren();
-                 types = new NodeType[funcParams.size()];
+                types = new NodeType[funcParams.size()];
                 for (int i = 0; i < funcParams.size(); i++) {
                     types[i] = evaluateType(funcParams.get(i));
                 }
-                matchingDefinition = symbolTable.lookup(name, types);
             }
+            matchingDefinition = symbolTable.lookup(name, types);
             System.out.println(name + ": " + matchingDefinition);
             if (matchingDefinition == null)
                 throw new ReferenceError("Could not find definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
@@ -637,7 +722,6 @@ public class SemanticAnalyzer {
     }
 
     private NodeType handleUnaryOp(AbstractSyntaxTree rootNode) {
-        // TODO: handle variable or not for ++ and --
         AbstractSyntaxTree left = rootNode.getChildren().get(0);
         AbstractSyntaxTree right = rootNode.getChildren().get(1);
         NodeType leftType = evaluateType(left);
@@ -647,6 +731,10 @@ public class SemanticAnalyzer {
         if (left.getValue().equals("-") && (rightType == NodeType.INT || rightType == NodeType.FLOAT))
             return rightType;
         if (left.getValue().equals("++") || left.getValue().equals("--")) {
+            if (right.getName() != TokenType.ID)
+                throw new IllegalStatementError("Can only increment/decrement non-variables using operator " + left.getValue(), left.getLineNumber());
+            if (symbolTable.lookup(right.getValue()).getValueNodes() == null)
+                throw new IllegalStatementError("Can only increment/decrement initialized variables using operator " + left.getValue(), left.getLineNumber());
             if (rightType == NodeType.INT || rightType == NodeType.FLOAT) {
                 // TODO: handle array indexes
                 if (right.getName() != TokenType.ID)
@@ -655,6 +743,10 @@ public class SemanticAnalyzer {
             }
         }
         if (right.getValue().equals("++") || right.getValue().equals("--")) {
+            if (left.getName() != TokenType.ID)
+                throw new IllegalStatementError("Can only increment/decrement non-variables using operator " + right.getValue(), right.getLineNumber());
+            if (symbolTable.lookup(left.getValue()).getValueNodes() == null)
+                throw new IllegalStatementError("Can only increment/decrement initialized variables using operator " + right.getValue(), right.getLineNumber());
             if (leftType == NodeType.INT || leftType == NodeType.FLOAT) {
                 if (left.getName() != TokenType.ID)
                     throw new ReferenceError("Cannot perform postfix expression(" + right.getValue() + ") on " + left.getName());

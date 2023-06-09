@@ -291,7 +291,7 @@ public class TestSemanticAnalyzer {
             ))
         ));
         NodeType expectedReturnType = NodeType.NONE;
-        assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        assertFalse(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
     @Test

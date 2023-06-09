@@ -984,7 +984,8 @@ public class TestParser {
 
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
-            new AbstractSyntaxTree(tokens.get(2))
+            new AbstractSyntaxTree(tokens.get(2)),
+            new AbstractSyntaxTree("BLOCK-BODY")
         ));
 
         assertAST(expectedAST, tokens);
@@ -1070,7 +1071,8 @@ public class TestParser {
             new AbstractSyntaxTree(tokens.get(3), List.of(
                 new AbstractSyntaxTree(tokens.get(2)),
                 new AbstractSyntaxTree(tokens.get(4))
-            ))
+            )),
+            new AbstractSyntaxTree("BLOCK-BODY")
         ));
 
         assertAST(expectedAST, tokens);
@@ -1097,7 +1099,8 @@ public class TestParser {
                 new AbstractSyntaxTree(tokens.get(2)),
                 new AbstractSyntaxTree(tokens.get(3))
             )),
-            new AbstractSyntaxTree(tokens.get(5))
+            new AbstractSyntaxTree(tokens.get(5)),
+            new AbstractSyntaxTree("BLOCK-BODY")
         ));
 
         assertAST(expectedAST, tokens);
@@ -1137,7 +1140,8 @@ public class TestParser {
                 new AbstractSyntaxTree(tokens.get(7)),
                 new AbstractSyntaxTree(tokens.get(9))
             )),
-            createNestedTree(tokens.subList(11, 13), "UNARY-OP")
+            createNestedTree(tokens.subList(11, 13), "UNARY-OP"),
+            new AbstractSyntaxTree("BLOCK-BODY")
         ));
 
         assertAST(expectedAST, tokens);

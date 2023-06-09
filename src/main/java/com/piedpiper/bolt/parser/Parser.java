@@ -502,8 +502,7 @@ public class Parser {
         while (current.getName() != TokenType.RIGHT_CB) {
             bodyNode.appendChildren(parseBlockBody());
         }
-        if (bodyNode.hasChildren())
-            node.appendChildren(bodyNode);
+        node.appendChildren(bodyNode);
         parseExpectedToken(TokenType.RIGHT_CB, current);
         return node;
     }
