@@ -79,7 +79,7 @@ public class SemanticAnalyzer {
     }
 
     private boolean isTypeLabel(AbstractSyntaxTree node) {
-        if (node.getToken() == null)
+        if (node.getName() == null)
             return false;
         return typeMappings.containsKey(node.getName());
     }
@@ -185,7 +185,7 @@ public class SemanticAnalyzer {
                             validateAssignment(loopDetails.get(1));
                         }
                         else if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
-                            if (loopDetails.get(0).getChildren().size() != 3)
+                            if (loopDetails.get(0).countChildren() != 3)
                                 throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
                             symbolTable.insert(new Symbol(loopDetails.get(0), scope));
                         }
@@ -197,7 +197,7 @@ public class SemanticAnalyzer {
                     case 3: // for (float element : array) {}
                         if (!loopDetails.get(0).getLabel().equals("VAR-DECL"))
                             throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
-                        if (loopDetails.get(0).getChildren().size() != 2)
+                        if (loopDetails.get(0).countChildren() != 2)
                             throw new IllegalStatementError("Loop variable must be non-constant and not-initialized", lineNum);
                         Symbol loopVar = new Symbol(loopDetails.get(0), scope);
                         NodeType loopVarType = typeMappings.get(loopVar.getType().getName());
@@ -220,7 +220,7 @@ public class SemanticAnalyzer {
                         if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
                             Symbol symbol = new Symbol(loopDetails.get(0), scope);
                             varType = typeMappings.get(symbol.getType().getName());
-                            if (loopDetails.get(0).getChildren().size() != 3)
+                            if (loopDetails.get(0).countChildren() != 3)
                                 throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
                             symbolTable.insert(symbol);
                         }
@@ -320,7 +320,7 @@ public class SemanticAnalyzer {
     private void validateReturn(AbstractSyntaxTree controlFlow, NodeType returnType) {
         // make sure return is done properly
         if (returnType == NodeType.NONE) {
-            if (controlFlow.getChildren().size() == 1)
+            if (controlFlow.countChildren() == 1)
                 return;
             else {
                 AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
@@ -334,7 +334,7 @@ public class SemanticAnalyzer {
 
         }
         else {
-            if (controlFlow.getChildren().size() == 1)
+            if (controlFlow.countChildren() == 1)
                 throw new TypeError("Expected return type " + returnType + " but didn't return a value", controlFlow.getChildren().get(0).getLineNumber());
             AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
             NodeType actualReturnType = evaluateType(returnValue);
@@ -357,7 +357,7 @@ public class SemanticAnalyzer {
                 }
             }
             if (node.getName() == TokenType.KW_FOR || node.getName() == TokenType.KW_WHILE) {
-                AbstractSyntaxTree lastChild = node.getChildren().get(node.getChildren().size() - 1);
+                AbstractSyntaxTree lastChild = node.getChildren().get(node.countChildren() - 1);
                 if (lastChild.getLabel().equals("BLOCK-BODY")) {
                     if (functionReturns(lastChild, returnType)) {
                         if (i < length - 1)
@@ -405,7 +405,7 @@ public class SemanticAnalyzer {
                 }
             }
             if (node.getName() == TokenType.KW_WHILE || node.getName() == TokenType.KW_FOR) {
-                AbstractSyntaxTree bodyNode = node.getChildren().get(node.getChildren().size() - 1);
+                AbstractSyntaxTree bodyNode = node.getChildren().get(node.countChildren() - 1);
                 if (bodyNode.getLabel().equals("BLOCK-BODY"))
                     return loopHasControlFlow(bodyNode);
             }
@@ -584,7 +584,7 @@ public class SemanticAnalyzer {
             return NodeType.BOOLEAN;
         if (node.getName() == TokenType.KW_NULL)
             return NodeType.NULL;
-        if (node.getToken() != null) {
+        //if (node.getToken() != null) {
             if (nonEqualityComparisons.contains(node.getValue()))
                 return handleComparison(node);
             if (node.getValue().equals("==") || node.getValue().equals("!="))
@@ -599,7 +599,7 @@ public class SemanticAnalyzer {
                 return handleAddition(node);
             if (assignmentOperators.contains(node.getValue()))
                 validateAssignment(node);
-        }
+        //}
 
         if (node.getLabel().equals("UNARY-OP"))
             return handleUnaryOp(node);
@@ -616,7 +616,6 @@ public class SemanticAnalyzer {
                 }
             }
             matchingDefinition = symbolTable.lookup(name, types);
-            System.out.println(name + ": " + matchingDefinition);
             if (matchingDefinition == null)
                 throw new ReferenceError("Could not find definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
             return matchingDefinition.getReturnType();

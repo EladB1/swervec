@@ -3,7 +3,6 @@ package com.piedpiper.bolt.parser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,6 @@ import com.piedpiper.bolt.lexer.StaticToken;
 import com.piedpiper.bolt.lexer.Token;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.lexer.VariableToken;
-import static com.piedpiper.bolt.parser.AbstractSyntaxTree.createNestedTree;
 
 public class TestParser {
     // commonly used tokens
@@ -55,7 +53,7 @@ public class TestParser {
             new VariableToken(TokenType.NUMBER, "2")
         );
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(2), List.of(
-            createNestedTree(tokens.subList(0, 2), "UNARY-OP"),
+            new AbstractSyntaxTree("UNARY-OP", tokens.get(0), tokens.get(1)),
             new AbstractSyntaxTree(tokens.get(3))
         ));
 
@@ -78,16 +76,10 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(5), List.of(
             new AbstractSyntaxTree(tokens.get(3), List.of(
-                new AbstractSyntaxTree(tokens.get(1), List.of(
-                    new AbstractSyntaxTree(tokens.get(0)),
-                    new AbstractSyntaxTree(tokens.get(2))
-                )),
+                new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2)),
                 new AbstractSyntaxTree(tokens.get(4))
             )),
-            new AbstractSyntaxTree(tokens.get(7), List.of(
-                new AbstractSyntaxTree(tokens.get(6)),
-                new AbstractSyntaxTree(tokens.get(8))
-            ))
+            new AbstractSyntaxTree(tokens.get(7), tokens.get(6), tokens.get(8))
         ));
 
         assertAST(expectedAST, tokens);
@@ -117,24 +109,15 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(5), List.of(
             new AbstractSyntaxTree(tokens.get(3), List.of(
-                new AbstractSyntaxTree(tokens.get(1), List.of(
-                    new AbstractSyntaxTree(tokens.get(0)),
-                    new AbstractSyntaxTree(tokens.get(2))
-                )),
+                new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2)),
                 new AbstractSyntaxTree(tokens.get(4))
             )),
             new AbstractSyntaxTree(tokens.get(11), List.of(
                 new AbstractSyntaxTree(tokens.get(9), List.of(
-                    new AbstractSyntaxTree(tokens.get(7), List.of(
-                        new AbstractSyntaxTree(tokens.get(6)),
-                        new AbstractSyntaxTree(tokens.get(8))
-                    )),
+                    new AbstractSyntaxTree(tokens.get(7), tokens.get(6), tokens.get(8)),
                     new AbstractSyntaxTree(tokens.get(10))
                 )),
-                new AbstractSyntaxTree(tokens.get(13), List.of(
-                    new AbstractSyntaxTree(tokens.get(12)),
-                    new AbstractSyntaxTree(tokens.get(14))
-                ))
+                new AbstractSyntaxTree(tokens.get(13), tokens.get(12), tokens.get(14))
             ))
         ));
 
@@ -150,11 +133,8 @@ public class TestParser {
             new VariableToken(TokenType.ID, "i")
         );
 
-
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), List.of(
-            new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(2))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2));
+        
         assertAST(expectedAST, tokens);
     }
 
@@ -167,10 +147,7 @@ public class TestParser {
             new VariableToken(TokenType.ID, "j")
         );
 
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), List.of(
-            new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(2))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2));
 
         assertAST(expectedAST, tokens);
     }
@@ -189,10 +166,7 @@ public class TestParser {
         );
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(5), List.of(
-            new AbstractSyntaxTree(tokens.get(2), List.of(
-                new AbstractSyntaxTree(tokens.get(1)),
-                new AbstractSyntaxTree(tokens.get(3))
-            )),
+            new AbstractSyntaxTree(tokens.get(2), tokens.get(1), tokens.get(3)),
             new AbstractSyntaxTree(tokens.get(6))
         ));
 
@@ -208,10 +182,7 @@ public class TestParser {
             new VariableToken(TokenType.ID, "n")
         );
 
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), List.of(
-            new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(2))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2));
 
         assertAST(expectedAST, tokens);
     }
@@ -225,10 +196,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_FALSE)
         );
 
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), List.of(
-            new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(2))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2));
 
         assertAST(expectedAST, tokens);
     }
@@ -248,14 +216,8 @@ public class TestParser {
         );
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(5), List.of(
-            new AbstractSyntaxTree(tokens.get(2), List.of(
-                new AbstractSyntaxTree(tokens.get(1)),
-                new AbstractSyntaxTree(tokens.get(3))
-            )),
-            new AbstractSyntaxTree(tokens.get(7), List.of(
-                new AbstractSyntaxTree(tokens.get(6)),
-                new AbstractSyntaxTree(tokens.get(8))
-            ))
+            new AbstractSyntaxTree(tokens.get(2), tokens.get(1), tokens.get(3)),
+            new AbstractSyntaxTree(tokens.get(7), tokens.get(6), tokens.get(8))
         ));
         assertAST(expectedAST, tokens);
     }
@@ -270,10 +232,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_FALSE)
         );
 
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), List.of(
-            new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(2))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2));
 
         assertAST(expectedAST, tokens);
     }
@@ -293,12 +252,9 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), List.of(
             new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(1), List.of(
+            new AbstractSyntaxTree(tokens.get(3), List.of(
                 new AbstractSyntaxTree(tokens.get(2)),
-                new AbstractSyntaxTree(tokens.get(5), List.of(
-                    new AbstractSyntaxTree(tokens.get(4)),
-                    new AbstractSyntaxTree(tokens.get(6))
-                ))
+                new AbstractSyntaxTree(tokens.get(5), tokens.get(4), tokens.get(6))
             ))
         ));
 
@@ -318,10 +274,7 @@ public class TestParser {
         );
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(3), List.of(
-            new AbstractSyntaxTree(tokens.get(1), List.of(
-                new AbstractSyntaxTree(tokens.get(0)),
-                new AbstractSyntaxTree(tokens.get(2))
-            )),
+            new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2)),
             new AbstractSyntaxTree(tokens.get(4))
         ));
 
@@ -338,7 +291,7 @@ public class TestParser {
         );
 
 
-        AbstractSyntaxTree expectedAST = createNestedTree(tokens, "UNARY-OP");
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("UNARY-OP", tokens.get(0), tokens.get(1));
 
         assertAST(expectedAST, tokens);
     }
@@ -352,7 +305,7 @@ public class TestParser {
         );
 
 
-        AbstractSyntaxTree expectedAST = createNestedTree(tokens, "UNARY-OP");
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("UNARY-OP", tokens.get(0), tokens.get(1));
 
         assertAST(expectedAST, tokens);
     }
@@ -366,7 +319,7 @@ public class TestParser {
             new VariableToken(TokenType.ID, "x")
         );
 
-        AbstractSyntaxTree expectedAST = createNestedTree(tokens, "UNARY-OP");
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("UNARY-OP", tokens.get(0), tokens.get(1));
 
         assertAST(expectedAST, tokens);
     }
@@ -379,7 +332,7 @@ public class TestParser {
             new VariableToken(TokenType.NUMBER, "5")
         );
 
-        AbstractSyntaxTree expectedAST = createNestedTree(tokens, "UNARY-OP");
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("UNARY-OP", tokens.get(0), tokens.get(1));
 
         assertAST(expectedAST, tokens);
     }
@@ -391,7 +344,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_TRUE)
         );
 
-        AbstractSyntaxTree expectedAST = createNestedTree(tokens, "UNARY-OP");
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("UNARY-OP", tokens.get(0), tokens.get(1));
 
         assertAST(expectedAST, tokens);
     }
@@ -427,9 +380,7 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("UNARY-OP", List.of(
             new AbstractSyntaxTree(tokens.get(0)),
             new AbstractSyntaxTree(tokens.get(1), List.of(
-                new AbstractSyntaxTree("ARRAY-INDEX", List.of(
-                    new AbstractSyntaxTree(tokens.get(3))
-                ))
+                new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(3))
             ))
         ));
 
@@ -491,21 +442,12 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("TERNARY", List.of(
             new AbstractSyntaxTree(tokens.get(3), List.of(
-                new AbstractSyntaxTree(tokens.get(1), List.of(
-                    new AbstractSyntaxTree(tokens.get(0)),
-                    new AbstractSyntaxTree(tokens.get(2))
-                )),
+                new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2)),
                 new AbstractSyntaxTree(tokens.get(4))
             )),
-            new AbstractSyntaxTree(tokens.get(7), List.of(
-                new AbstractSyntaxTree(tokens.get(6)),
-                new AbstractSyntaxTree(tokens.get(8))
-            )),
+            new AbstractSyntaxTree(tokens.get(7), tokens.get(6), tokens.get(8)),
             new AbstractSyntaxTree(tokens.get(15), List.of(
-                new AbstractSyntaxTree(tokens.get(12), List.of(
-                    new AbstractSyntaxTree(tokens.get(11)),
-                    new AbstractSyntaxTree(tokens.get(13))
-                )),
+                new AbstractSyntaxTree(tokens.get(12), tokens.get(11), tokens.get(13)),
                 new AbstractSyntaxTree(tokens.get(16))
             ))
         ));
@@ -571,15 +513,11 @@ public class TestParser {
             new AbstractSyntaxTree("FUNC-PARAMS", List.of(
                 new AbstractSyntaxTree(tokens.get(2)),
                 new AbstractSyntaxTree(tokens.get(4), List.of(
-                    new AbstractSyntaxTree("ARRAY-INDEX", List.of(
-                        new AbstractSyntaxTree(tokens.get(6))
-                    ))
+                    new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(6))
                 )),
                 new AbstractSyntaxTree("FUNC-CALL", List.of(
                     new AbstractSyntaxTree(tokens.get(9)),
-                    new AbstractSyntaxTree("FUNC-PARAMS", List.of(
-                        new AbstractSyntaxTree(tokens.get(11))
-                    ))
+                    new AbstractSyntaxTree("FUNC-PARAMS", tokens.get(11))
                 ))
             ))
         ));
@@ -676,10 +614,7 @@ public class TestParser {
 
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
-            new AbstractSyntaxTree(tokens.get(2), List.of(
-                new AbstractSyntaxTree(tokens.get(1)),
-                new AbstractSyntaxTree(tokens.get(3))
-            ))
+            new AbstractSyntaxTree(tokens.get(2), tokens.get(1), tokens.get(3))
         ));
 
         assertAST(expectedAST, tokens);
@@ -707,10 +642,7 @@ public class TestParser {
 
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
-            new AbstractSyntaxTree(tokens.get(2), List.of(
-                new AbstractSyntaxTree(tokens.get(1)),
-                new AbstractSyntaxTree(tokens.get(3))
-            )),
+            new AbstractSyntaxTree(tokens.get(2), tokens.get(1), tokens.get(3)),
             new AbstractSyntaxTree("FUNC-CALL", tokens.get(5)),
             new AbstractSyntaxTree(tokens.get(9), List.of(
                 new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(11))
@@ -737,7 +669,7 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
             new AbstractSyntaxTree("ARRAY-LIT"),
-            createNestedTree(tokens.get(5), "ARRAY-LIT")
+            new AbstractSyntaxTree("ARRAY-LIT", tokens.get(5))
         ));
 
         assertAST(expectedAST, tokens);
@@ -836,9 +768,7 @@ public class TestParser {
                 new AbstractSyntaxTree("BLOCK-BODY", List.of(
                     new AbstractSyntaxTree("FUNC-CALL", List.of(
                         new AbstractSyntaxTree(tokens.get(5)),
-                        new AbstractSyntaxTree("FUNC-PARAMS", List.of(
-                            new AbstractSyntaxTree(tokens.get(7))
-                        ))
+                        new AbstractSyntaxTree("FUNC-PARAMS", tokens.get(7))
                     ))
                 ))
             ))
@@ -868,9 +798,7 @@ public class TestParser {
                 new AbstractSyntaxTree("BLOCK-BODY", List.of(
                     new AbstractSyntaxTree("FUNC-CALL", List.of(
                         new AbstractSyntaxTree(tokens.get(4)),
-                        new AbstractSyntaxTree("FUNC-PARAMS", List.of(
-                            new AbstractSyntaxTree(tokens.get(6))
-                        ))
+                        new AbstractSyntaxTree("FUNC-PARAMS", tokens.get(6))
                     ))
                 ))
             ))
@@ -903,10 +831,14 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("COND", List.of(
             new AbstractSyntaxTree(tokens.get(0), List.of(
                 new AbstractSyntaxTree(tokens.get(2)),
-                createNestedTree(tokens.subList(4, 6), "BLOCK-BODY", "CONTROL-FLOW")
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(4), tokens.get(5))
+                ))
             )),
             new AbstractSyntaxTree(tokens.get(6), List.of(
-                createNestedTree(tokens.subList(7, 9), "BLOCK-BODY", "CONTROL-FLOW")
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(7), tokens.get(8))
+                ))
             ))
         ));
 
@@ -948,17 +880,11 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("COND", List.of(
             new AbstractSyntaxTree(tokens.get(0), List.of(
-                new AbstractSyntaxTree(tokens.get(3), List.of(
-                    new AbstractSyntaxTree(tokens.get(2)),
-                    new AbstractSyntaxTree(tokens.get(4))
-                )),
+                new AbstractSyntaxTree(tokens.get(3), tokens.get(2), tokens.get(4)),
                 new AbstractSyntaxTree("BLOCK-BODY")
             )),
             new AbstractSyntaxTree("ELSE IF", List.of(
-                new AbstractSyntaxTree(tokens.get(12), List.of(
-                    new AbstractSyntaxTree(tokens.get(11)),
-                    new AbstractSyntaxTree(tokens.get(13))
-                )),
+                new AbstractSyntaxTree(tokens.get(12), tokens.get(11), tokens.get(13)),
                 new AbstractSyntaxTree("BLOCK-BODY")
             )),
             new AbstractSyntaxTree(tokens.get(17), List.of(
@@ -1008,9 +934,8 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree(tokens.get(2)),
             new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                new AbstractSyntaxTree("CONTROL-FLOW", List.of(new AbstractSyntaxTree(tokens.get(5))))
+                new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(5))
             ))
-
         ));
 
         assertAST(expectedAST, tokens);
@@ -1041,11 +966,8 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree(tokens.get(2)),
             new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                new AbstractSyntaxTree(tokens.get(6), List.of(
-                    new AbstractSyntaxTree(tokens.get(5)),
-                    new AbstractSyntaxTree(tokens.get(7))
-                )),
-                createNestedTree(tokens.get(8), "CONTROL-FLOW")
+                new AbstractSyntaxTree(tokens.get(6), tokens.get(5), tokens.get(7)),
+                new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(8))
             ))
         ));
 
@@ -1068,10 +990,7 @@ public class TestParser {
 
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
-            new AbstractSyntaxTree(tokens.get(3), List.of(
-                new AbstractSyntaxTree(tokens.get(2)),
-                new AbstractSyntaxTree(tokens.get(4))
-            )),
+            new AbstractSyntaxTree(tokens.get(3), tokens.get(2), tokens.get(4)),
             new AbstractSyntaxTree("BLOCK-BODY")
         ));
 
@@ -1095,10 +1014,7 @@ public class TestParser {
 
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
-            new AbstractSyntaxTree("VAR-DECL", List.of(
-                new AbstractSyntaxTree(tokens.get(2)),
-                new AbstractSyntaxTree(tokens.get(3))
-            )),
+            new AbstractSyntaxTree("VAR-DECL", tokens.get(2), tokens.get(3)),
             new AbstractSyntaxTree(tokens.get(5)),
             new AbstractSyntaxTree("BLOCK-BODY")
         ));
@@ -1131,16 +1047,10 @@ public class TestParser {
             rightCBToken
         );
 
-        List<Token> varDecl = new ArrayList<>(tokens.subList(2, 6));
-        varDecl.remove(2);
-
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
-            createNestedTree(varDecl, "VAR-DECL"),
-            new AbstractSyntaxTree(tokens.get(8), List.of(
-                new AbstractSyntaxTree(tokens.get(7)),
-                new AbstractSyntaxTree(tokens.get(9))
-            )),
-            createNestedTree(tokens.subList(11, 13), "UNARY-OP"),
+            new AbstractSyntaxTree("VAR-DECL", tokens.get(2), tokens.get(3), tokens.get(5)),
+            new AbstractSyntaxTree(tokens.get(8), tokens.get(7), tokens.get(9)),
+            new AbstractSyntaxTree("UNARY-OP", tokens.get(11), tokens.get(12)),
             new AbstractSyntaxTree("BLOCK-BODY")
         ));
 
@@ -1163,7 +1073,9 @@ public class TestParser {
         );
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree(tokens.get(2)),
-            createNestedTree(tokens.get(5), "BLOCK-BODY", "CONTROL-FLOW")
+            new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(5))
+            ))
         ));
         assertAST(expectedAST, tokens);
     }
@@ -1181,10 +1093,7 @@ public class TestParser {
             rightCBToken
         );
 
-
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
-            new AbstractSyntaxTree(tokens.get(1))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), tokens.get(1));
 
         assertAST(expectedAST, tokens);
     }
@@ -1203,11 +1112,7 @@ public class TestParser {
             rightCBToken
         );
 
-
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
-            new AbstractSyntaxTree(tokens.get(1)),
-            new AbstractSyntaxTree(tokens.get(5))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), tokens.get(1), tokens.get(5));
 
         assertAST(expectedAST, tokens);
     }
@@ -1233,9 +1138,13 @@ public class TestParser {
         );
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree(tokens.get(1)),
-            createNestedTree(tokens.subList(3, 5), "FUNC-PARAMS", "FUNC-PARAM"),
+            new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                new AbstractSyntaxTree("FUNC-PARAM", tokens.get(3), tokens.get(4))
+            )),
             new AbstractSyntaxTree(tokens.get(7)),
-            createNestedTree(tokens.subList(9, 11), "BLOCK-BODY", "CONTROL-FLOW")
+            new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(9), tokens.get(10))
+            ))
         ));
         assertAST(expectedAST, tokens);
     }
@@ -1268,18 +1177,15 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree(tokens.get(1)),
             new AbstractSyntaxTree("FUNC-PARAMS", List.of(
-                createNestedTree(tokens.subList(3, 5), "FUNC-PARAM"),
-                createNestedTree(tokens.subList(6, 8), "FUNC-PARAM")
+                new AbstractSyntaxTree("FUNC-PARAM", tokens.get(3), tokens.get(4)),
+                new AbstractSyntaxTree("FUNC-PARAM", tokens.get(6), tokens.get(7))
             )),
 
             new AbstractSyntaxTree(tokens.get(10)),
             new AbstractSyntaxTree("BLOCK-BODY", List.of(
                 new AbstractSyntaxTree("CONTROL-FLOW", List.of(
                     new AbstractSyntaxTree(tokens.get(12)),
-                    new AbstractSyntaxTree(tokens.get(14), List.of(
-                        new AbstractSyntaxTree(tokens.get(13)),
-                        new AbstractSyntaxTree(tokens.get(15))
-                    ))
+                    new AbstractSyntaxTree(tokens.get(14), tokens.get(13), tokens.get(15))
                 ))
             ))
         ));
@@ -1301,7 +1207,9 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(0), List.of(
             new AbstractSyntaxTree(tokens.get(1)),
-            createNestedTree(tokens.get(5), "BLOCK-BODY", "CONTROL-FLOW")
+            new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(5))
+            ))
         ));
 
         assertAST(expectedAST, tokens);
@@ -1378,11 +1286,9 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-DECL", List.of(
             new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(1), List.of(
-                new AbstractSyntaxTree(tokens.get(3))
-            )),
+            new AbstractSyntaxTree(tokens.get(1), tokens.get(3)),
             new AbstractSyntaxTree(tokens.get(5)),
-            createNestedTree(tokens.get(7), "ARRAY-INDEX"),
+            new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(7)),
             new AbstractSyntaxTree(tokens.get(10))
         ));
 
@@ -1425,7 +1331,7 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-DECL", List.of(
             arrayType,
             new AbstractSyntaxTree(tokens.get(4)),
-            createNestedTree(tokens.get(6), "ARRAY-INDEX")
+            new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(6))
         ));
 
         assertAST(expectedAST, tokens);
@@ -1455,8 +1361,8 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-DECL", List.of(
             arrayType,
             new AbstractSyntaxTree(tokens.get(4)),
-            createNestedTree(tokens.get(6), "ARRAY-INDEX"),
-            createNestedTree(tokens.get(10), "ARRAY-LIT")
+            new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(6)),
+            new AbstractSyntaxTree("ARRAY-LIT", tokens.get(10))
         ));
 
         assertAST(expectedAST, tokens);
@@ -1486,7 +1392,7 @@ public class TestParser {
             new AbstractSyntaxTree(tokens.get(1)),
             arrayType,
             new AbstractSyntaxTree(tokens.get(6)),
-            createNestedTree(tokens.get(8), "ARRAY-INDEX")
+            new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(8))
         ));
 
         assertAST(expectedAST, tokens);
@@ -1546,9 +1452,7 @@ public class TestParser {
 
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-DECL", List.of(
             new AbstractSyntaxTree(tokens.get(0), List.of(
-                new AbstractSyntaxTree(tokens.get(2), List.of(
-                    new AbstractSyntaxTree(tokens.get(4))
-                ))
+                new AbstractSyntaxTree(tokens.get(2), tokens.get(4))
             )),
             new AbstractSyntaxTree(tokens.get(7)),
             new AbstractSyntaxTree("ARRAY-INDEX", List.of(
@@ -1580,7 +1484,7 @@ public class TestParser {
         AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("VAR-DECL", List.of(
             new AbstractSyntaxTree(tokens.get(0)),
             new AbstractSyntaxTree(tokens.get(1)),
-            createNestedTree(tokens.subList(3, 5), "UNARY-OP")
+            new AbstractSyntaxTree("UNARY-OP", tokens.get(3), tokens.get(4))
         ));
 
         assertAST(expectedAST, tokens);
@@ -1595,10 +1499,7 @@ public class TestParser {
             new VariableToken(TokenType.STRING, "\"someValue\"")
         );
 
-
-        List<Token> parsingTokens = new ArrayList<>(tokens);
-        parsingTokens.remove(2);
-        AbstractSyntaxTree expectedAST = createNestedTree(parsingTokens, "VAR-DECL");
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("VAR-DECL", tokens.get(0), tokens.get(1), tokens.get(3));
 
         assertAST(expectedAST, tokens);
     }
@@ -1613,9 +1514,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_FALSE)
         );
 
-        List<Token> parsingTokens = new ArrayList<>(tokens);
-        parsingTokens.remove(3);
-        AbstractSyntaxTree expectedAST = createNestedTree(parsingTokens, "VAR-DECL");
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("VAR-DECL", tokens.get(0), tokens.get(1), tokens.get(2), tokens.get(4));
 
         assertAST(expectedAST, tokens);
     }
@@ -1655,11 +1554,7 @@ public class TestParser {
             new VariableToken(TokenType.NUMBER, "1")
         );
 
-
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), List.of(
-            new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(2))
-        ));
+        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree(tokens.get(1), tokens.get(0), tokens.get(2));
 
         assertAST(expectedAST, tokens);
     }

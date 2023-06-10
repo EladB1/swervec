@@ -31,13 +31,15 @@ public class TestSemanticAnalyzer {
 
     @Test
     void test_semanticAnalyzer_varDecl_noValue() {
-        AbstractSyntaxTree AST = AbstractSyntaxTree.createNestedTree(List.of(intTypeToken, genericVarToken), "PROGRAM", "VAR-DECL");
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree("VAR-DECL", intTypeToken, genericVarToken)
+        ));
         assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
     }
 
     @Test
     void test_semanticAnalyzer_varDecl_sameNameSameScope() {
-        AbstractSyntaxTree varDeclaration = AbstractSyntaxTree.createNestedTree(List.of(intTypeToken, genericVarToken), "VAR-DECL");
+        AbstractSyntaxTree varDeclaration = new AbstractSyntaxTree("VAR-DECL", intTypeToken, genericVarToken);
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(varDeclaration, varDeclaration));
         NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));
         assertEquals("Symbol 'var' is already defined in this scope", error.getMessage());

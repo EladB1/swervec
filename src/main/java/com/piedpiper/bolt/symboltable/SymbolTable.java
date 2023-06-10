@@ -2,7 +2,7 @@ package com.piedpiper.bolt.symboltable;
 
 import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.error.TypeError;
-import com.piedpiper.bolt.parser.AbstractSyntaxTree;
+
 import com.piedpiper.bolt.semantic.NodeType;
 
 import java.util.ArrayList;
