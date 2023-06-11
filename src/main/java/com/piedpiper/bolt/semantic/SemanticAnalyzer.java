@@ -158,23 +158,6 @@ public class SemanticAnalyzer {
                 int length = loopDetails.size();
                 AbstractSyntaxTree body = null;
                 switch (length) {
-                    case 2: // for (int i = 0) {}
-                        if (loopDetails.get(0).getValue().equals("=")) {
-                            Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
-                            if (symbol == null)
-                                throw new ReferenceError("Variable " + loopDetails.get(0).getValue() + " used before being defined in current scope", lineNum);
-                            validateAssignment(loopDetails.get(1));
-                        }
-                        else if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
-                            if (loopDetails.get(0).countChildren() != 3)
-                                throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
-                            symbolTable.insert(new Symbol(loopDetails.get(0), scope));
-                        }
-                        else {
-                            throw new IllegalStatementError("For loop must start with variable declaration or assignment", lineNum);
-                        }
-                        body = loopDetails.get(1);
-                        break;
                     case 3: // for (float element : array) {}
                         if (!loopDetails.get(0).getLabel().equals("VAR-DECL"))
                             throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
