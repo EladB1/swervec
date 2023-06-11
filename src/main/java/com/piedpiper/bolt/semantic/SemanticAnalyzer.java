@@ -81,7 +81,10 @@ public class SemanticAnalyzer {
             if (matchesLabelNode(subTree, "VAR-DECL")) {
                 handleVariableDeclaration(subTree);
             }
-            else if (matchesLabelNode(subTree, "ARRAY-DECL")) {}
+            else if (matchesLabelNode(subTree, "ARRAY-DECL")) {
+                handleArrayDeclaration(subTree);
+            }
+            // break / continue / return
             else if (subTree.getLabel().equals("CONTROL-FLOW")) {
                 if (!inFunc && isReturn(subTree))
                     throw new IllegalStatementError("Cannot return outside of a function");
@@ -93,190 +96,226 @@ public class SemanticAnalyzer {
 
             // conditional
             else if (subTree.getLabel().equals("COND")) {
-                List<AbstractSyntaxTree> conditionals = subTree.getChildren();
-                int length = conditionals.size();
-                NodeType condition;
-                AbstractSyntaxTree body;
-                for (int i = 0; i < length - 1; i++) {
-                    if (i == 0) {
-                        if (conditionals.get(i).getName() != TokenType.KW_IF)
-                            throw new IllegalStatementError("Conditional block must begin with if", conditionals.get(i).getLineNumber());
-                        condition = evaluateType(conditionals.get(i).getChildren().get(1));
-                        if (condition != NodeType.BOOLEAN)
-                            throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
-                        body = conditionals.get(i).getChildren().get(1);
-                    }
-
-                    else if (i != length - 1) {
-                        if (conditionals.get(i).getName() == TokenType.KW_ELSE)
-                            throw new IllegalStatementError("else can only be used at the end of conditional block", conditionals.get(i).getLineNumber());
-                        condition = evaluateType(conditionals.get(i).getChildren().get(1));
-                        if (condition != NodeType.BOOLEAN)
-                            throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
-                        body = conditionals.get(i).getChildren().get(1);
-                    }
-
-                    else {
-                        if (conditionals.get(i).getName() == TokenType.KW_ELSE) {
-                            body = conditionals.get(i).getChildren().get(0);
-                        }
-                        else {
-                            condition = evaluateType(conditionals.get(i).getChildren().get(1));
-                            if (condition != NodeType.BOOLEAN)
-                                throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
-                            body = conditionals.get(i).getChildren().get(1);
-                        }
-                    }
-                    symbolTable.enterScope();
-                    analyze(body, inLoop, inFunc, returnType);
-                    symbolTable.leaveScope();
-                }
+                handleConditionalBlock(subTree.getChildren(), inLoop, inFunc, returnType);
             }
 
             // loop
             else if (subTree.getName() == TokenType.KW_WHILE) {
-                // check loop signature
-                NodeType condition = evaluateType(subTree.getChildren().get(0));
-                if (condition != NodeType.BOOLEAN) {
-                    throw new TypeError("While loop condition must evaluate to boolean but instead was " + condition, subTree.getLineNumber());
-                }
-                // analyze body
-                AbstractSyntaxTree body = subTree.getChildren().get(1);
-                if (body.getLabel().equals("BLOCK-BODY")) {
-                    loopHasControlFlow(body); // this will check for unreachable code
-                    symbolTable.enterScope();
-                    analyze(body, true, inFunc, returnType);
-                    symbolTable.leaveScope();
-                }
-
+                handleWhileLoop(subTree, inFunc, returnType);
             }
 
             else if (subTree.getName() == TokenType.KW_FOR) {
-                int scope = symbolTable.enterScope();
-                int lineNum = subTree.getLineNumber();
-                List<AbstractSyntaxTree> loopDetails = subTree.getChildren();
-                int length = loopDetails.size();
-                AbstractSyntaxTree body = null;
-                switch (length) {
-                    case 3: // for (float element : array) {}
-                        if (!loopDetails.get(0).getLabel().equals("VAR-DECL"))
-                            throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
-                        if (loopDetails.get(0).countChildren() != 2)
-                            throw new IllegalStatementError("Loop variable must be non-constant and not-initialized", lineNum);
-                        Symbol loopVar = new Symbol(loopDetails.get(0), scope);
-                        NodeType loopVarType = typeMappings.get(loopVar.getType().getName());
-
-                        Symbol container = symbolTable.lookup(loopDetails.get(1).getValue());
-                        if (container == null)
-                            throw new ReferenceError("Variable " + loopDetails.get(1).getValue() + " used before being defined in current scope", lineNum);
-                        NodeType containerType = typeMappings.get(container.getType().getName());
-                        if (containerType != NodeType.ARRAY && containerType != NodeType.STRING)
-                            throw new TypeError("Cannot use for (each) loop on non-container type: " + containerType, lineNum);
-
-                        if (loopVarType != NodeType.STRING && containerType == NodeType.STRING) {
-                            throw new TypeError("Cannot loop over string with type " + loopVarType, lineNum);
-                        }
-                        symbolTable.insert(loopVar);
-                        body = loopDetails.get(2);
-                        break;
-                    case 4: // for (int i = 0; i < 10; i++) {}
-                        NodeType varType;
-                        if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
-                            Symbol symbol = new Symbol(loopDetails.get(0), scope);
-                            varType = typeMappings.get(symbol.getType().getName());
-                            if (loopDetails.get(0).countChildren() != 3)
-                                throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
-                            symbolTable.insert(symbol);
-                        }
-                        else if (loopDetails.get(0).getValue().equals("=")) {
-                            Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
-                            if (symbol == null)
-                                throw new ReferenceError("Variable " + loopDetails.get(0).getValue() + " used before being defined in current scope", lineNum);
-                            varType = typeMappings.get(symbol.getType().getName());
-                            validateAssignment(loopDetails.get(1));
-                        }
-                        else {
-                            throw new IllegalStatementError("For loop must start with variable declaration or assignment", lineNum);
-                        }
-                        if (evaluateType(loopDetails.get(1)) != NodeType.BOOLEAN)
-                            throw new IllegalStatementError("Middle for loop expression must be boolean", lineNum);
-                        NodeType thirdPartType = evaluateType(loopDetails.get(2));
-                        if (varType != thirdPartType)
-                            throw new IllegalStatementError("End for loop expression must match type " + varType + " but was " + thirdPartType, lineNum);
-                        body = loopDetails.get(3);
-                        break;
-                }
-                analyze(body, true, inFunc, returnType);
-                symbolTable.leaveScope();
+                handleForLoop(subTree, inFunc, returnType);
             }
 
             // function
             else if (subTree.getName() == TokenType.KW_FN) {
-                int scope = symbolTable.enterScope();
-                List<AbstractSyntaxTree> fnDetails = subTree.getChildren();
-                int length = fnDetails.size();
-                String name = fnDetails.get(0).getValue();
-                NodeType fnReturnType = NodeType.NONE;
-                AbstractSyntaxTree body = null;
-                NodeType[] types = {};
-                Symbol[] params = {};
-                switch (length) {
-                    case 1:
-                        symbolTable.insert(new FunctionSymbol(name));
-                        symbolTable.leaveScope();
-                        continue;
-                    case 2:
-                        if (isTypeLabel(fnDetails.get(1))) // has a returnType but no function body
-                            throw new TypeError(
-                                "Function " + name + "expected to return " + typeMappings.get(fnDetails.get(1).getName()) + " but returns nothing",
-                                subTree.getLineNumber()
-                            );
-                        else if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
-                            types = getParamTypes(fnDetails.get(1).getChildren());
-                            params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
-                        }
-                        else {
-                            body = fnDetails.get(1);
-                        }
-                        break;
-                    case 3:
-                        if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
-                            types = getParamTypes(fnDetails.get(1).getChildren());
-                            params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
-                            if (isTypeLabel(fnDetails.get(2)))
-                                throw new TypeError(
-                                    "Function " + name + "expected to return " + typeMappings.get(fnDetails.get(1).getName()) + " but returns nothing",
-                                    subTree.getLineNumber()
-                                );
-                            else {
-                                body = fnDetails.get(2);
-                            }
-                        }
-                        if (isTypeLabel(fnDetails.get(1))) {
-                            fnReturnType = typeMappings.get(fnDetails.get(1).getName());
-                            body = fnDetails.get(2);
-                        }
-                        break;
-                    case 4:
-                        types = getParamTypes(fnDetails.get(1).getChildren());
-                        params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
-                        fnReturnType = typeMappings.get(fnDetails.get(2).getName());
-                        body = fnDetails.get(3);
-                        break;
-                }
-                for (Symbol param : params) {
-                    symbolTable.insert(param);
-                }
-                analyze(body, inLoop, true, fnReturnType);
-                symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
-                if (fnReturnType != NodeType.NONE && !functionReturns(body, fnReturnType))
-                    throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", subTree.getLineNumber());
-                symbolTable.leaveScope();
+                handleFunctionDefintion(subTree.getChildren());
             }
             else {
                 evaluateType(subTree);
             }
         }
+    }
+
+    private void handleVariableDeclaration(AbstractSyntaxTree node) {
+        int scope = symbolTable.getScopeLevel();
+        List<AbstractSyntaxTree> details = node.getChildren();
+        int offset = 0;
+        if (details.get(0).getName() == TokenType.KW_CONST) {
+            offset++;
+            if (node.countChildren() != 4)
+                throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
+        }
+        if (node.countChildren() == offset + 3) {
+            NodeType rhsType = evaluateType(details.get(offset + 2));
+            NodeType lhsType = typeMappings.get(details.get(offset).getName());
+            if (lhsType != rhsType && rhsType != NodeType.NULL)
+                throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
+        }
+        symbolTable.insert(new Symbol(node, scope));
+    }
+
+    private void handleArrayDeclaration(AbstractSyntaxTree node) {
+
+    }
+
+    private void handleConditionalBlock(List<AbstractSyntaxTree> conditionals, boolean inLoop, boolean inFunc, NodeType returnType) {
+            int length = conditionals.size();
+            NodeType condition;
+            AbstractSyntaxTree body;
+            for (int i = 0; i < length - 1; i++) {
+                if (i == 0) {
+                    if (conditionals.get(i).getName() != TokenType.KW_IF)
+                        throw new IllegalStatementError("Conditional block must begin with if", conditionals.get(i).getLineNumber());
+                    condition = evaluateType(conditionals.get(i).getChildren().get(1));
+                    if (condition != NodeType.BOOLEAN)
+                        throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
+                    body = conditionals.get(i).getChildren().get(1);
+                }
+
+                else if (i != length - 1) {
+                    if (conditionals.get(i).getName() == TokenType.KW_ELSE)
+                        throw new IllegalStatementError("else can only be used at the end of conditional block", conditionals.get(i).getLineNumber());
+                    condition = evaluateType(conditionals.get(i).getChildren().get(1));
+                    if (condition != NodeType.BOOLEAN)
+                        throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
+                    body = conditionals.get(i).getChildren().get(1);
+                }
+
+                else {
+                    if (conditionals.get(i).getName() == TokenType.KW_ELSE) {
+                        body = conditionals.get(i).getChildren().get(0);
+                    }
+                    else {
+                        condition = evaluateType(conditionals.get(i).getChildren().get(1));
+                        if (condition != NodeType.BOOLEAN)
+                            throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
+                        body = conditionals.get(i).getChildren().get(1);
+                    }
+                }
+                symbolTable.enterScope();
+                analyze(body, inLoop, inFunc, returnType);
+                symbolTable.leaveScope();
+            }
+    }
+
+    private void handleFunctionDefintion(List<AbstractSyntaxTree> fnDetails) {
+        int scope = symbolTable.enterScope();
+        int lineNum = fnDetails.get(0).getLineNumber();
+        int length = fnDetails.size();
+        String name = fnDetails.get(0).getValue();
+        NodeType fnReturnType = NodeType.NONE;
+        AbstractSyntaxTree body = null;
+        NodeType[] types = {};
+        Symbol[] params = {};
+        switch (length) {
+            case 1:
+                symbolTable.insert(new FunctionSymbol(name));
+                symbolTable.leaveScope();
+                return;
+            case 2:
+                if (isTypeLabel(fnDetails.get(1))) // has a returnType but no function body
+                    throw new TypeError(
+                        "Function " + name + "expected to return " + typeMappings.get(fnDetails.get(1).getName()) + " but returns nothing",
+                        lineNum
+                    );
+                else if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
+                    types = getParamTypes(fnDetails.get(1).getChildren());
+                    params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
+                }
+                else {
+                    body = fnDetails.get(1);
+                }
+                break;
+            case 3:
+                if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
+                    types = getParamTypes(fnDetails.get(1).getChildren());
+                    params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
+                    if (isTypeLabel(fnDetails.get(2)))
+                        throw new TypeError(
+                            "Function " + name + "expected to return " + typeMappings.get(fnDetails.get(1).getName()) + " but returns nothing",
+                            lineNum
+                        );
+                    else {
+                        body = fnDetails.get(2);
+                    }
+                }
+                if (isTypeLabel(fnDetails.get(1))) {
+                    fnReturnType = typeMappings.get(fnDetails.get(1).getName());
+                    body = fnDetails.get(2);
+                }
+                break;
+            case 4:
+                types = getParamTypes(fnDetails.get(1).getChildren());
+                params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
+                fnReturnType = typeMappings.get(fnDetails.get(2).getName());
+                body = fnDetails.get(3);
+                break;
+        }
+        for (Symbol param : params) {
+            symbolTable.insert(param);
+        }
+        analyze(body, false, true, fnReturnType);
+        symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
+        if (fnReturnType != NodeType.NONE && !functionReturns(body, fnReturnType))
+            throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
+        symbolTable.leaveScope();
+    }
+
+    private void handleWhileLoop(AbstractSyntaxTree loopNode, boolean inFunc, NodeType returnType) {
+        // check loop signature
+        NodeType condition = evaluateType(loopNode.getChildren().get(0));
+        if (condition != NodeType.BOOLEAN) {
+            throw new TypeError("While loop condition must evaluate to boolean but instead was " + condition, loopNode.getLineNumber());
+        }
+        // analyze body
+        AbstractSyntaxTree body = loopNode.getChildren().get(1);
+        if (body.getLabel().equals("BLOCK-BODY")) {
+            loopHasControlFlow(body); // this will check for unreachable code
+            symbolTable.enterScope();
+            analyze(body, true, inFunc, returnType);
+            symbolTable.leaveScope();
+        }
+    }
+
+    private void handleForLoop(AbstractSyntaxTree loopNode, boolean inFunc, NodeType returnType) {
+        int scope = symbolTable.enterScope();
+            int lineNum = loopNode.getLineNumber();
+            List<AbstractSyntaxTree> loopDetails = loopNode.getChildren();
+            int length = loopDetails.size();
+            AbstractSyntaxTree body = null;
+            switch (length) {
+                case 3: // for (float element : array) {}
+                    if (!loopDetails.get(0).getLabel().equals("VAR-DECL"))
+                        throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
+                    if (loopDetails.get(0).countChildren() != 2)
+                        throw new IllegalStatementError("Loop variable must be non-constant and not-initialized", lineNum);
+                    Symbol loopVar = new Symbol(loopDetails.get(0), scope);
+                    NodeType loopVarType = typeMappings.get(loopVar.getType().getName());
+
+                    Symbol container = symbolTable.lookup(loopDetails.get(1).getValue());
+                    if (container == null)
+                        throw new ReferenceError("Variable " + loopDetails.get(1).getValue() + " used before being defined in current scope", lineNum);
+                    NodeType containerType = typeMappings.get(container.getType().getName());
+                    if (containerType != NodeType.ARRAY && containerType != NodeType.STRING)
+                        throw new TypeError("Cannot use for (each) loop on non-container type: " + containerType, lineNum);
+
+                    if (loopVarType != NodeType.STRING && containerType == NodeType.STRING) {
+                        throw new TypeError("Cannot loop over string with type " + loopVarType, lineNum);
+                    }
+                    symbolTable.insert(loopVar);
+                    body = loopDetails.get(2);
+                    break;
+                case 4: // for (int i = 0; i < 10; i++) {}
+                    NodeType varType;
+                    if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
+                        Symbol symbol = new Symbol(loopDetails.get(0), scope);
+                        varType = typeMappings.get(symbol.getType().getName());
+                        if (loopDetails.get(0).countChildren() != 3)
+                            throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
+                        symbolTable.insert(symbol);
+                    }
+                    else if (loopDetails.get(0).getValue().equals("=")) {
+                        Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
+                        if (symbol == null)
+                            throw new ReferenceError("Variable " + loopDetails.get(0).getValue() + " used before being defined in current scope", lineNum);
+                        varType = typeMappings.get(symbol.getType().getName());
+                        validateAssignment(loopDetails.get(1));
+                    }
+                    else {
+                        throw new IllegalStatementError("For loop must start with variable declaration or assignment", lineNum);
+                    }
+                    if (evaluateType(loopDetails.get(1)) != NodeType.BOOLEAN)
+                        throw new IllegalStatementError("Middle for loop expression must be boolean", lineNum);
+                    NodeType thirdPartType = evaluateType(loopDetails.get(2));
+                    if (varType != thirdPartType)
+                        throw new IllegalStatementError("End for loop expression must match type " + varType + " but was " + thirdPartType, lineNum);
+                    body = loopDetails.get(3);
+                    break;
+            }
+            analyze(body, true, inFunc, returnType);
+            symbolTable.leaveScope();
     }
 
     private void validateReturn(AbstractSyntaxTree controlFlow, NodeType returnType) {
@@ -402,24 +441,6 @@ public class SemanticAnalyzer {
         if (!node.getLabel().equals("CONTROL-FLOW"))
             return false;
         return node.getChildren().get(0).getName() == TokenType.KW_RET;
-    }
-
-    private void handleVariableDeclaration(AbstractSyntaxTree node) {
-        int scope = symbolTable.getScopeLevel();
-        List<AbstractSyntaxTree> details = node.getChildren();
-        int offset = 0;
-        if (details.get(0).getName() == TokenType.KW_CONST) {
-            offset++;
-            if (node.countChildren() != 4)
-                throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
-        }
-        if (node.countChildren() == offset + 3) {
-            NodeType rhsType = evaluateType(details.get(offset + 2));
-            NodeType lhsType = typeMappings.get(details.get(offset).getName());
-            if (lhsType != rhsType && rhsType != NodeType.NULL)
-                throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
-        }
-        symbolTable.insert(new Symbol(node, scope));
     }
 
     private Symbol[] paramsToSymbols(List<AbstractSyntaxTree> params, int scope) {

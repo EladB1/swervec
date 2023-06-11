@@ -237,6 +237,11 @@ public class Lexer {
                 i += 2;
                 continue;
             }
+            if (currentChar == '/' && nextChar == '*' && state != LexerState.IN_MULTILINE_COMMENT) {
+                setState(LexerState.IN_MULTILINE_COMMENT);
+                if (!line.contains("*/"))
+                    return tokens;
+            }
             if (currentChar == '"' && state != LexerState.IN_MULTILINE_STRING) {
                 i = enterStringStateAndMovePosition(line, i, lineNumber);
                 continue;
@@ -263,11 +268,6 @@ public class Lexer {
                         clearState();
                         return tokens; // end the line at an inline comment
                     }
-                    if (currentSequence.toString().equals("/*")) {
-                        setState(LexerState.IN_MULTILINE_COMMENT);
-                        if (!line.contains("*/"))
-                            return tokens;
-                    }
                     if (currentSequence.toString().equals(">") && nextChar == '>') {
                         tokens.add(new VariableToken(TokenType.OP, ">"));
                         currentSequence = new StringBuilder();
@@ -279,12 +279,13 @@ public class Lexer {
                 case IN_MULTILINE_COMMENT:
                     if (!line.contains("*/"))
                         return tokens;
-                    i = line.startsWith("*/") ? 2 : line.indexOf("*/") + 1;
+                    if (line.endsWith("*/")) {
+                        clearState();
+                        return tokens;
+                    }
+                    i = line.startsWith("*/") ? 2 : line.indexOf("*/") + 2;
                     if (i > 0) {
                         clearState();
-                        if (line.endsWith("*/")) {
-                            return tokens;
-                        }
                         continue;
                     }
                     break;
