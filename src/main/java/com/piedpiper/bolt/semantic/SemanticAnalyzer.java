@@ -423,6 +423,19 @@ public class SemanticAnalyzer {
 
     private void handleVariableDeclaration(AbstractSyntaxTree node) {
         int scope = symbolTable.getScopeLevel();
+        List<AbstractSyntaxTree> details = node.getChildren();
+        int offset = 0;
+        if (details.get(0).getName() == TokenType.KW_CONST) {
+            offset++;
+            if (node.countChildren() != 4)
+                throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
+        }
+        if (node.countChildren() == offset + 3) {
+            NodeType rhsType = evaluateType(details.get(offset + 2));
+            NodeType lhsType = typeMappings.get(details.get(offset).getName());
+            if (lhsType != rhsType && rhsType != NodeType.NULL)
+                throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
+        }
         symbolTable.insert(new Symbol(node, scope));
     }
 
@@ -588,7 +601,7 @@ public class SemanticAnalyzer {
             }
             matchingDefinition = symbolTable.lookup(name, types);
             if (matchingDefinition == null)
-                throw new ReferenceError("Could not find definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
+                throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
             return matchingDefinition.getReturnType();
         }
         // TODO: handle array literals
