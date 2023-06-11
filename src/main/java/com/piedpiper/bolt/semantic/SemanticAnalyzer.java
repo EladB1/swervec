@@ -34,18 +34,6 @@ public class SemanticAnalyzer {
         entry(TokenType.KW_NULL, NodeType.NULL)
     );
 
-    /**
-     * Try to do as much as possible at compile time but defer some checks to runtime
-     * Need to check each expression for type
-     * Need to check different parts of expressions
-     *  i.e. check operand types of binary expressions
-     * Certain parts of the code must resolve to a certain type (array indices must be ints, conditionals must be booleans)
-     * function calls must resolve to a signature with matching types
-     * array elements must contain n elements of a type matching its declaration
-     * Must resolve types of all literals, variables, array indices, and function calls
-     * Must check the array bounds
-     * Need to check variable assignments/declarations match the type on both sides of the equals operator
-    */
     private void emitWarning(String message) {
         System.out.println("Warning: " + message);
     }
@@ -84,11 +72,6 @@ public class SemanticAnalyzer {
         return typeMappings.containsKey(node.getName());
     }
 
-    // use analyze() to handle bodies of different structures (program, function, loop, conditional)
-    // this should handle nesting and embedded elements
-    // will be recursive
-    // should return true if a return is found in the specific block (with right context and positioning)
-
     public void analyze(AbstractSyntaxTree AST) {
         analyze(AST, false, false, NodeType.NONE);
     }
@@ -106,10 +89,8 @@ public class SemanticAnalyzer {
                     TokenType loopControl = getControlFlowType(subTree.getChildren().get(0));
                     throw new IllegalStatementError("Cannot use " + loopControl  + " outside of a loop");
                 }
-
             }
 
-            // TODO: handle conditionals, loops, and functions then recurse
             // conditional
             else if (subTree.getLabel().equals("COND")) {
                 List<AbstractSyntaxTree> conditionals = subTree.getChildren();
@@ -303,13 +284,11 @@ public class SemanticAnalyzer {
                 for (Symbol param : params) {
                     symbolTable.insert(param);
                 }
-                //symbolTable.enterScope(); // enter function body scope
                 analyze(body, inLoop, true, fnReturnType);
                 symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
                 if (fnReturnType != NodeType.NONE && !functionReturns(body, fnReturnType))
                     throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", subTree.getLineNumber());
                 symbolTable.leaveScope();
-                //symbolTable.leaveScope();
             }
             else {
                 evaluateType(subTree);
@@ -324,12 +303,7 @@ public class SemanticAnalyzer {
                 return;
             else {
                 AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
-                if (returnValue.getName() == TokenType.KW_NULL)
-                    return;
-                else {
-                    NodeType type = evaluateType(returnValue);
-                    throw new TypeError("Cannot return " + type + " from void function", returnValue.getLineNumber());
-                }
+                throw new TypeError("Cannot return value from void function", returnValue.getLineNumber());
             }
 
         }
@@ -584,23 +558,20 @@ public class SemanticAnalyzer {
             return NodeType.BOOLEAN;
         if (node.getName() == TokenType.KW_NULL)
             return NodeType.NULL;
-        //if (node.getToken() != null) {
-            if (nonEqualityComparisons.contains(node.getValue()))
-                return handleComparison(node);
-            if (node.getValue().equals("==") || node.getValue().equals("!="))
-                return handleEqualityComparison(node);
-            if (arithmeticOperators.contains(node.getValue()))
-                return handleArithmetic(node);
-            if (node.getValue().equals("&") || node.getValue().equals("^"))
-                return handleBitwise(node);
-            if (node.getValue().equals("*"))
-                return handleMultiplication(node);
-            if (node.getValue().equals("+"))
-                return handleAddition(node);
-            if (assignmentOperators.contains(node.getValue()))
-                validateAssignment(node);
-        //}
-
+        if (nonEqualityComparisons.contains(node.getValue()))
+            return handleComparison(node);
+        if (node.getValue().equals("==") || node.getValue().equals("!="))
+            return handleEqualityComparison(node);
+        if (arithmeticOperators.contains(node.getValue()))
+            return handleArithmetic(node);
+        if (node.getValue().equals("&") || node.getValue().equals("^"))
+            return handleBitwise(node);
+        if (node.getValue().equals("*"))
+            return handleMultiplication(node);
+        if (node.getValue().equals("+"))
+            return handleAddition(node);
+        if (assignmentOperators.contains(node.getValue()))
+            validateAssignment(node);
         if (node.getLabel().equals("UNARY-OP"))
             return handleUnaryOp(node);
         if (node.getLabel().equals("FUNC-CALL")) {

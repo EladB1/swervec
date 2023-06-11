@@ -37,7 +37,7 @@ public class Parser {
      * BLOCK-BODY ::= CONTROL-FLOW / STMNT
      * LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
      * WHILE-LOOP ::= "while" "(" EXPR ")"
-     * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ( ";" EXPR ";" EXPR )? ) / TYPE ID : EXPR ) ")"
+     * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ";" EXPR ";" EXPR ) / TYPE ID : EXPR ) ")"
      * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
      * FUNC-PARAM ::= TYPE ID
      * ARRAY-TYPE ::= "Array" "<" TYPE ">"
@@ -516,7 +516,7 @@ public class Parser {
         return node;
     }
 
-    // FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ( ";" EXPR ";" EXPR )? ) / TYPE ID : EXPR ) ")"
+    // FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ";" EXPR ";" EXPR ) / TYPE ID : EXPR ) ")"
     private AbstractSyntaxTree parseForLoop() {
         AbstractSyntaxTree node = parseExpectedToken(TokenType.KW_FOR, current);
         parseExpectedToken(TokenType.LEFT_PAREN, current);
@@ -551,17 +551,17 @@ public class Parser {
             );
         }
         else {
-           node.appendChildren(
-               isPrimitiveType(current)
-               ? parseVariableDeclaration()
-               : parseVariableAssignment()
-           );
-            if (current.getName() == TokenType.SC) {
-                parseExpectedToken(TokenType.SC, current);
-                node.appendChildren(parseExpr());
-                parseExpectedToken(TokenType.SC, current);
-                node.appendChildren(parseExpr());
-            }
+            node.appendChildren(
+                isPrimitiveType(current)
+                ? parseVariableDeclaration()
+                : parseVariableAssignment()
+            );
+
+            parseExpectedToken(TokenType.SC, current);
+            node.appendChildren(parseExpr());
+            parseExpectedToken(TokenType.SC, current);
+            node.appendChildren(parseExpr());
+
         }
         parseExpectedToken(TokenType.RIGHT_PAREN, current);
         return node;

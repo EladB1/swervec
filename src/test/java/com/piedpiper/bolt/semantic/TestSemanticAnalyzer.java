@@ -322,7 +322,8 @@ public class TestSemanticAnalyzer {
             ))
         ));
         NodeType expectedReturnType = NodeType.NONE;
-        assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        assertEquals("Cannot return value from void function", error.getMessage());
     }
 
     @Test
@@ -340,7 +341,7 @@ public class TestSemanticAnalyzer {
 
         NodeType expectedReturnType = NodeType.NONE;
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
-        assertEquals("Cannot return INT from void function", error.getMessage());
+        assertEquals("Cannot return value from void function", error.getMessage());
     }
 
     @Test
