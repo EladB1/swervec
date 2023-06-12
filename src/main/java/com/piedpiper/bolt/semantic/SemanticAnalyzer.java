@@ -752,21 +752,28 @@ public class SemanticAnalyzer {
         }
         else if (leftType.isType(NodeType.STRING) && rightType.isType(NodeType.STRING))
             return new EntityType(NodeType.STRING);
-        // TODO: handle arrays
+        else if (leftType.startsWith(NodeType.ARRAY) && rightType.startsWith(NodeType.ARRAY)) {
+            if (leftType.equals(rightType))
+                return leftType;
+            if (leftType.containsSubType(rightType))
+                return leftType;
+            if (rightType.containsSubType(leftType))
+                return rightType;
+        }
         throw new TypeError("Cannot add " + leftType + " with " + rightType, rootNode.getLineNumber());
     }
 
     private EntityType handleEqualityComparison(AbstractSyntaxTree rootNode) {
-        // TODO: handle arrays
         EntityType leftType = evaluateType(rootNode.getChildren().get(0));
         EntityType rightType = evaluateType(rootNode.getChildren().get(1));
         if (
-            leftType == rightType
+            leftType.equals(rightType)
             || (leftType.isType(NodeType.NULL) || rightType.isType(NodeType.NULL))
             || (
                 (leftType.isType(NodeType.INT) && rightType.isType(NodeType.FLOAT))
                 || (leftType.isType(NodeType.FLOAT) && rightType.isType(NodeType.INT))
             )
+            || (leftType.startsWith(NodeType.ARRAY) && rightType.startsWith(NodeType.ARRAY))
         )
             return new EntityType(NodeType.BOOLEAN);
         throw new TypeError("Cannot check for equality between " + leftType + " and " + rightType, rootNode.getLineNumber());
@@ -787,7 +794,6 @@ public class SemanticAnalyzer {
             if (symbolTable.lookup(right.getValue()).getValueNodes() == null)
                 throw new IllegalStatementError("Can only increment/decrement initialized variables using operator " + left.getValue(), left.getLineNumber());
             if (rightType.isType(NodeType.INT) || rightType.isType(NodeType.FLOAT)) {
-                // TODO: handle array indexes
                 if (right.getName() != TokenType.ID)
                     throw new ReferenceError("Cannot perform prefix expression(" + left.getValue() + ") on " + right.getName(), left.getLineNumber());
                 return rightType;
