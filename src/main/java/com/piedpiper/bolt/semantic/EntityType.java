@@ -58,13 +58,8 @@ public class EntityType {
         }
     }
 
-    public void addType(EntityType entityType) {
-        type.addAll(entityType.getType());
-    }
-
     public boolean isSubType(EntityType entityType) {
         List<NodeType> typeList = entityType.getType();
-        System.out.println(typeList + ": " + type);
         if (type.size() < typeList.size())
             return false;
         for (int i = 0; i < typeList.size(); i++) {
