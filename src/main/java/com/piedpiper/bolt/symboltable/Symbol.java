@@ -2,6 +2,8 @@ package com.piedpiper.bolt.symboltable;
 
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
+import com.piedpiper.bolt.semantic.EntityType;
+
 import lombok.Data;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +17,7 @@ public class Symbol {
     @NonNull
     private String name;
     @NonNull
-    private AbstractSyntaxTree type;
+    private EntityType type;
     @NonNull
     private Integer scope;
     private boolean isConstant = false;
@@ -26,20 +28,20 @@ public class Symbol {
     public Symbol(AbstractSyntaxTree node, Integer scope) {
         this.scope = scope;
         List<AbstractSyntaxTree> children = node.getChildren();
-        this.isConstant = children.get(0).getToken().getName() == TokenType.KW_CONST;
+        this.isConstant = children.get(0).getName() == TokenType.KW_CONST;
         int offset = isConstant ? 1 : 0;
         if (node.getLabel().equals("VAR-DECL")) {
-            this.type = children.get(offset);
-            this.name = children.get(offset + 1).getToken().getValue();
+            this.type = new EntityType(children.get(offset));
+            this.name = children.get(offset + 1).getValue();
             if (children.size() == offset + 3)
                 this.valueNodes = children.get(offset + 2);
         }
         else if (node.getLabel().equals("ARRAY-DECL")) {
-            this.isMutableArray = children.get(offset).getToken().getName() == TokenType.KW_MUT;
+            this.isMutableArray = children.get(offset).getName() == TokenType.KW_MUT;
             if (isMutableArray)
                 offset++;
-            this.type = children.get(offset);
-            this.name = children.get(offset + 1).getToken().getValue();
+            this.type = new EntityType(children.get(offset));
+            this.name = children.get(offset + 1).getValue();
             if (isConstant && !isMutableArray) {
                 // handle potential dynamic array sizing
                 if (children.get(offset + 2).getLabel().equals("ARRAY-INDEX")) {
@@ -64,8 +66,8 @@ public class Symbol {
             }
         }
         else if (node.getLabel().equals("FUNC-PARAM")) {
-            this.type = children.get(0);
-            this.name = children.get(1).getToken().getValue();
+            this.type = new EntityType(children.get(0));
+            this.name = children.get(1).getValue();
         }
     }
 }

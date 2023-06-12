@@ -1,7 +1,7 @@
 package com.piedpiper.bolt.symboltable;
 
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
-import com.piedpiper.bolt.semantic.NodeType;
+import com.piedpiper.bolt.semantic.EntityType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NonNull;
@@ -23,8 +23,8 @@ valid function cases:
 public class FunctionSymbol {
     @NonNull
     private String name;
-    private NodeType returnType = null; // need to handle complex return values like Array<Array<int>>
-    private NodeType[] paramTypes = {};
+    private EntityType returnType = null; // need to handle complex return values like Array<Array<int>>
+    private EntityType[] paramTypes = {};
 
     private AbstractSyntaxTree fnBodyNode = null;
 
@@ -34,24 +34,24 @@ public class FunctionSymbol {
         this.fnBodyNode = fnBodyNode;
     }
 
-    public FunctionSymbol(String name, NodeType returnType, AbstractSyntaxTree fnBodyNode) {
+    public FunctionSymbol(String name, EntityType returnType, AbstractSyntaxTree fnBodyNode) {
         this.name = name;
         this.returnType = returnType;
         this.fnBodyNode = fnBodyNode;
     }
 
-    public FunctionSymbol(String name, NodeType[] paramTypes) {
+    public FunctionSymbol(String name, EntityType[] paramTypes) {
         this.name = name;
         this.paramTypes = paramTypes;
     }
 
-    public FunctionSymbol(String name, NodeType[] paramTypes, AbstractSyntaxTree fnBodyNode) {
+    public FunctionSymbol(String name, EntityType[] paramTypes, AbstractSyntaxTree fnBodyNode) {
         this.name = name;
         this.paramTypes = paramTypes;
         this.fnBodyNode = fnBodyNode;
     }
 
-    public FunctionSymbol(String name, NodeType[] paramTypes, NodeType returnType, AbstractSyntaxTree fnBodyNode) {
+    public FunctionSymbol(String name, EntityType[] paramTypes, EntityType returnType, AbstractSyntaxTree fnBodyNode) {
         this.name = name;
         this.paramTypes = paramTypes;
         this.returnType = returnType;

@@ -32,7 +32,7 @@ public class ArrayChecks {
 
     private static List<List<Integer>> getAllArraySizes(AbstractSyntaxTree arrayNode, List<List<Integer>> sizes, int index) {
         int depth = getMaxDepth(arrayNode);
-        List<Integer> topLevel = List.of(arrayNode.getChildren().size());
+        List<Integer> topLevel = List.of(arrayNode.countChildren());
         if (depth == 1)
             return List.of(topLevel);
         if (sizes.isEmpty()) {

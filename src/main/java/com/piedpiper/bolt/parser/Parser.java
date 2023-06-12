@@ -37,7 +37,7 @@ public class Parser {
      * BLOCK-BODY ::= CONTROL-FLOW / STMNT
      * LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
      * WHILE-LOOP ::= "while" "(" EXPR ")"
-     * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ( ";" EXPR ";" EXPR )? ) / TYPE ID : EXPR ) ")"
+     * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ";" EXPR ";" EXPR ) / TYPE ID : EXPR ) ")"
      * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
      * FUNC-PARAM ::= TYPE ID
      * ARRAY-TYPE ::= "Array" "<" TYPE ">"
@@ -269,7 +269,7 @@ public class Parser {
 
     // UNARY-OP ::= LEFT-UNARY-OP / ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) ( "++" / "--" )
     private AbstractSyntaxTree parseUnaryOp() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP", current.getLineNumber());
         if (leftUnaryOps.contains(current.getValue()))
             return parseLeftUnaryOp();
         else {
@@ -289,7 +289,7 @@ public class Parser {
 
     // LEFT-UNARY-OP ::= ( "++" / "--" / "-" ) ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) / "!" (BOOLEAN / ID / ARRAY-ACCESS / FUNC-CALL)
     private AbstractSyntaxTree parseLeftUnaryOp() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP", current.getLineNumber());
         if (current.getValue().equals("++") || current.getValue().equals("--") || current.getValue().equals("-")) {
             node.appendChildren(parseExpectedToken(current.getValue(), current));
             if (isNumber(current))
@@ -329,7 +329,7 @@ public class Parser {
 
     // TERNARY ::= LOGICAL-OR "?" EXPR ":" EXPR
     private AbstractSyntaxTree parseTernary(AbstractSyntaxTree parsedLogicalOr) {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("TERNARY", List.of(parsedLogicalOr));
+        AbstractSyntaxTree node = new AbstractSyntaxTree("TERNARY", current.getLineNumber(), List.of(parsedLogicalOr));
         parseExpectedToken("?", current);
         node.appendChildren(parseExpr());
         parseExpectedToken(TokenType.COLON, current);
@@ -365,9 +365,9 @@ public class Parser {
 
     // FUNC-CALL ::= ID ( ( "(" (EXPR ("," EXPR)* )? ")" )
     private AbstractSyntaxTree parseFunctionCall() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("FUNC-CALL", List.of(parseExpectedToken(TokenType.ID, current)));
+        AbstractSyntaxTree node = new AbstractSyntaxTree("FUNC-CALL", current.getLineNumber(), List.of(parseExpectedToken(TokenType.ID, current)));
         parseExpectedToken(TokenType.LEFT_PAREN, current);
-        AbstractSyntaxTree params = new AbstractSyntaxTree("FUNC-PARAMS");
+        AbstractSyntaxTree params = new AbstractSyntaxTree("FUNC-PARAMS", current.getLineNumber());
         if (current.getName() != TokenType.RIGHT_PAREN) {
             params.appendChildren(parseExpr());
             while (current.getName() != TokenType.RIGHT_PAREN) {
@@ -406,7 +406,7 @@ public class Parser {
 
     // ARRAY-INDEX ::= ( "[" EXPR "]" )+
     private AbstractSyntaxTree parseArrayIndex() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-INDEX");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-INDEX", current.getLineNumber());
         if (!atEnd() && current.getName() != TokenType.LEFT_SQB)
             throw formComplaint("LEFT_SQB", current);
         parseExpectedToken(TokenType.LEFT_SQB, current);
@@ -419,7 +419,7 @@ public class Parser {
 
     // ARRAY-LIT ::= "{" (EXPR ("," EXPR)* )? "}"
     private AbstractSyntaxTree parseArrayLiteral() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-LIT");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-LIT", current.getLineNumber());
         parseExpectedToken(TokenType.LEFT_CB, current);
         if (current.getName() != TokenType.RIGHT_CB && current.getName() != TokenType.COMMA) {
             node.appendChildren(parseExpr());
@@ -434,7 +434,7 @@ public class Parser {
 
     // COND ::= IF ( ELSEIF )* ( ELSE )?
     private AbstractSyntaxTree parseConditional() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("COND", List.of(parseIf()));
+        AbstractSyntaxTree node = new AbstractSyntaxTree("COND", current.getLineNumber(), List.of(parseIf()));
         if (current.getName() == TokenType.KW_ELSE && next != null && next.getName() == TokenType.KW_IF) {
             while(current.getName() == TokenType.KW_ELSE && next != null && next.getName() == TokenType.KW_IF) {
                 node.appendChildren(parseElseIf());
@@ -457,7 +457,7 @@ public class Parser {
 
     // ELSEIF ::= "else" "if" "(" EXPR ")" COND-BODY
     private AbstractSyntaxTree parseElseIf() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("ELSE IF");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("ELSE IF", current.getLineNumber());
         parseExpectedToken(TokenType.KW_ELSE, current);
         parseExpectedToken(TokenType.KW_IF, current);
         parseExpectedToken(TokenType.LEFT_PAREN, current);
@@ -476,7 +476,7 @@ public class Parser {
 
     // COND-BODY = ( ( "{" ( BLOCK-BODY )* "}" ) / BLOCK-BODY )
     private AbstractSyntaxTree parseConditionalBody() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("BLOCK-BODY");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber());
         if (current.getName() == TokenType.LEFT_CB) {
             parseExpectedToken(TokenType.LEFT_CB, current);
             while (current.getName() != TokenType.RIGHT_CB) {
@@ -485,7 +485,7 @@ public class Parser {
             parseExpectedToken(TokenType.RIGHT_CB, current);
         }
         else
-            return new AbstractSyntaxTree("BLOCK-BODY", List.of(parseBlockBody()));
+            return new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber(), List.of(parseBlockBody()));
         return node;
     }
 
@@ -497,7 +497,7 @@ public class Parser {
     // LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
     private AbstractSyntaxTree parseLoop() {
         AbstractSyntaxTree node = current.getName() == TokenType.KW_FOR ? parseForLoop() : parseWhileLoop();
-        AbstractSyntaxTree bodyNode = new AbstractSyntaxTree("BLOCK-BODY");
+        AbstractSyntaxTree bodyNode = new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber());
         parseExpectedToken(TokenType.LEFT_CB, current);
         while (current.getName() != TokenType.RIGHT_CB) {
             bodyNode.appendChildren(parseBlockBody());
@@ -516,7 +516,7 @@ public class Parser {
         return node;
     }
 
-    // FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ( ";" EXPR ";" EXPR )? ) / TYPE ID : EXPR ) ")"
+    // FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ";" EXPR ";" EXPR ) / TYPE ID : EXPR ) ")"
     private AbstractSyntaxTree parseForLoop() {
         AbstractSyntaxTree node = parseExpectedToken(TokenType.KW_FOR, current);
         parseExpectedToken(TokenType.LEFT_PAREN, current);
@@ -540,7 +540,7 @@ public class Parser {
             lookAheadPosition++;
         }
         if (isForEach) {
-            AbstractSyntaxTree varNode = new AbstractSyntaxTree("VAR-DECL", List.of(
+            AbstractSyntaxTree varNode = new AbstractSyntaxTree("VAR-DECL", current.getLineNumber(), List.of(
                 parseType(),
                 parseExpectedToken(TokenType.ID, current)
             ));
@@ -551,17 +551,17 @@ public class Parser {
             );
         }
         else {
-           node.appendChildren(
-               isPrimitiveType(current)
-               ? parseVariableDeclaration()
-               : parseVariableAssignment()
-           );
-            if (current.getName() == TokenType.SC) {
-                parseExpectedToken(TokenType.SC, current);
-                node.appendChildren(parseExpr());
-                parseExpectedToken(TokenType.SC, current);
-                node.appendChildren(parseExpr());
-            }
+            node.appendChildren(
+                isPrimitiveType(current)
+                ? parseVariableDeclaration()
+                : parseVariableAssignment()
+            );
+
+            parseExpectedToken(TokenType.SC, current);
+            node.appendChildren(parseExpr());
+            parseExpectedToken(TokenType.SC, current);
+            node.appendChildren(parseExpr());
+
         }
         parseExpectedToken(TokenType.RIGHT_PAREN, current);
         return node;
@@ -573,7 +573,7 @@ public class Parser {
         AbstractSyntaxTree functionNameNode = parseExpectedToken(TokenType.ID, current);
         node.appendChildren(functionNameNode);
         parseExpectedToken(TokenType.LEFT_PAREN, current);
-        AbstractSyntaxTree paramsNode = new AbstractSyntaxTree("FUNC-PARAMS");
+        AbstractSyntaxTree paramsNode = new AbstractSyntaxTree("FUNC-PARAMS", current.getLineNumber());
         if (current.getName() != TokenType.RIGHT_PAREN) {
             paramsNode.appendChildren(parseFunctionParameter());
         }
@@ -590,7 +590,7 @@ public class Parser {
         }
         parseExpectedToken(TokenType.LEFT_CB, current);
         if (current.getName() != TokenType.RIGHT_CB) {
-            AbstractSyntaxTree bodyNode = new AbstractSyntaxTree("BLOCK-BODY");
+            AbstractSyntaxTree bodyNode = new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber());
             while(current.getName() != TokenType.RIGHT_CB) {
                 bodyNode.appendChildren(parseBlockBody());
             }
@@ -603,7 +603,7 @@ public class Parser {
 
     // FUNC-PARAM ::= TYPE ID
     private AbstractSyntaxTree parseFunctionParameter() {
-        return new AbstractSyntaxTree("FUNC-PARAM", List.of(
+        return new AbstractSyntaxTree("FUNC-PARAM", current.getLineNumber(), List.of(
             parseType(),
             parseExpectedToken(TokenType.ID, current)
         ));
@@ -620,7 +620,7 @@ public class Parser {
 
     // IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" EXPR
     private AbstractSyntaxTree parseImmutableArrayDeclaration() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-DECL", List.of(
+        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-DECL", current.getLineNumber(), List.of(
             parseExpectedToken(TokenType.KW_CONST, current),
             parseArrayType(),
             parseExpectedToken(TokenType.ID, current)
@@ -639,7 +639,7 @@ public class Parser {
 
     // ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
     private AbstractSyntaxTree parseArrayDeclaration() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-DECL");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-DECL", current.getLineNumber());
         if (current.getName() == TokenType.KW_CONST) {
             if (next != null && next.getName() == TokenType.KW_MUT) {
                 node.appendChildren(
@@ -660,7 +660,7 @@ public class Parser {
 
     // VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
     private AbstractSyntaxTree parseVariableDeclaration() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("VAR-DECL");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("VAR-DECL", current.getLineNumber());
         boolean isConst = false;
         if (current.getName() == TokenType.KW_CONST) {
             isConst = true;
@@ -717,7 +717,7 @@ public class Parser {
 
     // CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
     private AbstractSyntaxTree parseControlFlow() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("CONTROL-FLOW");
+        AbstractSyntaxTree node = new AbstractSyntaxTree("CONTROL-FLOW", current.getLineNumber());
         if (current.getName() == TokenType.KW_CNT || current.getName() == TokenType.KW_BRK) {
             node.appendChildren(parseExpectedToken(current.getName(), current));
         }

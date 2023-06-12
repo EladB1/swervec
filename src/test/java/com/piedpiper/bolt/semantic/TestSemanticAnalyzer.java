@@ -31,13 +31,15 @@ public class TestSemanticAnalyzer {
 
     @Test
     void test_semanticAnalyzer_varDecl_noValue() {
-        AbstractSyntaxTree AST = AbstractSyntaxTree.createNestedTree(List.of(intTypeToken, genericVarToken), "PROGRAM", "VAR-DECL");
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree("VAR-DECL", intTypeToken, genericVarToken)
+        ));
         assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
     }
 
     @Test
     void test_semanticAnalyzer_varDecl_sameNameSameScope() {
-        AbstractSyntaxTree varDeclaration = AbstractSyntaxTree.createNestedTree(List.of(intTypeToken, genericVarToken), "VAR-DECL");
+        AbstractSyntaxTree varDeclaration = new AbstractSyntaxTree("VAR-DECL", intTypeToken, genericVarToken);
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(varDeclaration, varDeclaration));
         NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));
         assertEquals("Symbol 'var' is already defined in this scope", error.getMessage());
@@ -51,7 +53,7 @@ public class TestSemanticAnalyzer {
             numNode,
             numNode //new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"2\""))
         ));
-        assertEquals(NodeType.BOOLEAN, semanticAnalyzer.evaluateType(AST));
+        assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.BOOLEAN));
     }
 
     @ParameterizedTest
@@ -61,7 +63,7 @@ public class TestSemanticAnalyzer {
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, value1)),
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, value2))
         ));
-        assertEquals(NodeType.BOOLEAN, semanticAnalyzer.evaluateType(AST));
+        assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.BOOLEAN));
     }
 
     @Test
@@ -91,7 +93,7 @@ public class TestSemanticAnalyzer {
     @MethodSource("bitwiseProvider")
     void test_evaluateType_bitwise_simple(AbstractSyntaxTree left, AbstractSyntaxTree right) {
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "^"), List.of(left, right));
-        assertEquals(NodeType.INT, semanticAnalyzer.evaluateType(AST));
+        assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.INT));
     }
 
     @Test
@@ -105,7 +107,7 @@ public class TestSemanticAnalyzer {
                 numNode
             ))
         ));
-        assertEquals(NodeType.INT, semanticAnalyzer.evaluateType(AST));
+        assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.INT));
     }
 
     @Test
@@ -135,7 +137,7 @@ public class TestSemanticAnalyzer {
     @MethodSource("multiplicationOperatorProvider")
     void test_evaluateType_multiplicationOperator_simple(AbstractSyntaxTree left, AbstractSyntaxTree right, NodeType expectedType) {
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), List.of(left, right));
-        assertEquals(expectedType, semanticAnalyzer.evaluateType(AST));
+        assertTrue(semanticAnalyzer.evaluateType(AST).isType(expectedType));
     }
 
     @Test
@@ -165,7 +167,7 @@ public class TestSemanticAnalyzer {
     @Test
     void test_estimateArrayTypes_emptyArray() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT");
-        assertEquals(List.of(NodeType.ARRAY), semanticAnalyzer.estimateArrayTypes(AST));
+        assertTrue(semanticAnalyzer.estimateArrayTypes(AST).isType(NodeType.ARRAY));
     }
 
     @Test
@@ -175,7 +177,7 @@ public class TestSemanticAnalyzer {
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
         ));
-        assertEquals(List.of(NodeType.ARRAY, NodeType.INT), semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(new EntityType(NodeType.ARRAY, NodeType.INT), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
     @Test
@@ -186,7 +188,7 @@ public class TestSemanticAnalyzer {
             new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL)),
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
         ));
-        assertEquals(List.of(NodeType.ARRAY, NodeType.INT), semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(new EntityType(NodeType.ARRAY, NodeType.INT), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
     @Test
@@ -199,7 +201,7 @@ public class TestSemanticAnalyzer {
             )),
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3.14"))
         ));
-        assertEquals(List.of(NodeType.ARRAY, NodeType.FLOAT), semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(new EntityType(NodeType.ARRAY, NodeType.FLOAT), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
     @Test
@@ -208,7 +210,7 @@ public class TestSemanticAnalyzer {
             new AbstractSyntaxTree("ARRAY-LIT"),
             new AbstractSyntaxTree("ARRAY-LIT")
         ));
-        assertEquals(List.of(NodeType.ARRAY, NodeType.ARRAY), semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(new EntityType(NodeType.ARRAY, NodeType.ARRAY), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
     @Test
@@ -231,7 +233,7 @@ public class TestSemanticAnalyzer {
                 ))
             ))
         ));
-        assertEquals(List.of(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.STRING), semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(new EntityType(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.STRING), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
     @Test
@@ -252,7 +254,7 @@ public class TestSemanticAnalyzer {
                 new AbstractSyntaxTree("ARRAY-LIT", List.of(trueNode))
             ))
         ));
-        assertEquals(List.of(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.BOOLEAN), semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(new EntityType(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.BOOLEAN), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
     @Test
@@ -290,7 +292,7 @@ public class TestSemanticAnalyzer {
                 new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
             ))
         ));
-        NodeType expectedReturnType = NodeType.NONE;
+        EntityType expectedReturnType = new EntityType(NodeType.NONE);
         assertFalse(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
@@ -303,7 +305,7 @@ public class TestSemanticAnalyzer {
             )),
             new AbstractSyntaxTree("CONTROL-FLOW", new StaticToken(TokenType.KW_RET))
         ));
-        NodeType expectedReturnType = NodeType.NONE;
+        EntityType expectedReturnType = new EntityType(NodeType.NONE);
         assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
@@ -319,8 +321,9 @@ public class TestSemanticAnalyzer {
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL))
             ))
         ));
-        NodeType expectedReturnType = NodeType.NONE;
-        assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        EntityType expectedReturnType = new EntityType(NodeType.NONE);
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
+        assertEquals("Cannot return value from void function", error.getMessage());
     }
 
     @Test
@@ -336,9 +339,9 @@ public class TestSemanticAnalyzer {
             ))
         ));
 
-        NodeType expectedReturnType = NodeType.NONE;
+        EntityType expectedReturnType = new EntityType(NodeType.NONE);
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
-        assertEquals("Cannot return INT from void function", error.getMessage());
+        assertEquals("Cannot return value from void function", error.getMessage());
     }
 
     @Test
@@ -353,7 +356,7 @@ public class TestSemanticAnalyzer {
             ))
         ));
 
-        NodeType expectedReturnType = NodeType.NONE;
+        EntityType expectedReturnType = new EntityType(NodeType.NONE);
         UnreachableCodeError error = assertThrows(UnreachableCodeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
         assertEquals("Unreachable statement following return", error.getMessage());
     }
@@ -370,7 +373,7 @@ public class TestSemanticAnalyzer {
             ))
         ));
 
-        NodeType expectedReturnType = NodeType.INT;
+        EntityType expectedReturnType = new EntityType(NodeType.INT);
         assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
@@ -383,7 +386,7 @@ public class TestSemanticAnalyzer {
             ))
         ));
 
-        NodeType expectedReturnType = NodeType.INT;
+        EntityType expectedReturnType = new EntityType(NodeType.INT);
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
         assertEquals("Expected INT to be returned but got STRING", error.getMessage());
     }
@@ -396,7 +399,7 @@ public class TestSemanticAnalyzer {
             ))
         ));
 
-        NodeType expectedReturnType = NodeType.INT;
+        EntityType expectedReturnType = new EntityType(NodeType.INT);
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
         assertEquals("Expected return type INT but didn't return a value", error.getMessage());
     }
@@ -405,7 +408,7 @@ public class TestSemanticAnalyzer {
     void test_functionReturns_nonVoidMissingReturn() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", new StaticToken(TokenType.KW_TRUE));
 
-        NodeType expectedReturnType = NodeType.INT;
+        EntityType expectedReturnType = new EntityType(NodeType.INT);
         assertFalse(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
@@ -430,7 +433,8 @@ public class TestSemanticAnalyzer {
                 ))
             ))
         ));
-        assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, NodeType.BOOLEAN));
+        EntityType expectedReturnType = new EntityType(NodeType.BOOLEAN);
+        assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, expectedReturnType));
     }
 
     @Test
@@ -446,7 +450,8 @@ public class TestSemanticAnalyzer {
                 ))
             ))
         ));
-        assertFalse(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, NodeType.BOOLEAN));
+        EntityType expectedReturnType = new EntityType(NodeType.BOOLEAN);
+        assertFalse(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, expectedReturnType));
     }
 
     /*
@@ -522,6 +527,7 @@ public class TestSemanticAnalyzer {
             ))
         ));
 
-        assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, NodeType.BOOLEAN));
+        EntityType expectedReturnType = new EntityType(NodeType.BOOLEAN);
+        assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, expectedReturnType));
     }
 }
