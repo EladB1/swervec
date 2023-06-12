@@ -10,6 +10,7 @@ import com.piedpiper.bolt.symboltable.FunctionSymbol;
 import com.piedpiper.bolt.symboltable.Symbol;
 import com.piedpiper.bolt.symboltable.SymbolTable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -42,7 +43,7 @@ public class SemanticAnalyzer {
     }
 
     private boolean isFloatLiteral(AbstractSyntaxTree node) {
-        return node.getName() == TokenType.NUMBER && node.getValue().contains(".");
+        return node.getName() == TokenType.NUMBER && (node.getValue().contains(".") || node.getValue().equals("0"));
     }
 
     private boolean isIntegerLiteral(AbstractSyntaxTree node) {
@@ -132,7 +133,60 @@ public class SemanticAnalyzer {
     }
 
     private void handleArrayDeclaration(AbstractSyntaxTree node) {
-
+        int scope = symbolTable.getScopeLevel();
+        List<AbstractSyntaxTree> details = node.getChildren();
+        int offset = 0;
+        int valueIndex = 0;
+        boolean isConstantImmutable = false;
+        EntityType literalType;
+        if (details.get(0).getName() == TokenType.KW_CONST) {
+            if (details.get(1).getName() == TokenType.KW_MUT)
+                offset = 2;
+            else {
+                offset = 1;
+                isConstantImmutable = true;
+            }
+        }
+        else if (details.get(0).getName() == TokenType.KW_MUT)
+            offset = 1;
+        EntityType declaredType = new EntityType(details.get(offset));
+        String name = details.get(offset + 1).getValue();
+        List<Integer> sizes = List.of(0);
+        if (isConstantImmutable) {
+            switch (details.size()) {
+                case 3:
+                    throw new IllegalStatementError("Constant immutable array " + name + " must be set to a value", node.getLineNumber());
+                case 4:
+                    if (details.get(3).getLabel().equals("ARRAY-INDEX"))
+                        throw new IllegalStatementError("Constant immutable array " + name + " must be set to a value", node.getLineNumber());
+                    valueIndex = 3;
+                    sizes = ArrayChecks.estimateArraySizes(details.get(3));
+                    literalType = estimateArrayTypes(details.get(3));
+                    if (!declaredType.containsSubType(literalType))
+                        throw new TypeError("Array literal type " + literalType + " does not match declared array type " + declaredType, node.getLineNumber());
+                    break;
+                case 5:
+                    valueIndex = 4;
+                    sizes = handleArraySizes(details.get(3));
+                    literalType = estimateArrayTypes(details.get(4));
+                    if (!declaredType.containsSubType(literalType))
+                        throw new TypeError("Array literal type " + literalType + " does not match declared array type " + declaredType, node.getLineNumber());
+                    break;
+            }
+        } else {
+            if (details.size() < offset + 3)
+                throw new IllegalStatementError("Array " + name + " missing size", node.getLineNumber());
+            sizes = handleArraySizes(details.get(offset + 2));
+            if (offset == 2 && details.size() < offset + 4)
+                throw new IllegalStatementError("Constant mutable array " + name + " missing value", node.getLineNumber());
+            if (details.size() == offset + 4) {
+                valueIndex = offset + 3;
+                literalType = estimateArrayTypes(details.get(offset + 3));
+                if (!declaredType.containsSubType(literalType))
+                    throw new TypeError("Array literal type " + literalType + " does not match declared array type " + declaredType, node.getLineNumber());
+            }
+        }
+        symbolTable.insert(new Symbol(node, sizes, declaredType, valueIndex, scope));
     }
 
     private void handleConditionalBlock(List<AbstractSyntaxTree> conditionals, boolean inLoop, boolean inFunc, EntityType returnType) {
@@ -236,6 +290,23 @@ public class SemanticAnalyzer {
         if (!fnReturnType.isType(NodeType.NONE) && !functionReturns(body, fnReturnType))
             throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
         symbolTable.leaveScope();
+    }
+
+    private List<Integer> handleArraySizes(AbstractSyntaxTree sizeNode) {
+        List<Integer> sizes = new ArrayList<>();
+        AbstractSyntaxTree current = sizeNode;
+        while (current.hasChildren()) {
+            if (!isIntegerLiteral(current.getChildren().get(0)) || current.getValue().equals("0"))
+                throw new IllegalStatementError("Array index must be a non-zero integer literal", current.getLineNumber());
+            sizes.add(Integer.valueOf(current.getChildren().get(0).getValue()));
+            if (current.getChildren().size() == 2)
+                current = current.getChildren().get(1);
+            else
+                break;
+        }
+        if (sizes.size() == 0)
+            throw new IllegalStatementError("Array sizes missing valid values", sizeNode.getLineNumber());
+        return sizes;
     }
 
     private void handleWhileLoop(AbstractSyntaxTree loopNode, boolean inFunc, EntityType returnType) {
@@ -483,12 +554,12 @@ public class SemanticAnalyzer {
             EntityType currentType = new EntityType(NodeType.NONE);
             for (int i = 1; i < children.size(); i++) {
                 if (isArrayLiteral(children.get(i)))
-                    throw new TypeError("Cannot mix non-array elements with nested array elements in array literal");
+                    throw new TypeError("Cannot mix non-array elements with nested array elements in array literal", node.getLineNumber());
                 currentType = evaluateType(children.get(i));
                 if (type.isType(NodeType.NULL) && !currentType.isType(NodeType.NULL))
                     type = currentType;
                 else if (!currentType.isType(NodeType.NULL) && !type.equals(currentType))
-                    throw new TypeError("Cannot mix " + type + " elements with " + currentType + " elements in array literal");
+                    throw new TypeError("Cannot mix " + type + " elements with " + currentType + " elements in array literal", node.getLineNumber());
             }
             return currentType.isType(NodeType.NULL) ? new EntityType(NodeType.ARRAY) : new EntityType(NodeType.ARRAY, type);
         }
@@ -507,19 +578,25 @@ public class SemanticAnalyzer {
         EntityType currentTypes;
         for (AbstractSyntaxTree child : children) {
             currentTypes = estimateArrayTypes(child);
-            if (!types.isSubType(currentTypes)) {
-                throw new TypeError("Cannot mix types of arrays");
+            if (!types.containsSubType(currentTypes)) {
+                throw new TypeError("Cannot mix types of arrays", node.getLineNumber());
             }
         }
         return new EntityType(NodeType.ARRAY, types);
     }
 
     public void validateAssignment(AbstractSyntaxTree assignmentNode) {
-        String varName = assignmentNode.getChildren().get(0).getValue();
-        Symbol symbol = symbolTable.lookup(varName);
-        if (symbol == null)
-            throw new ReferenceError("Variable " + varName + " is used before being defined in current scope", assignmentNode.getLineNumber());
-        EntityType varType = symbol.getType();
+        EntityType varType;
+        if (assignmentNode.getChildren().get(0).hasChildren()) {
+            varType = handleArrayIndex(assignmentNode.getChildren().get(0));
+        }
+        else {
+            String varName = assignmentNode.getChildren().get(0).getValue();
+            Symbol symbol = symbolTable.lookup(varName);
+            if (symbol == null)
+                throw new ReferenceError("Variable " + varName + " is used before being defined in current scope", assignmentNode.getLineNumber());
+            varType = symbol.getType();
+        }
         AbstractSyntaxTree rightHandSide = assignmentNode.getChildren().get(1);
         EntityType rhsType = evaluateType(rightHandSide);
         switch (assignmentNode.getValue()) {
@@ -548,6 +625,8 @@ public class SemanticAnalyzer {
                     throw new ReferenceError("Variable '" + node.getValue() + "' used before being defined in current scope", node.getLineNumber());
                 return symbol.getType();
             }
+            else
+                return handleArrayIndex(node);
         }
         if (isIntegerLiteral(node))
             return new EntityType(NodeType.INT);
@@ -592,7 +671,8 @@ public class SemanticAnalyzer {
                 throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
             return matchingDefinition.getReturnType();
         }
-        // TODO: handle array literals
+        if (node.getLabel().equals("ARRAY-LIT"))
+            return estimateArrayTypes(node);
         if (node.getLabel().equals("TERNARY"))
             return handleTernary(node);
         return new EntityType(NodeType.NONE);
@@ -727,5 +807,27 @@ public class SemanticAnalyzer {
         String unaryOp = leftType.isType(NodeType.NONE) ? left.getValue() : right.getValue();
         EntityType type = leftType.isType(NodeType.NONE) ? rightType : leftType;
         throw new TypeError("Cannot perform unary operator (" + unaryOp + ") on " + type);
+    }
+
+    private EntityType handleArrayIndex(AbstractSyntaxTree node) {
+        Symbol symbol = symbolTable.lookup(node.getValue());
+        if (symbol == null)
+            throw new ReferenceError("Variable '" + node.getValue() + "' used before being defined in current scope", node.getLineNumber());
+        if (!symbol.getType().startsWith(NodeType.ARRAY))
+            throw new TypeError("Cannot index variable of type " + symbol.getType(), node.getLineNumber());
+        int depth = 1;
+        AbstractSyntaxTree current = node.getChildren().get(0);
+        EntityType indexType;
+        while (current.countChildren() == 2) {
+            indexType = evaluateType(current.getChildren().get(0));
+            if (!indexType.isType(NodeType.INT))
+                throw new TypeError("Array can only be indexed using int values, not " + indexType + " values", node.getLineNumber());
+            current = current.getChildren().get(1);
+            depth++;
+        }
+        indexType = evaluateType(current.getChildren().get(0));
+        if (!indexType.isType(NodeType.INT))
+            throw new TypeError("Array can only be indexed using int values, not " + indexType + " values", node.getLineNumber());
+        return symbol.getType().index(depth, node.getLineNumber());
     }
 }

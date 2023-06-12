@@ -7,6 +7,7 @@ import static java.util.Map.entry;
 
 import java.util.ArrayList;
 
+import com.piedpiper.bolt.error.ArrayBoundsError;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 
@@ -26,6 +27,8 @@ public class EntityType {
         entry(TokenType.KW_NULL, NodeType.NULL)
     );
     private List<NodeType> type;
+
+    private EntityType() {}
 
     public EntityType(NodeType type) {
         this.type = List.of(type);
@@ -58,7 +61,7 @@ public class EntityType {
         }
     }
 
-    public boolean isSubType(EntityType entityType) {
+    public boolean containsSubType(EntityType entityType) {
         List<NodeType> typeList = entityType.getType();
         if (type.size() < typeList.size())
             return false;
@@ -79,6 +82,20 @@ public class EntityType {
         if (this.type.size() == 0)
             return false;
         return this.type.get(0) == type;
+    }
+
+    private void setType(List<NodeType> type) {
+        this.type = type;
+    }
+
+    public EntityType index(int depth, int lineNumber) {
+        List<NodeType> types = type;
+        EntityType entityType = new EntityType();
+        if (depth < types.size()) {
+            entityType.setType(types.subList(depth, types.size()));
+            return entityType;
+        }
+        throw new ArrayBoundsError("Array index depth " + depth + " is greater than array depth " + (types.size() - 1), lineNumber);
     }
 
     @Override

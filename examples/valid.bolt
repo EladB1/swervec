@@ -21,8 +21,8 @@ const mut Array<int> primes[10] = {2, 19}
 //Array<int> evens[5]
 //evens = {2, 4, -6}
 
-//Array<Array<float>> floats[2][4] = {{0, 1.0, 2.1, 3.2}, {3.14, 9.8}}
-//floats[0][0] = 0.001
+Array<Array<float>> floats[2][4] = {{1.0, 2.1, 3.2, 0.0}, {3.14, 9.8}}
+floats[0][0] = 0.001
 
 fn concat(string first, string second) : string {
     return first + second
@@ -46,7 +46,7 @@ fn main() {
     //print(someValue)
     float y = someInteger * PI + 1
     //print(y++)
-    //y *= evens[1]
+    y *= primes[1]
     const int x = (2 + 4) / 3
     PI ** 2 ** 3 < 50 || y > 10
     //someValue

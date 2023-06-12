@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Stack;
 
 
@@ -77,7 +78,10 @@ public class SymbolTable {
             return;
         }
 
-        if (functionTable.get(name).get(0).getReturnType() != fnSymbol.getReturnType()) {
+        EntityType storedReturnType = functionTable.get(name).get(0).getReturnType();
+        EntityType returnType = fnSymbol.getReturnType();
+
+        if (!Objects.equals(storedReturnType, returnType)) {
             String message = String.format(
                 "Function '%s' cannot have return type %s because another definition returns type %s",
                 name,
