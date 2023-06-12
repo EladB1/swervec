@@ -2,8 +2,7 @@ package com.piedpiper.bolt.symboltable;
 
 import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.error.TypeError;
-
-import com.piedpiper.bolt.semantic.NodeType;
+import com.piedpiper.bolt.semantic.EntityType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,7 +111,7 @@ public class SymbolTable {
         return null;
     }
 
-    public FunctionSymbol lookup(String name, NodeType[] types) {
+    public FunctionSymbol lookup(String name, EntityType[] types) {
         if (!functionTable.containsKey(name))
             return null;
         List<FunctionSymbol> matchingFunctions = functionTable.get(name);

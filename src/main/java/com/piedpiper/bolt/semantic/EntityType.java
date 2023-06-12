@@ -12,6 +12,9 @@ import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 
 import lombok.Data;
 
+/**
+ * Container class to make type system uniform across simple types (int, float, etc.) and complex types (arrays)
+ */
 @Data
 public class EntityType {
     private final Map<TokenType, NodeType> typeMappings = Map.ofEntries(
@@ -32,6 +35,12 @@ public class EntityType {
         this.type = Arrays.asList(types);
     }
 
+    public EntityType(NodeType type, EntityType entityType) {
+        this.type = new ArrayList<>();
+        this.type.add(type);
+        this.type.addAll(entityType.getType());
+    }
+
     public EntityType(AbstractSyntaxTree AST) {
         if (typeMappings.containsKey(AST.getName())) {
             if (!AST.hasChildren())
@@ -49,12 +58,17 @@ public class EntityType {
         }
     }
 
+    public void addType(EntityType entityType) {
+        type.addAll(entityType.getType());
+    }
+
     public boolean isSubType(EntityType entityType) {
         List<NodeType> typeList = entityType.getType();
+        System.out.println(typeList + ": " + type);
         if (type.size() < typeList.size())
             return false;
         for (int i = 0; i < typeList.size(); i++) {
-            if (!typeList.get(i).equals(type.get(i)))
+            if (typeList.get(i) != type.get(i))
                 return false;
         }
         return true;
@@ -64,5 +78,20 @@ public class EntityType {
         if (this.type.size() != 1)
             return false;
         return this.type.get(0) == type;
+    }
+
+    public boolean startsWith(NodeType type) {
+        if (this.type.size() == 0)
+            return false;
+        return this.type.get(0) == type;
+    }
+
+    @Override
+    public String toString() {
+        if (type.size() == 0)
+            return "";
+        if (type.size() == 1)
+            return this.type.get(0).toString();
+        return this.type.toString();
     }
 }
