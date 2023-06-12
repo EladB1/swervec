@@ -285,10 +285,15 @@ public class SemanticAnalyzer {
         for (Symbol param : params) {
             symbolTable.insert(param);
         }
-        analyze(body, false, true, fnReturnType);
         symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
-        if (!fnReturnType.isType(NodeType.NONE) && !functionReturns(body, fnReturnType))
-            throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
+        if (body != null) {
+            // analyze needs to come first to get variables in scope
+            // but this will mean unreachable code errors come after other errors (even if they don't in the code)
+            analyze(body, false, true, fnReturnType);
+            if (!fnReturnType.isType(NodeType.NONE) && !functionReturns(body, fnReturnType))
+                throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
+        }
+
         symbolTable.leaveScope();
     }
 
@@ -380,7 +385,8 @@ public class SemanticAnalyzer {
                     body = loopDetails.get(3);
                     break;
             }
-            analyze(body, true, inFunc, returnType);
+            if (body != null)
+                analyze(body, true, inFunc, returnType);
             symbolTable.leaveScope();
     }
 

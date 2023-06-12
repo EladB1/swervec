@@ -121,6 +121,7 @@ public class Parser {
                 || isBooleanLiteral(current)
                 || isString(current)
                 || isNumber(current)
+                || current.getName() == TokenType.KW_NULL
         ) {
             return parseExpr();
         } else if (current.getName() == TokenType.KW_FOR || current.getName() == TokenType.KW_WHILE) {
@@ -161,7 +162,9 @@ public class Parser {
             || leftUnaryOps.contains(current.getValue())
             || isNumber(current)
             || isBooleanLiteral(current)
-            || isString(current)))
+            || isString(current)
+            || current.getName() == TokenType.KW_NULL
+        ))
             throw formComplaint("EXPR", current);
         AbstractSyntaxTree node = parseLogicalOr();
         if (current.getValue().equals("?"))
