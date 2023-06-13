@@ -26,11 +26,6 @@ public class SymbolTable {
         // TODO: add built-in functions and constants
         scopes.push(0); // built-in scope
         scopes.push(1); // global scope
-        List<FunctionSymbol> lengthFunctions = List.of(
-            new FunctionSymbol("length", new EntityType[]{new EntityType(NodeType.ARRAY)}, new EntityType(NodeType.INT), null),
-            new FunctionSymbol("length", new EntityType[]{new EntityType(NodeType.STRING)}, new EntityType(NodeType.INT), null)
-        );
-        functionTable.put("length", lengthFunctions);
     }
 
     public Integer getScopeLevel() {
