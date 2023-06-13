@@ -394,9 +394,7 @@ public class SemanticAnalyzer {
     private void validateReturn(AbstractSyntaxTree controlFlow, EntityType returnType) {
         // make sure return is done properly
         if (returnType.isType(NodeType.NONE)) {
-            if (controlFlow.countChildren() == 1)
-                return;
-            else {
+            if (controlFlow.countChildren() != 1) {
                 AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
                 throw new TypeError("Cannot return value from void function", returnValue.getLineNumber());
             }
@@ -550,6 +548,8 @@ public class SemanticAnalyzer {
     }
 
     public EntityType estimateArrayTypes(AbstractSyntaxTree node) {
+        if (!node.getLabel().equals("ARRAY-LIT") && node.getName() != TokenType.KW_NULL)
+            return evaluateType(node);
         // empty array literal
         if (!node.hasChildren())
             return new EntityType(NodeType.ARRAY);
@@ -603,6 +603,13 @@ public class SemanticAnalyzer {
             if (symbol == null)
                 throw new ReferenceError("Variable " + varName + " is used before being defined in current scope", assignmentNode.getLineNumber());
             varType = symbol.getType();
+            if (varType.startsWith(NodeType.ARRAY)) {
+                // TODO
+            }
+            else {
+                if (symbol.isConstant())
+                    throw new IllegalStatementError("Cannot reassign value of constant variable", assignmentNode.getLineNumber());
+            }
         }
         AbstractSyntaxTree rightHandSide = assignmentNode.getChildren().get(1);
         EntityType rhsType = evaluateType(rightHandSide);

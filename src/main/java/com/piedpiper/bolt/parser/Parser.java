@@ -119,17 +119,22 @@ public class Parser {
         }
         else {
             AbstractSyntaxTree node = null;
-            if (current.getName() == TokenType.KW_CONST || isPrimitiveType(current) || current.getName() == TokenType.KW_ARR) {
+            if (
+                current.getName() == TokenType.KW_CONST
+                || current.getName() == TokenType.KW_MUT
+                || isPrimitiveType(current)
+                || current.getName() == TokenType.KW_ARR
+            ) {
                 node = parseVariableDeclaration();
             }
             else if (
                 current.getName() == TokenType.LEFT_PAREN
-                    || current.getName() == TokenType.LEFT_CB
-                    || leftUnaryOps.contains(current.getValue())
-                    || isBooleanLiteral(current)
-                    || isString(current)
-                    || isNumber(current)
-                    || current.getName() == TokenType.KW_NULL
+                || current.getName() == TokenType.LEFT_CB
+                || leftUnaryOps.contains(current.getValue())
+                || isBooleanLiteral(current)
+                || isString(current)
+                || isNumber(current)
+                || current.getName() == TokenType.KW_NULL
             ) {
                 node = parseExpr();
             }
@@ -665,6 +670,8 @@ public class Parser {
             else if (next != null)
                 return parseImmutableArrayDeclaration();
         }
+        else if (current.getName() == TokenType.KW_MUT)
+            node.appendChildren(parseExpectedToken(TokenType.KW_MUT, current));
         node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current), parseArrayIndex());
         if (current.getValue().equals("=")) {
             parseExpectedToken("=", current);
@@ -687,6 +694,8 @@ public class Parser {
             else
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current));
         }
+        if (current.getName() == TokenType.KW_MUT && next.getName() != TokenType.KW_ARR)
+            throw new SyntaxError("Cannot use modifier 'mut' on non-array variables", current.getLineNumber());
         if (
             (current.getName() == TokenType.KW_MUT || current.getName() == TokenType.KW_ARR)
             || (next != null && (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR))
