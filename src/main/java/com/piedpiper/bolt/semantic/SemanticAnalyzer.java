@@ -83,10 +83,11 @@ public class SemanticAnalyzer {
             // break / continue / return
             else if (subTree.getLabel().equals("CONTROL-FLOW")) {
                 if (!inFunc && isReturn(subTree))
-                    throw new IllegalStatementError("Cannot return outside of a function");
+                    throw new IllegalStatementError("Cannot return outside of a function", subTree.getLineNumber());
                 if (!inLoop && !isReturn(subTree)) {
                     TokenType loopControl = getControlFlowType(subTree.getChildren().get(0));
-                    throw new IllegalStatementError("Cannot use " + loopControl  + " outside of a loop");
+                    String controlType = loopControl == TokenType.KW_BRK ? "break" : "continue";
+                    throw new IllegalStatementError("Cannot use " + controlType  + " outside of a loop", subTree.getLineNumber());
                 }
             }
 
@@ -728,6 +729,8 @@ public class SemanticAnalyzer {
 
     private EntityType handleArithmetic(AbstractSyntaxTree rootNode) {
         String operator = rootNode.getValue();
+        if (!rootNode.hasChildren()) // handles the minus unary operator case
+            return new EntityType(NodeType.NONE);
         EntityType leftType = evaluateType(rootNode.getChildren().get(0));
         EntityType rightType = evaluateType(rootNode.getChildren().get(1));
         if (leftType.isType(NodeType.INT)) {
