@@ -9,7 +9,7 @@ import com.piedpiper.bolt.lexer.TokenType;
 public class Parser {
     /*
      * PROGRAM ::= ( STMNT / FUNC-DEF )+
-     * STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
+     * STMNT ::= ( ( VAR-DECL / VAR-ASSIGN / EXPR / CONTROL-FLOW ) SC ) / COND / LOOP
      * EXPR ::= ( LOGICAL-OR / TERNARY )
      * ARITH-EXPR ::= TERM (ADD-OP ARITH-EXPR)*
      * TERM ::= EXPO (MULT-OP TERM)*
@@ -33,12 +33,11 @@ public class Parser {
      * IF ::= "if" "(" EXPR ")" COND-BODY
      * ELSEIF ::= "else" "if" "(" EXPR ")" COND-BODY
      * ELSE ::= "else" COND-BODY
-     * COND-BODY ::= ( ( "{" ( BLOCK-BODY )* "}" ) / BLOCK-BODY )
-     * BLOCK-BODY ::= CONTROL-FLOW / STMNT
-     * LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
+     * COND-BODY ::= ( ( "{" ( STMNT )* "}" ) / STMNT )
+     * LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( STMNT )* "}"
      * WHILE-LOOP ::= "while" "(" EXPR ")"
      * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ";" EXPR ";" EXPR ) / TYPE ID : EXPR ) ")"
-     * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
+     * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( STMNT )* "}"
      * FUNC-PARAM ::= TYPE ID
      * ARRAY-TYPE ::= "Array" "<" TYPE ">"
      * IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" EXPR
@@ -110,48 +109,66 @@ public class Parser {
     }
 
 
-    // STMNT ::= EXPR / COND / LOOP / VAR-DECL / VAR-ASSIGN
+    // STMNT ::= ( ( VAR-DECL / VAR-ASSIGN / EXPR / CONTROL-FLOW ) SC ) / COND / LOOP
     private AbstractSyntaxTree parseStatement() {
-        if (current.getName() == TokenType.KW_CONST || isPrimitiveType(current) || current.getName() == TokenType.KW_ARR) {
-            return parseVariableDeclaration();
-        } else if (
-            current.getName() == TokenType.LEFT_PAREN
-                || current.getName() == TokenType.LEFT_CB
-                || leftUnaryOps.contains(current.getValue())
-                || isBooleanLiteral(current)
-                || isString(current)
-                || isNumber(current)
-                || current.getName() == TokenType.KW_NULL
-        ) {
-            return parseExpr();
-        } else if (current.getName() == TokenType.KW_FOR || current.getName() == TokenType.KW_WHILE) {
+        if (current.getName() == TokenType.KW_FOR || current.getName() == TokenType.KW_WHILE) {
             return parseLoop();
-        } else if (current.getName() == TokenType.KW_IF || current.getName() == TokenType.KW_ELSE) {
+        }
+        else if (current.getName() == TokenType.KW_IF || current.getName() == TokenType.KW_ELSE) {
             return parseConditional();
-        } else if (isID(current)) {
-            if (isOp(next) && assignmentOps.contains(next.getValue()))
-                return parseVariableAssignment();
-            else if (next.getName() == TokenType.LEFT_PAREN)
-                return parseFunctionCall();
-            else if (next.getName() == TokenType.LEFT_SQB) {
-                if (position >= tokens.size() - 2)
-                    throw new SyntaxError("Expected EXPR but reached EOF", current.getLineNumber());
-                int line = current.getLineNumber();
-                int currPos = position + 2; // skip next
-                Token lookahead = tokens.get(currPos);
-                while (currPos != tokens.size() - 1 && lookahead.getLineNumber() == line) { // look for assignment operator
-                    if (assignmentOps.contains(lookahead.getValue()))
-                        return parseVariableAssignment();
-                    currPos++;
-                    lookahead = tokens.get(currPos);
+        }
+        else {
+            AbstractSyntaxTree node = null;
+            if (current.getName() == TokenType.KW_CONST || isPrimitiveType(current) || current.getName() == TokenType.KW_ARR) {
+                node = parseVariableDeclaration();
+            }
+            else if (
+                current.getName() == TokenType.LEFT_PAREN
+                    || current.getName() == TokenType.LEFT_CB
+                    || leftUnaryOps.contains(current.getValue())
+                    || isBooleanLiteral(current)
+                    || isString(current)
+                    || isNumber(current)
+                    || current.getName() == TokenType.KW_NULL
+            ) {
+                node = parseExpr();
+            }
+            else if (isControlFlow(current))
+                node = parseControlFlow();
+            else if (isID(current)) {
+                if (isOp(next) && assignmentOps.contains(next.getValue()))
+                    node = parseVariableAssignment();
+                else if (next.getName() == TokenType.LEFT_PAREN)
+                    node = parseFunctionCall();
+                else if (next.getName() == TokenType.LEFT_SQB) {
+                    if (position >= tokens.size() - 2)
+                        throw new SyntaxError("Expected EXPR but reached EOF", current.getLineNumber());
+                    int line = current.getLineNumber();
+                    int currPos = position + 2; // skip next
+                    Token lookahead = tokens.get(currPos);
+                    while (currPos != tokens.size() - 1 && lookahead.getLineNumber() == line) { // look for assignment operator
+                        if (assignmentOps.contains(lookahead.getValue())) {
+                            node = parseVariableAssignment();
+                            break;
+                        }
+                        currPos++;
+                        lookahead = tokens.get(currPos);
+                    }
+                    if (currPos == tokens.size() - 1 || lookahead.getLineNumber() != line)
+                        node = parseArrayAccess();
                 }
-                return parseArrayAccess();
+                else
+                    node = parseExpr();
             }
             else
-                return parseExpr();
+                throw new SyntaxError("Invalid STMT", current.getLineNumber());
+            if (atEnd() || current.getName() != TokenType.SC)
+                throw new SyntaxError("Missing semicolon", current.getLineNumber());
+            else
+                parseExpectedToken(TokenType.SC, current);
+            return node;
         }
-        else
-            throw new SyntaxError("Invalid STMT", current.getLineNumber());
+
     }
 
     // EXPR ::= ( LOGICAL-OR / TERNARY )
@@ -477,33 +494,28 @@ public class Parser {
         return node;
     }
 
-    // COND-BODY = ( ( "{" ( BLOCK-BODY )* "}" ) / BLOCK-BODY )
+    // COND-BODY ::= ( ( "{" ( STMNT )* "}" ) / STMNT )
     private AbstractSyntaxTree parseConditionalBody() {
         AbstractSyntaxTree node = new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber());
         if (current.getName() == TokenType.LEFT_CB) {
             parseExpectedToken(TokenType.LEFT_CB, current);
             while (current.getName() != TokenType.RIGHT_CB) {
-                node.appendChildren(parseBlockBody());
+                node.appendChildren(parseStatement());
             }
             parseExpectedToken(TokenType.RIGHT_CB, current);
         }
         else
-            return new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber(), List.of(parseBlockBody()));
+            return new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber(), List.of(parseStatement()));
         return node;
     }
 
-    // BLOCK-BODY ::= CONTROLFLOW / STMNT
-    private AbstractSyntaxTree parseBlockBody() {
-        return isControlFlow(current) ? parseControlFlow() : parseStatement();
-    }
-
-    // LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( BLOCK-BODY )* "}"
+    // LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( STMNT )* "}"
     private AbstractSyntaxTree parseLoop() {
         AbstractSyntaxTree node = current.getName() == TokenType.KW_FOR ? parseForLoop() : parseWhileLoop();
         AbstractSyntaxTree bodyNode = new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber());
         parseExpectedToken(TokenType.LEFT_CB, current);
         while (current.getName() != TokenType.RIGHT_CB) {
-            bodyNode.appendChildren(parseBlockBody());
+            bodyNode.appendChildren(parseStatement());
         }
         node.appendChildren(bodyNode);
         parseExpectedToken(TokenType.RIGHT_CB, current);
@@ -595,7 +607,7 @@ public class Parser {
         if (current.getName() != TokenType.RIGHT_CB) {
             AbstractSyntaxTree bodyNode = new AbstractSyntaxTree("BLOCK-BODY", current.getLineNumber());
             while(current.getName() != TokenType.RIGHT_CB) {
-                bodyNode.appendChildren(parseBlockBody());
+                bodyNode.appendChildren(parseStatement());
             }
             if (bodyNode.hasChildren())
                 node.appendChildren(bodyNode);
