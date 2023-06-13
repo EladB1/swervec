@@ -43,6 +43,11 @@ public class TestParser {
     // top-level parse
 
     // parseStatement
+    @Test
+    void test_missingSC() {
+        List<Token> tokens = List.of(new StaticToken(TokenType.KW_RET));
+        assertSyntaxError("Missing semicolon", tokens);
+    }
 
     // parseExpr
     @Test
