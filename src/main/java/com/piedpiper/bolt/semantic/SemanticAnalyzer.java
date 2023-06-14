@@ -43,7 +43,8 @@ public class SemanticAnalyzer {
     }
 
     private boolean isFloatLiteral(AbstractSyntaxTree node) {
-        return node.getName() == TokenType.NUMBER && (node.getValue().contains(".") || node.getValue().equals("0"));
+        // float is a superset of int so any int literal can also be considered a float
+        return node.getName() == TokenType.NUMBER;
     }
 
     private boolean isIntegerLiteral(AbstractSyntaxTree node) {
@@ -565,7 +566,9 @@ public class SemanticAnalyzer {
                 currentType = evaluateType(children.get(i));
                 if (type.isType(NodeType.NULL) && !currentType.isType(NodeType.NULL))
                     type = currentType;
-                else if (!currentType.isType(NodeType.NULL) && !type.equals(currentType))
+                else if (currentType.isType(NodeType.FLOAT) && type.isType(NodeType.INT))
+                    type = currentType;
+                else if (!((currentType.isType(NodeType.INT) && type.isType(NodeType.FLOAT))) && !currentType.isType(NodeType.NULL) && !type.equals(currentType))
                     throw new TypeError("Cannot mix " + type + " elements with " + currentType + " elements in array literal", node.getLineNumber());
             }
             return currentType.isType(NodeType.NULL) ? new EntityType(NodeType.ARRAY) : new EntityType(NodeType.ARRAY, type);
