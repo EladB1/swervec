@@ -1466,7 +1466,7 @@ public class TestParser {
         );
 
 
-        assertSyntaxError("Expected LEFT_SQB but got OP ('=')", tokens);
+        assertSyntaxError("Array size required for arrays that are not constant and immutable", tokens);
     }
 
     @Test

@@ -38,8 +38,34 @@ application {
 
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
+    outputs.upToDateWhen { false }
     useJUnitPlatform()
 }
+
+sourceSets {
+    integration {
+        java.srcDir file(".src/integration/java/com/piedpiper/bolt/")
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations {
+    integrationImplementation.extendsFrom testImplementation
+    integrationRuntimeOnly.extendsFrom runtimeOnly
+}
+
+tasks.register('integration', Test) {
+    description = 'Runs integration tests only'
+    group = 'verification'
+    testClassesDirs = sourceSets.integration.output.classesDirs
+    classpath = sourceSets.integration.runtimeClasspath
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+    mustRunAfter test
+}
+
+check.dependsOn integration
 
 tasks.named('jar') {
     manifest {

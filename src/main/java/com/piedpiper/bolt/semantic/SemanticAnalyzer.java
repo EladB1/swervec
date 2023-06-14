@@ -607,7 +607,11 @@ public class SemanticAnalyzer {
                 throw new ReferenceError("Variable " + varName + " is used before being defined in current scope", assignmentNode.getLineNumber());
             varType = symbol.getType();
             if (varType.startsWith(NodeType.ARRAY)) {
-                // TODO
+                if (symbol.isConstant()) {
+                    if (symbol.isMutableArray())
+                        throw new IllegalStatementError("Cannot reassign constant array reference", assignmentNode.getLineNumber());
+                    throw new IllegalStatementError("Cannot reassign constant immutable array", assignmentNode.getLineNumber());
+                }
             }
             else {
                 if (symbol.isConstant())

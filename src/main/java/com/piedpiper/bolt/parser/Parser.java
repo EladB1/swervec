@@ -672,7 +672,10 @@ public class Parser {
         }
         else if (current.getName() == TokenType.KW_MUT)
             node.appendChildren(parseExpectedToken(TokenType.KW_MUT, current));
-        node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current), parseArrayIndex());
+        node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current));
+        if (current.getName() != TokenType.LEFT_SQB)
+            throw new SyntaxError("Array size required for arrays that are not constant and immutable", current.getLineNumber());
+        node.appendChildren(parseArrayIndex());
         if (current.getValue().equals("=")) {
             parseExpectedToken("=", current);
             node.appendChildren(parseExpr());
