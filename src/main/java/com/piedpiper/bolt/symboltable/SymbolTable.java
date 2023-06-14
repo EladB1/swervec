@@ -107,10 +107,9 @@ public class SymbolTable {
             return null;
         List<Symbol> matchingSymbols = table.get(symbolName);
         if (matchingSymbols.size() == 1 && isScopeOpen(matchingSymbols.get(0).getScope()))
-            return matchingSymbols.get(0);
-        int limit = Math.min(scopeLevel, matchingSymbols.size() - 1);
-        for (int i = limit; i >= 0; i--) {
-            if (isScopeOpen(i))
+                return matchingSymbols.get(0);
+        for (int i = matchingSymbols.size() - 1; i >= 0; i--) {
+            if (isScopeOpen(matchingSymbols.get(i).getScope()))
                 return matchingSymbols.get(i); // return the first matching valid scope
         }
         return null;

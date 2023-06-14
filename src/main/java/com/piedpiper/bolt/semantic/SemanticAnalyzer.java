@@ -199,7 +199,7 @@ public class SemanticAnalyzer {
                 if (i == 0) {
                     if (conditionals.get(i).getName() != TokenType.KW_IF)
                         throw new IllegalStatementError("Conditional block must begin with if", conditionals.get(i).getLineNumber());
-                    condition = evaluateType(conditionals.get(i).getChildren().get(1));
+                    condition = evaluateType(conditionals.get(i).getChildren().get(0));
                     if (!condition.isType(NodeType.BOOLEAN))
                         throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
                     body = conditionals.get(i).getChildren().get(1);
@@ -208,7 +208,7 @@ public class SemanticAnalyzer {
                 else if (i != length - 1) {
                     if (conditionals.get(i).getName() == TokenType.KW_ELSE)
                         throw new IllegalStatementError("else can only be used at the end of conditional block", conditionals.get(i).getLineNumber());
-                    condition = evaluateType(conditionals.get(i).getChildren().get(1));
+                    condition = evaluateType(conditionals.get(i).getChildren().get(0));
                     if (!condition.isType(NodeType.BOOLEAN))
                         throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
                     body = conditionals.get(i).getChildren().get(1);
@@ -219,7 +219,7 @@ public class SemanticAnalyzer {
                         body = conditionals.get(i).getChildren().get(0);
                     }
                     else {
-                        condition = evaluateType(conditionals.get(i).getChildren().get(1));
+                        condition = evaluateType(conditionals.get(i).getChildren().get(0));
                         if (!condition.isType(NodeType.BOOLEAN))
                             throw new TypeError("Conditional statement must evaluate to boolean but instead was " + condition, conditionals.get(i).getLineNumber());
                         body = conditionals.get(i).getChildren().get(1);

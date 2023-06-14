@@ -1,7 +1,9 @@
 package com.piedpiper.bolt;
 
+import com.piedpiper.bolt.error.ReferenceError;
 import com.piedpiper.bolt.error.SourceCodeError;
 import com.piedpiper.bolt.error.SyntaxError;
+import com.piedpiper.bolt.error.TypeError;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -25,5 +27,11 @@ class TestApp {
     void testInvalidProgram() {
         String[] args = new String[]{"examples/invalid.bolt"};
         assertError(args, SyntaxError.class, "Found invalid number '0..5'", 16);
+    }
+
+    @Test
+    void test_loopScope() {
+        String[] args = new String[]{"src/integration/resources/invalid/loop_scope.bolt"};
+        assertError(args, ReferenceError.class, "Variable 'y' used before being defined in current scope", 10);
     }
 }
