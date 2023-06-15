@@ -1,0 +1,9 @@
+fn test(int x, int y): int {
+    int z = x < y ? x : y;
+    if (z % 2 == 0)
+        z++;
+    else if (z > 100 || z < 0)
+        z *= z;
+    else
+        return z;
+}

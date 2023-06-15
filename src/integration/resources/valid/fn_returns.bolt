@@ -1,0 +1,12 @@
+fn returns (int i): int {
+    if (i % 2 == 0) {
+        if (i < 0)
+            return returns(-i);
+        else if (i == 0)
+            return i;
+        return i / 2;
+    }
+    else {
+        return returns(i-1);
+    }
+}

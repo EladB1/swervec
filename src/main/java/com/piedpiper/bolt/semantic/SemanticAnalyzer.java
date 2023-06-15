@@ -663,6 +663,13 @@ public class SemanticAnalyzer {
             return handleComparison(node);
         if (node.getValue().equals("==") || node.getValue().equals("!="))
             return handleEqualityComparison(node);
+        if (node.getValue().equals("||") || node.getValue().equals("&&")) {
+            EntityType leftType = evaluateType(node.getChildren().get(0));
+            EntityType rightType = evaluateType(node.getChildren().get(1));
+            if (!(leftType.isType(NodeType.BOOLEAN) && rightType.isType(NodeType.BOOLEAN)))
+                throw new TypeError("Both sides of logical statement must be boolean but instead got " + leftType + " " + node.getValue() + " " + rightType, node.getLineNumber());
+            return new EntityType(NodeType.BOOLEAN);
+        }
         if (arithmeticOperators.contains(node.getValue()))
             return handleArithmetic(node);
         if (node.getValue().equals("&") || node.getValue().equals("^"))
