@@ -15,8 +15,8 @@ import java.util.Stack;
 
 
 public class SymbolTable {
-    private final Map<String, List<Symbol>> table = new HashMap<>();
-    private final Map<String, List<FunctionSymbol>> functionTable = new HashMap<>();
+    private final Map<String, List<Symbol>> table = new HashMap<>(BuiltIns.Variables);
+    private final Map<String, List<FunctionSymbol>> functionTable = new HashMap<>(BuiltIns.Functions);
     private final Stack<Integer> scopes = new Stack<>();
     private int scopeLevel = 1;
 
@@ -78,6 +78,10 @@ public class SymbolTable {
             functionTable.put(name, List.of(fnSymbol));
             return;
         }
+        boolean isBuiltIn = functionTable.get(name).get(0).isBuiltIn();
+
+        if (isBuiltIn)
+            throw new NameError("Function '" + name + "' is builtin so its name cannot be reused");
 
         EntityType storedReturnType = functionTable.get(name).get(0).getReturnType();
         EntityType returnType = fnSymbol.getReturnType();
@@ -87,7 +91,7 @@ public class SymbolTable {
                 "Function '%s' cannot have return type %s because another definition returns type %s",
                 name,
                 fnSymbol.getReturnType(),
-                functionTable.get(name).get(0).getReturnType()
+                storedReturnType
             );
             throw new TypeError(message);
         }

@@ -10,8 +10,9 @@ The compiler phases are planned to be:
     1. Lexical Analysis
     2. Parsing
     3. Semantic Analysis
-    4. Optimization
-    5. Code generation
+    4. IR generation
+    5. Optimization
+    6. Code generation
 
 Although the phases can, and most likely will, change as the project goes on.
 

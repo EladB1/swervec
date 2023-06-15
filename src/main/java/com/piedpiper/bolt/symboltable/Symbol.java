@@ -1,5 +1,6 @@
 package com.piedpiper.bolt.symboltable;
 
+import com.piedpiper.bolt.lexer.Token;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import com.piedpiper.bolt.semantic.EntityType;
@@ -23,6 +24,22 @@ public class Symbol {
     private boolean isMutableArray = false;
     private List<Integer> arraySizes = List.of(0);
     private AbstractSyntaxTree valueNodes = null;
+
+    // use this to add builtin variables
+    public Symbol(String name, EntityType type, Token value) {
+        this.name = name;
+        this.type = type;
+        this.scope = 0;
+        this.isConstant = true;
+        this.valueNodes = new AbstractSyntaxTree(value);
+    }
+    // use this to add builtin variables without values
+    public Symbol(String name, EntityType type) {
+        this.name = name;
+        this.type = type;
+        this.scope = 0;
+        this.isConstant = true;
+    }
 
     // Array declaration?
     public Symbol(AbstractSyntaxTree arrayDeclaration, List<Integer> arraySizes, EntityType type, Integer valueIndex, Integer scope) {

@@ -615,7 +615,7 @@ public class SemanticAnalyzer {
             }
             else {
                 if (symbol.isConstant())
-                    throw new IllegalStatementError("Cannot reassign value of constant variable", assignmentNode.getLineNumber());
+                    throw new IllegalStatementError("Cannot reassign value of constant variable " + symbol.getName(), assignmentNode.getLineNumber());
             }
         }
         AbstractSyntaxTree rightHandSide = assignmentNode.getChildren().get(1);

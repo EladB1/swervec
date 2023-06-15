@@ -25,9 +25,32 @@ public class FunctionSymbol {
     private String name;
     private EntityType returnType = null; // need to handle complex return values like Array<Array<int>>
     private EntityType[] paramTypes = {};
-
+    private Boolean builtIn = false;
     private AbstractSyntaxTree fnBodyNode = null;
 
+    public FunctionSymbol(String name, Boolean builtIn) {
+        this.name = name;
+        this.builtIn = builtIn;
+    }
+
+    public FunctionSymbol(String name, EntityType returnType, Boolean builtIn) {
+        this.name = name;
+        this.returnType = returnType;
+        this.builtIn = builtIn;
+    }
+
+    public FunctionSymbol(String name, EntityType[] paramTypes, Boolean builtIn) {
+        this.name = name;
+        this.paramTypes = paramTypes;
+        this.builtIn = builtIn;
+    }
+
+    public FunctionSymbol(String name, EntityType returnType, EntityType[] paramTypes, Boolean builtIn) {
+        this.name = name;
+        this.returnType = returnType;
+        this.paramTypes = paramTypes;
+        this.builtIn = builtIn;
+    }
 
     public FunctionSymbol(String name, AbstractSyntaxTree fnBodyNode) {
         this.name = name;
@@ -51,7 +74,7 @@ public class FunctionSymbol {
         this.fnBodyNode = fnBodyNode;
     }
 
-    public FunctionSymbol(String name, EntityType[] paramTypes, EntityType returnType, AbstractSyntaxTree fnBodyNode) {
+    public FunctionSymbol(String name, EntityType returnType, EntityType[] paramTypes, AbstractSyntaxTree fnBodyNode) {
         this.name = name;
         this.paramTypes = paramTypes;
         this.returnType = returnType;
@@ -68,5 +91,9 @@ public class FunctionSymbol {
         }
         output.append(")");
         return output.toString();
+    }
+
+    public boolean isBuiltIn() {
+        return builtIn;
     }
 }
