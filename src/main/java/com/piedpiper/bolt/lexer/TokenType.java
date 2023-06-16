@@ -20,6 +20,7 @@ public enum TokenType {
     KW_FLOAT,
     KW_STR,
     KW_BOOL,
+    KW_GEN,
     KW_FN,
     KW_RET,
     KW_FOR,

@@ -19,6 +19,7 @@ import lombok.Data;
 @Data
 public class EntityType {
     private final Map<TokenType, NodeType> typeMappings = Map.ofEntries(
+        entry(TokenType.KW_GEN, NodeType.GENERIC),
         entry(TokenType.KW_BOOL, NodeType.BOOLEAN),
         entry(TokenType.KW_INT, NodeType.INT),
         entry(TokenType.KW_FLOAT, NodeType.FLOAT),
