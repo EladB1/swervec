@@ -713,8 +713,7 @@ public class Parser {
         else {
             if (isConst)
                 throw new SyntaxError("Constant variable must be initialized", current.getLineNumber());
-            else if (next != null)
-                throw formComplaint("'='", next);
+            node.appendChildren(parseExpectedToken(TokenType.ID, current));
         }
         return node;
     }

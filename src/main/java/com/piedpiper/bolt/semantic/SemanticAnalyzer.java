@@ -76,10 +76,10 @@ public class SemanticAnalyzer {
     public void analyze(AbstractSyntaxTree AST, boolean inLoop, boolean inFunc, EntityType returnType) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
             if (matchesLabelNode(subTree, "VAR-DECL")) {
-                handleVariableDeclaration(subTree);
+                handleVariableDeclaration(subTree, inFunc);
             }
             else if (matchesLabelNode(subTree, "ARRAY-DECL")) {
-                handleArrayDeclaration(subTree);
+                handleArrayDeclaration(subTree, inFunc);
             }
             // break / continue / return
             else if (subTree.getLabel().equals("CONTROL-FLOW")) {
@@ -116,7 +116,7 @@ public class SemanticAnalyzer {
         }
     }
 
-    private void handleVariableDeclaration(AbstractSyntaxTree node) {
+    private void handleVariableDeclaration(AbstractSyntaxTree node, boolean inFunc) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
@@ -125,6 +125,8 @@ public class SemanticAnalyzer {
             if (node.countChildren() != 4)
                 throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
         }
+        if (details.get(offset).getName() == TokenType.KW_GEN && !inFunc)
+            throw new IllegalStatementError("Cannot use generic variable outside of function", node.getLineNumber());
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
@@ -134,7 +136,7 @@ public class SemanticAnalyzer {
         symbolTable.insert(new Symbol(node, scope));
     }
 
-    private void handleArrayDeclaration(AbstractSyntaxTree node) {
+    private void handleArrayDeclaration(AbstractSyntaxTree node, boolean inFunc) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
