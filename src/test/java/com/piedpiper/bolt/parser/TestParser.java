@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.piedpiper.bolt.error.SyntaxError;
@@ -47,6 +50,28 @@ public class TestParser {
     void test_missingSC() {
         List<Token> tokens = List.of(new StaticToken(TokenType.KW_RET));
         assertSyntaxError("Missing semicolon", tokens);
+    }
+
+    @Test
+    void test_returnNothing() {
+        List<Token> tokens = List.of(new StaticToken(TokenType.KW_RET), new StaticToken(TokenType.SC));
+        assertAST(new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(0)), tokens);
+    }
+
+    private static Stream<Arguments> returnsValueProvider() {
+        return Stream.of(
+            Arguments.of(new StaticToken(TokenType.KW_TRUE)),
+            Arguments.of(new StaticToken(TokenType.KW_NULL)),
+            Arguments.of(new VariableToken(TokenType.STRING, "\"\"")),
+            Arguments.of(new VariableToken(TokenType.NUMBER, "1"))
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("returnsValueProvider")
+    void test_returnsValue(Token token) {
+        List<Token> tokens = List.of(new StaticToken(TokenType.KW_RET), token, new StaticToken(TokenType.SC));
+        assertAST(new AbstractSyntaxTree("CONTROL-FLOW", tokens.get(0), tokens.get(1)), tokens);
     }
 
     // parseExpr

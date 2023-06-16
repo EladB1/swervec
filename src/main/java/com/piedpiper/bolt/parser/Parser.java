@@ -751,7 +751,16 @@ public class Parser {
             
         else if (current.getName() == TokenType.KW_RET) {
             node.appendChildren(parseExpectedToken(current.getName(), current));
-            if (current.getName() == TokenType.LEFT_PAREN || current.getName() == TokenType.LEFT_CB || leftUnaryOps.contains(current.getValue()) || isID(current) ||  isBooleanLiteral(current) || isString(current)) {
+            if (
+                current.getName() == TokenType.LEFT_PAREN
+                || current.getName() == TokenType.LEFT_CB
+                || current.getName() == TokenType.KW_NULL
+                || leftUnaryOps.contains(current.getValue())
+                || isID(current)
+                ||  isBooleanLiteral(current)
+                || isString(current)
+                || isNumber(current)
+            ) {
                 node.appendChildren(parseExpr());
             }
         }
