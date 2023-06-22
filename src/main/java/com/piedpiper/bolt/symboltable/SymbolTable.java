@@ -1,5 +1,6 @@
 package com.piedpiper.bolt.symboltable;
 
+import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.semantic.EntityType;
@@ -75,6 +76,10 @@ public class SymbolTable {
     public void insert(FunctionSymbol fnSymbol) {
         String name = fnSymbol.getName();
         if (!functionTable.containsKey(name)) {
+            if (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC)) {
+                if (fnSymbol.getParamTypes().length == 0)
+                    throw new IllegalStatementError("Cannot return generic from function with no parameters");
+            }
             functionTable.put(name, List.of(fnSymbol));
             return;
         }
@@ -84,6 +89,9 @@ public class SymbolTable {
             throw new NameError("Function '" + name + "' is builtin so its name cannot be reused");
 
         EntityType storedReturnType = functionTable.get(name).get(0).getReturnType();
+        if (storedReturnType.isType(NodeType.GENERIC) || storedReturnType.containsSubType(NodeType.GENERIC)) {
+
+        }
         EntityType returnType = fnSymbol.getReturnType();
 
         if (!Objects.equals(storedReturnType, returnType)) {

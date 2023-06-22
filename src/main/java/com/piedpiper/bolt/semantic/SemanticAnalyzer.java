@@ -27,7 +27,8 @@ public class SemanticAnalyzer {
         TokenType.KW_INT,
         TokenType.KW_FLOAT,
         TokenType.KW_STR,
-        TokenType.KW_ARR
+        TokenType.KW_ARR,
+        TokenType.KW_GEN
     );
 
     private void emitWarning(String message) {
@@ -108,7 +109,7 @@ public class SemanticAnalyzer {
 
             // function
             else if (subTree.getName() == TokenType.KW_FN) {
-                handleFunctionDefintion(subTree.getChildren());
+                handleFunctionDefinition(subTree.getChildren());
             }
             else {
                 evaluateType(subTree);
@@ -235,7 +236,7 @@ public class SemanticAnalyzer {
             }
     }
 
-    private void handleFunctionDefintion(List<AbstractSyntaxTree> fnDetails) {
+    private void handleFunctionDefinition(List<AbstractSyntaxTree> fnDetails) {
         int scope = symbolTable.enterScope();
         int lineNum = fnDetails.get(0).getLineNumber();
         int length = fnDetails.size();
@@ -269,7 +270,7 @@ public class SemanticAnalyzer {
                     params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
                     if (isTypeLabel(fnDetails.get(2)))
                         throw new TypeError(
-                            "Function " + name + "expected to return " + fnDetails.get(1) + " but returns nothing",
+                            "Function " + name + " expected to return " + fnDetails.get(1) + " but returns nothing",
                             lineNum
                         );
                     else {

@@ -70,8 +70,11 @@ public class EntityType {
         List<NodeType> typeList = entityType.getType();
         if (type.size() < typeList.size())
             return false;
-        for (int i = 0; i < typeList.size(); i++) {
-            if (typeList.get(i) != type.get(i))
+        if (typeList.size() == 1)
+            return type.get(type.size() - 1) == typeList.get(0);
+        int offset = type.size() - typeList.size();
+        for (int i = offset; i < typeList.size(); i++) {
+            if (typeList.get(i - offset) != type.get(i))
                 return false;
         }
         return true;
