@@ -62,6 +62,10 @@ public class EntityType {
         }
     }
 
+    public boolean containsSubType(NodeType nodeType) {
+        return containsSubType(new EntityType(nodeType));
+    }
+
     public boolean containsSubType(EntityType entityType) {
         List<NodeType> typeList = entityType.getType();
         if (type.size() < typeList.size())

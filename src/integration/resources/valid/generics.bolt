@@ -1,4 +1,4 @@
-generic value;
+Array<generic> arr[10];
 
 fn first(Array<generic> array): generic {
     return array[0];

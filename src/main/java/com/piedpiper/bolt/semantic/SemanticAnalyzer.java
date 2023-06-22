@@ -126,7 +126,7 @@ public class SemanticAnalyzer {
                 throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
         }
         if (details.get(offset).getName() == TokenType.KW_GEN && !inFunc)
-            throw new IllegalStatementError("Cannot use generic variable outside of function", node.getLineNumber());
+            throw new IllegalStatementError("Cannot use generic variable outside of function definition", node.getLineNumber());
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
@@ -154,6 +154,8 @@ public class SemanticAnalyzer {
         else if (details.get(0).getName() == TokenType.KW_MUT)
             offset = 1;
         EntityType declaredType = new EntityType(details.get(offset));
+        if (declaredType.containsSubType(NodeType.GENERIC) && !inFunc)
+            throw new IllegalStatementError("Cannot declare generic array outside of function definition", node.getLineNumber());
         String name = details.get(offset + 1).getValue();
         List<Integer> sizes = List.of(0);
         if (isConstantImmutable) {
