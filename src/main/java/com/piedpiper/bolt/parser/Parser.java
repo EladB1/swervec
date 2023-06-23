@@ -44,7 +44,7 @@ public class Parser {
      * ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
      * VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
      * VAR-ASSIGN ::= ( ID / ARRAY-ACCESS )  ( "+" / "-" / "*" / "/" )? = EXPR
-     * TYPE ::= "int" / "string" / "float" / "boolean" / ARRAY-TYPE
+     * TYPE ::= "int" / "string" / "float" / "boolean" / "generic" / ARRAY-TYPE
      * CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
     */
     private final List<Token> tokens;
@@ -710,11 +710,14 @@ public class Parser {
             parseExpectedToken("=", current);
             node.appendChildren(parseExpr());
         }
-        else {
+        else if (next != null && next.getName().equals(TokenType.SC)) {
             if (isConst)
                 throw new SyntaxError("Constant variable must be initialized", current.getLineNumber());
-            else if (next != null)
-                throw formComplaint("'='", next);
+            node.appendChildren(parseExpectedToken(TokenType.ID, current));
+        }
+        else {
+            node.appendChildren(parseExpectedToken(TokenType.ID, current));
+            parseExpectedToken("=", current);
         }
         return node;
     }
@@ -834,7 +837,8 @@ public class Parser {
             TokenType.KW_INT,
             TokenType.KW_FLOAT,
             TokenType.KW_STR,
-            TokenType.KW_BOOL
+            TokenType.KW_BOOL,
+            TokenType.KW_GEN
         ).contains(token.getName());
     }
 

@@ -27,7 +27,8 @@ public class SemanticAnalyzer {
         TokenType.KW_INT,
         TokenType.KW_FLOAT,
         TokenType.KW_STR,
-        TokenType.KW_ARR
+        TokenType.KW_ARR,
+        TokenType.KW_GEN
     );
 
     private void emitWarning(String message) {
@@ -76,10 +77,10 @@ public class SemanticAnalyzer {
     public void analyze(AbstractSyntaxTree AST, boolean inLoop, boolean inFunc, EntityType returnType) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
             if (matchesLabelNode(subTree, "VAR-DECL")) {
-                handleVariableDeclaration(subTree);
+                handleVariableDeclaration(subTree, inFunc);
             }
             else if (matchesLabelNode(subTree, "ARRAY-DECL")) {
-                handleArrayDeclaration(subTree);
+                handleArrayDeclaration(subTree, inFunc);
             }
             // break / continue / return
             else if (subTree.getLabel().equals("CONTROL-FLOW")) {
@@ -108,7 +109,7 @@ public class SemanticAnalyzer {
 
             // function
             else if (subTree.getName() == TokenType.KW_FN) {
-                handleFunctionDefintion(subTree.getChildren());
+                handleFunctionDefinition(subTree.getChildren());
             }
             else {
                 evaluateType(subTree);
@@ -116,7 +117,7 @@ public class SemanticAnalyzer {
         }
     }
 
-    private void handleVariableDeclaration(AbstractSyntaxTree node) {
+    private void handleVariableDeclaration(AbstractSyntaxTree node, boolean inFunc) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
@@ -125,6 +126,8 @@ public class SemanticAnalyzer {
             if (node.countChildren() != 4)
                 throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
         }
+        if (details.get(offset).getName() == TokenType.KW_GEN && !inFunc)
+            throw new IllegalStatementError("Cannot use generic variable outside of function definition", node.getLineNumber());
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
@@ -134,7 +137,7 @@ public class SemanticAnalyzer {
         symbolTable.insert(new Symbol(node, scope));
     }
 
-    private void handleArrayDeclaration(AbstractSyntaxTree node) {
+    private void handleArrayDeclaration(AbstractSyntaxTree node, boolean inFunc) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
@@ -152,6 +155,8 @@ public class SemanticAnalyzer {
         else if (details.get(0).getName() == TokenType.KW_MUT)
             offset = 1;
         EntityType declaredType = new EntityType(details.get(offset));
+        if (declaredType.containsSubType(NodeType.GENERIC) && !inFunc)
+            throw new IllegalStatementError("Cannot declare generic array outside of function definition", node.getLineNumber());
         String name = details.get(offset + 1).getValue();
         List<Integer> sizes = List.of(0);
         if (isConstantImmutable) {
@@ -231,7 +236,7 @@ public class SemanticAnalyzer {
             }
     }
 
-    private void handleFunctionDefintion(List<AbstractSyntaxTree> fnDetails) {
+    private void handleFunctionDefinition(List<AbstractSyntaxTree> fnDetails) {
         int scope = symbolTable.enterScope();
         int lineNum = fnDetails.get(0).getLineNumber();
         int length = fnDetails.size();
@@ -265,7 +270,7 @@ public class SemanticAnalyzer {
                     params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
                     if (isTypeLabel(fnDetails.get(2)))
                         throw new TypeError(
-                            "Function " + name + "expected to return " + fnDetails.get(1) + " but returns nothing",
+                            "Function " + name + " expected to return " + fnDetails.get(1) + " but returns nothing",
                             lineNum
                         );
                     else {
@@ -287,7 +292,10 @@ public class SemanticAnalyzer {
         for (Symbol param : params) {
             symbolTable.insert(param);
         }
-        symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
+        FunctionSymbol function = new FunctionSymbol(name, fnReturnType, types, body);
+        symbolTable.insert(function);
+        if (function.hasGenericParam())
+            emitWarning("Function '" + name + "' uses one or more generic parameters. Generics can lead to bugs, so only use them carefully.");
         if (body != null) {
             // analyze needs to come first to get variables in scope
             // but this will mean unreachable code errors come after other errors (even if they don't in the code)

@@ -1602,15 +1602,16 @@ public class TestParser {
 
     @Test
     void test_parseVariableDeclaration_wrongOperator() {
+        // float count *= 1;
         List<Token> tokens = List.of(
             new StaticToken(TokenType.KW_FLOAT),
             new VariableToken(TokenType.ID, "count"),
             new VariableToken(TokenType.OP, "*="),
-            new VariableToken(TokenType.NUMBER, "1")
+            new VariableToken(TokenType.NUMBER, "1"),
+            SCToken
         );
 
-
-        assertSyntaxError("Expected '=' but got OP ('*=')", tokens);
+        assertSyntaxError("Expected = but got OP ('*=')", tokens);
     }
 
     @Test
@@ -1618,7 +1619,8 @@ public class TestParser {
         List<Token> tokens = List.of(
             new StaticToken(TokenType.KW_CONST),
             new StaticToken(TokenType.KW_STR),
-            new VariableToken(TokenType.ID, "name")
+            new VariableToken(TokenType.ID, "name"),
+            SCToken
         );
 
 

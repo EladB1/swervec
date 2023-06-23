@@ -1,6 +1,5 @@
 package com.piedpiper.bolt;
 
-import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.ReferenceError;
 import com.piedpiper.bolt.error.SourceCodeError;
 import com.piedpiper.bolt.error.SyntaxError;
@@ -20,7 +19,11 @@ class TestApp {
         assertEquals("Line " + lineNumber + "\n\t" + message, error.getMessage());
     }
     @ParameterizedTest
-    @ValueSource(strings = {"examples/valid.bolt", "src/integration/resources/valid/fn_returns.bolt"})
+    @ValueSource(strings = {
+        "examples/valid.bolt",
+        "src/integration/resources/valid/fn_returns.bolt",
+        "src/integration/resources/valid/generics.bolt"
+    })
     void testValidProgram(String src) {
         String[] args = new String[]{src};
         assertDoesNotThrow(() -> App.main(args));

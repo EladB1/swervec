@@ -19,6 +19,7 @@ import lombok.Data;
 @Data
 public class EntityType {
     private final Map<TokenType, NodeType> typeMappings = Map.ofEntries(
+        entry(TokenType.KW_GEN, NodeType.GENERIC),
         entry(TokenType.KW_BOOL, NodeType.BOOLEAN),
         entry(TokenType.KW_INT, NodeType.INT),
         entry(TokenType.KW_FLOAT, NodeType.FLOAT),
@@ -61,12 +62,24 @@ public class EntityType {
         }
     }
 
+    public boolean containsSubType(NodeType nodeType) {
+        return containsSubType(new EntityType(nodeType));
+    }
+
     public boolean containsSubType(EntityType entityType) {
         List<NodeType> typeList = entityType.getType();
+        if (type.size() == typeList.size())
+            return type.equals(typeList);
         if (type.size() < typeList.size())
             return false;
-        for (int i = 0; i < typeList.size(); i++) {
-            if (typeList.get(i) != type.get(i))
+        if (typeList.size() == 1) {
+            if (typeList.get(0) == NodeType.ARRAY)
+                return type.get(0) == NodeType.ARRAY;
+            return type.get(type.size() - 1) == typeList.get(0);
+        }
+        int offset = type.size() - typeList.size();
+        for (int i = offset; i < typeList.size(); i++) {
+            if (typeList.get(i - offset) != type.get(i))
                 return false;
         }
         return true;

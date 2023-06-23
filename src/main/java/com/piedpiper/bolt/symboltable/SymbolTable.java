@@ -1,12 +1,12 @@
 package com.piedpiper.bolt.symboltable;
 
+import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.semantic.EntityType;
 import com.piedpiper.bolt.semantic.NodeType;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +23,6 @@ public class SymbolTable {
     private int scopeSerial = 1;
 
     public SymbolTable() {
-        // TODO: add built-in functions and constants
         scopes.push(0); // built-in scope
         scopes.push(1); // global scope
     }
@@ -75,6 +74,14 @@ public class SymbolTable {
     public void insert(FunctionSymbol fnSymbol) {
         String name = fnSymbol.getName();
         if (!functionTable.containsKey(name)) {
+            if (fnSymbol.getReturnType() != null) {
+                if (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC)) {
+                    if (fnSymbol.getParamTypes().length == 0)
+                        throw new IllegalStatementError("Cannot return generic from function with no parameters");
+                    if (!fnSymbol.hasGenericParam())
+                        throw new TypeError("Cannot return generic type from non-generic function");
+                }
+            }
             functionTable.put(name, List.of(fnSymbol));
             return;
         }
@@ -85,6 +92,14 @@ public class SymbolTable {
 
         EntityType storedReturnType = functionTable.get(name).get(0).getReturnType();
         EntityType returnType = fnSymbol.getReturnType();
+        if (storedReturnType != null) {
+            if (storedReturnType.isType(NodeType.GENERIC) || storedReturnType.containsSubType(NodeType.GENERIC)) {
+                if (fnSymbol.getParamTypes().length == 0)
+                    throw new IllegalStatementError("Cannot return generic from function with no parameters");
+                if (!fnSymbol.hasGenericParam())
+                    throw new TypeError("Cannot return generic type from non-generic function");
+            }
+        }
 
         if (!Objects.equals(storedReturnType, returnType)) {
             String message = String.format(
@@ -124,7 +139,7 @@ public class SymbolTable {
             return null;
         List<FunctionSymbol> matchingFunctions = functionTable.get(name);
         for (FunctionSymbol fnSymbol : matchingFunctions) {
-            if (fnSymbol.getName().equals(name) && Arrays.equals(fnSymbol.getParamTypes(), types))
+            if (fnSymbol.hasCompatibleParams(types))
                 return fnSymbol;
         }
         return null;

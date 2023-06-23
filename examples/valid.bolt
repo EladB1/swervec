@@ -1,7 +1,7 @@
 string str = "someValue";
 int someInteger = 10 + 2 + 3;
 const float PI = 3.14;
-string todo = /"
+string to_do = /"
     - write some code 
     - test code
 "/;
