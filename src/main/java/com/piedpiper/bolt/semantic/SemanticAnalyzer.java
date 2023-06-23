@@ -292,7 +292,10 @@ public class SemanticAnalyzer {
         for (Symbol param : params) {
             symbolTable.insert(param);
         }
-        symbolTable.insert(new FunctionSymbol(name, fnReturnType, types, body));
+        FunctionSymbol function = new FunctionSymbol(name, fnReturnType, types, body);
+        symbolTable.insert(function);
+        if (function.hasGenericParam())
+            emitWarning("Function '" + name + "' uses one or more generic parameters. Generics can lead to bugs, so only use them carefully.");
         if (body != null) {
             // analyze needs to come first to get variables in scope
             // but this will mean unreachable code errors come after other errors (even if they don't in the code)

@@ -59,6 +59,7 @@ Statements are:
 ### Reserved words:
  - `const`
  - `mut`
+ - `generic`
  - `int`
  - `float`
  - `boolean`
@@ -103,6 +104,94 @@ Statements are:
 Inline comments can be made with `//` which will cause the compiler to ignore the rest of the line (unless `//` is in a string)
 
 Multiline comments can be made as starting with `/*` and ending with `*/`. Unterminated multiline comments are a syntax error.
+
+### Type System
+Bolt is intended to be a statically, strongly typed language.
+Variable types and function return types must be explicitly declared. 
+
+Basic types include
+  - int
+  - float
+  - string
+  - boolean
+
+Array types are dependent on the depth (level of nesting) and the type of data stored in the array.
+For example, `Array<Array<int>>` is used to store an array of array of ints.
+
+Typecasting is only allowed via builtin functions
+  - `toString()`
+  - `toInt()`
+  - `toFloat()`
+
+#### Operations on types
+
+Binary operators
+---
+
+- Addition
+  - int, int => int
+  - float, float => float
+  - int, float => float
+  - float, int => float
+  - string, string => string
+  - Array, Array => Array (must have matching types)
+- Multiplication
+  - int, int => int
+  - float, float => float
+  - int, float => float
+  - float, int => float
+  - string, int => string
+  - int, string => string
+- Subtraction / Division / Modulous / Expontent
+  - int, int => int
+  - float, float => float
+  - int, float => float
+  - float, int => float
+- Bitwise (`^` XOR, `&` AND)
+  - int, int => int
+  - boolean, boolean => int
+  - int, boolean => int
+  - boolean, int => int
+- Comparison (`<`, `<=`, `>`, `>=`)
+  - int, int => boolean
+  - float, float => boolean
+  - int, float => boolean
+  - float, int => boolean
+- Equality (`==`, `!=`)
+  - two operands with same type => boolean
+  - anything, null => boolean
+  - null, anything => boolean
+  - int, float => boolean
+  - float, int => boolean
+
+Unary operators
+---
+  - `!`
+    - boolean => boolean
+  - `++`, `--` (either side)
+    - int => int
+    - float => float
+  - `-` (minus)
+    - int => int
+    - float => float
+
+#### Generics
+
+In order to make the type system slightly more flexible, the `generic` keyword was introduced.
+Generic arrays are arrays made of up of generic values (i.e. `Array<generic>`).
+Generic variables and arrays can only be used in a function definition.
+
+A generic function is any function with one or more generic parameters (generic variable/array). 
+A generic function gets its proper types on function call. 
+Generic functions can return `generic` or `Array<generic>`, but you should consider 
+what your function is returning.
+
+> Generics can lead to unsafe and/or buggy code, so you should only use them when needed
+> The compiler will warn you about using generics
+
+Generic arrays are the main motivation behind generic functions, they allow you to treat an array
+the same no matter what kind of data it contains or what depth it's nested at.
+This can be necessary for dealing with arrays.
 
 ### Variable Declarations
 variables declarations must have a type and can optionally be `const`

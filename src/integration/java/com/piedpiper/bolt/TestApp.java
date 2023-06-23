@@ -1,6 +1,5 @@
 package com.piedpiper.bolt;
 
-import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.ReferenceError;
 import com.piedpiper.bolt.error.SourceCodeError;
 import com.piedpiper.bolt.error.SyntaxError;

@@ -7,7 +7,6 @@ import com.piedpiper.bolt.semantic.EntityType;
 import com.piedpiper.bolt.semantic.NodeType;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
