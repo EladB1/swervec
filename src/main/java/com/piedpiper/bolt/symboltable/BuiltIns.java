@@ -27,7 +27,6 @@ public class BuiltIns {
     );
 
     public static final Map<String, List<FunctionSymbol>> Functions = Map.ofEntries(
-        // TODO: handle generic Arrays and possibly other generics
         // Define function bodies in IR phase of compiler
         entry("length", List.of(
             new FunctionSymbol("length", intType, new EntityType[]{stringType}, true),

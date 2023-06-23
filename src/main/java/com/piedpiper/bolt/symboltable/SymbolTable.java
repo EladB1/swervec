@@ -23,7 +23,6 @@ public class SymbolTable {
     private int scopeSerial = 1;
 
     public SymbolTable() {
-        // TODO: add built-in functions and constants
         scopes.push(0); // built-in scope
         scopes.push(1); // global scope
     }
