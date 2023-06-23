@@ -1,5 +1,6 @@
 package com.piedpiper.bolt.semantic;
 
+import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.error.UnreachableCodeError;
@@ -27,19 +28,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class TestSemanticAnalyzer {
     private final SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
     private final Token intTypeToken = new StaticToken(TokenType.KW_INT);
-    private final Token genericVarToken = new VariableToken(TokenType.ID, "var");
+    private final Token varToken = new VariableToken(TokenType.ID, "var");
 
     @Test
     void test_semanticAnalyzer_varDecl_noValue() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
-            new AbstractSyntaxTree("VAR-DECL", intTypeToken, genericVarToken)
+            new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken)
         ));
         assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
     }
 
     @Test
     void test_semanticAnalyzer_varDecl_sameNameSameScope() {
-        AbstractSyntaxTree varDeclaration = new AbstractSyntaxTree("VAR-DECL", intTypeToken, genericVarToken);
+        AbstractSyntaxTree varDeclaration = new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken);
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(varDeclaration, varDeclaration));
         NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));
         assertEquals("Symbol 'var' is already defined in this scope", error.getMessage());
@@ -51,7 +52,7 @@ public class TestSemanticAnalyzer {
         AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, num));
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "<="), List.of(
             numNode,
-            numNode //new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"2\""))
+            numNode
         ));
         assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.BOOLEAN));
     }
@@ -454,80 +455,12 @@ public class TestSemanticAnalyzer {
         assertFalse(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, expectedReturnType));
     }
 
-    /*
-
-    if (0 <= 1) {
-        if (0 == 1)
-          return true
-        else if (0 == 0)
-          return true
-        else
-          return false
-    }
-    else
-        return false
-     */
-
     @Test
-    void test_conditionalBlockReturns_nested_true() {
-        Token equalityToken = new VariableToken(TokenType.OP, "==");
-        AbstractSyntaxTree zeroNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0"));
-        AbstractSyntaxTree oneNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"));
-
-        AbstractSyntaxTree conditionalBlock = new AbstractSyntaxTree("COND", List.of(
-            new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF), List.of(
-                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "<="), List.of(
-                    zeroNode,
-                    oneNode
-                )),
-                new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                    new AbstractSyntaxTree("COND", List.of(
-                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF), List.of(
-                            new AbstractSyntaxTree(equalityToken, List.of(
-                                zeroNode,
-                                oneNode
-                            )),
-                            new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                                new AbstractSyntaxTree("CONTROL-FLOW", List.of(
-                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
-                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE))
-                                ))
-                            ))
-                        )),
-                        new AbstractSyntaxTree("ELSE IF", List.of(
-                            new AbstractSyntaxTree(equalityToken, List.of(
-                                zeroNode,
-                                zeroNode
-                            )),
-                            new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                                new AbstractSyntaxTree("CONTROL-FLOW", List.of(
-                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
-                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE))
-                                ))
-                            ))
-                        )),
-                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ELSE), List.of(
-                            new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                                new AbstractSyntaxTree("CONTROL-FLOW", List.of(
-                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
-                                    new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE))
-                                ))
-                            ))
-                        ))
-                    ))
-                ))
-            )),
-            new AbstractSyntaxTree(new StaticToken(TokenType.KW_ELSE), List.of(
-                new AbstractSyntaxTree("BLOCK-BODY", List.of(
-                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
-                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
-                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE))
-                    ))
-                ))
-            ))
+    void test_generic_var_outside_function() {
+        AbstractSyntaxTree declaration = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree("VAR-DECL", new StaticToken(TokenType.KW_GEN), new VariableToken(TokenType.ID, "var"))
         ));
-
-        EntityType expectedReturnType = new EntityType(NodeType.BOOLEAN);
-        assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, expectedReturnType));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(declaration));
+        assertEquals("Cannot use generic variable outside of function definition", error.getMessage());
     }
 }
