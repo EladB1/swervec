@@ -710,10 +710,14 @@ public class Parser {
             parseExpectedToken("=", current);
             node.appendChildren(parseExpr());
         }
-        else {
+        else if (next != null && next.getName().equals(TokenType.SC)) {
             if (isConst)
                 throw new SyntaxError("Constant variable must be initialized", current.getLineNumber());
             node.appendChildren(parseExpectedToken(TokenType.ID, current));
+        }
+        else {
+            node.appendChildren(parseExpectedToken(TokenType.ID, current));
+            parseExpectedToken("=", current);
         }
         return node;
     }

@@ -2,6 +2,7 @@ package com.piedpiper.bolt.symboltable;
 
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import com.piedpiper.bolt.semantic.EntityType;
+import com.piedpiper.bolt.semantic.NodeType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NonNull;
@@ -95,5 +96,26 @@ public class FunctionSymbol {
 
     public boolean isBuiltIn() {
         return builtIn;
+    }
+
+    public boolean hasGenericParam() {
+        for (EntityType paramType : paramTypes) {
+            if (paramType.isType(NodeType.GENERIC) || paramType.containsSubType(NodeType.GENERIC))
+                return true;
+        }
+        return false;
+    }
+
+    public boolean hasCompatibleParams(EntityType[] params) {
+        if (params.length != paramTypes.length)
+            return false; // skip the ones with a different number of params
+        for (int i = 0; i < params.length; i++) {
+            if (!paramTypes[i].equals(params[i])) {
+                if (!(paramTypes[i].isType(NodeType.GENERIC) || (params[i].startsWith(NodeType.ARRAY) && paramTypes[i].containsSubType(NodeType.GENERIC)))) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

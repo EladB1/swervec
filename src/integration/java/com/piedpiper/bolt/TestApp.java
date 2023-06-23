@@ -20,7 +20,11 @@ class TestApp {
         assertEquals("Line " + lineNumber + "\n\t" + message, error.getMessage());
     }
     @ParameterizedTest
-    @ValueSource(strings = {"examples/valid.bolt", "src/integration/resources/valid/fn_returns.bolt", "src/integration/resources/valid/generics.bolt"})
+    @ValueSource(strings = {
+        "examples/valid.bolt",
+        "src/integration/resources/valid/fn_returns.bolt",
+        "src/integration/resources/valid/generics.bolt"
+    })
     void testValidProgram(String src) {
         String[] args = new String[]{src};
         assertDoesNotThrow(() -> App.main(args));

@@ -68,10 +68,15 @@ public class EntityType {
 
     public boolean containsSubType(EntityType entityType) {
         List<NodeType> typeList = entityType.getType();
+        if (type.size() == typeList.size())
+            return type.equals(typeList);
         if (type.size() < typeList.size())
             return false;
-        if (typeList.size() == 1)
+        if (typeList.size() == 1) {
+            if (typeList.get(0) == NodeType.ARRAY)
+                return type.get(0) == NodeType.ARRAY;
             return type.get(type.size() - 1) == typeList.get(0);
+        }
         int offset = type.size() - typeList.size();
         for (int i = offset; i < typeList.size(); i++) {
             if (typeList.get(i - offset) != type.get(i))
