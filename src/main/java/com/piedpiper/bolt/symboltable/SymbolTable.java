@@ -140,7 +140,6 @@ public class SymbolTable {
             return null;
         List<FunctionSymbol> matchingFunctions = functionTable.get(name);
         for (FunctionSymbol fnSymbol : matchingFunctions) {
-            //if (fnSymbol.getName().equals(name) && Arrays.equals(fnSymbol.getParamTypes(), types))
             if (fnSymbol.hasCompatibleParams(types))
                 return fnSymbol;
         }
