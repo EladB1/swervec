@@ -116,7 +116,7 @@ Basic types include
   - boolean
 
 Array types are dependent on the depth (level of nesting) and the type of data stored in the array.
-For example, `Array<Array<int>>` is used to store an array of array of ints.
+For example, `Array<Array<int>>` is used to store an array of arrays of ints.
 
 Typecasting is only allowed via builtin functions
   - `toString()`
@@ -142,7 +142,7 @@ Binary operators
   - float, int => float
   - string, int => string
   - int, string => string
-- Subtraction / Division / Modulous / Expontent
+- Subtraction / Division / Modulus / Exponent
   - int, int => int
   - float, float => float
   - int, float => float
@@ -163,6 +163,8 @@ Binary operators
   - null, anything => boolean
   - int, float => boolean
   - float, int => boolean
+- Logical operators (`&&`, `||`)
+  - boolean, boolean => boolean
 
 Unary operators
 ---
@@ -175,6 +177,42 @@ Unary operators
     - int => int
     - float => float
 
+Other type requirements
+---
+
+- ternary: boolean `?` anything `:` anything
+- conditional blocks
+
+```c
+    if (boolean) {
+      // ...
+    }
+    else if (boolean) {
+      // ...
+    }
+```
+
+ - while loops: `while (boolean) {}`
+ - for loops
+   - `for (type element : container)`
+     - container must be either a string or array
+     - the type of element must be either a string if container is a string
+     - or the matching type of the container elements
+   - `for (int i = 0; i < value; i++)`
+     - the first part of the loop must be a variable declaration or assignment
+     - the second part must be a boolean
+     - the third part must match the type of the first part
+ - array index
+   - The variable being indexed must be an array (containing any type)
+   - the index value itself must be an int
+   - cannot index greater than the array depth
+ - void functions
+   - can have implicit or explicit `return`
+   - cannot return any value (including `null`) during explicit return
+ - non-void functions
+   - must have explicit `return` that returns a value matching the declared return type
+   - all branches (conditionals, loops, etc.) must lead to return 
+
 #### Generics
 
 In order to make the type system slightly more flexible, the `generic` keyword was introduced.
@@ -186,8 +224,7 @@ A generic function gets its proper types on function call.
 Generic functions can return `generic` or `Array<generic>`, but you should consider 
 what your function is returning.
 
-> Generics can lead to unsafe and/or buggy code, so you should only use them when needed
-> The compiler will warn you about using generics
+> Generics can lead to unsafe and/or buggy code, so you should only use them when needed; the compiler will warn you about using generics
 
 Generic arrays are the main motivation behind generic functions, they allow you to treat an array
 the same no matter what kind of data it contains or what depth it's nested at.
