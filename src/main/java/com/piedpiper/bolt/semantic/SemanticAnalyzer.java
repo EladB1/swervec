@@ -131,8 +131,10 @@ public class SemanticAnalyzer {
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
-            if (!lhsType.equals(rhsType) && !rhsType.isType(NodeType.NULL))
-                throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
+            if (!lhsType.equals(rhsType) && !rhsType.isType(NodeType.NULL)) {
+                if (!details.get(offset + 2).getLabel().equals("FUNC-CALL") && rhsType.isType(NodeType.GENERIC))
+                    throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
+            }
         }
         symbolTable.insert(new Symbol(node, scope));
     }

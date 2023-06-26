@@ -463,4 +463,45 @@ public class TestSemanticAnalyzer {
         IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(declaration));
         assertEquals("Cannot use generic variable outside of function definition", error.getMessage());
     }
+
+    @Test
+    void test_generic_return_fn_call() {
+        // Array<int> nums[2] = {2, 4}; pop(nums);
+        AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "nums")),
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "2")),
+                new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.NUMBER, "4"))
+            )),
+            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "pop")),
+                new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "nums"))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(fnCall));
+    }
+
+    @Test
+    void test_generic_return_fn_call_assignment() {
+        // Array<int> nums[2] = {2, 4}; int num = pop(nums);
+        AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "nums")),
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "2")),
+                new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.NUMBER, "4"))
+            )),
+            new AbstractSyntaxTree("VAR-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "num")),
+                new AbstractSyntaxTree("FUNC-CALL", List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.ID, "pop")),
+                    new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "nums"))
+                ))
+            ))
+
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(fnCall));
+    }
 }
