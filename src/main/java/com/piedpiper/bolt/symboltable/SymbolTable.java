@@ -17,6 +17,7 @@ import java.util.Stack;
 public class SymbolTable {
     private final Map<String, List<Symbol>> table = new HashMap<>(BuiltIns.Variables);
     private final Map<String, List<FunctionSymbol>> functionTable = new HashMap<>(BuiltIns.Functions);
+    private final Map<String, List<FunctionSymbol>> prototypesTable = new HashMap<>(BuiltIns.Prototypes);
     private final Stack<Integer> scopes = new Stack<>();
     private int scopeLevel = 1;
 
@@ -135,9 +136,12 @@ public class SymbolTable {
     }
 
     public FunctionSymbol lookup(String name, EntityType[] types) {
-        if (!functionTable.containsKey(name))
-            return null;
-        List<FunctionSymbol> matchingFunctions = functionTable.get(name);
+        boolean functionDefined = functionTable.containsKey(name);
+        if (!functionDefined) {
+            if (!prototypesTable.containsKey(name))
+                return null;
+        }
+        List<FunctionSymbol> matchingFunctions = functionDefined ? functionTable.get(name) : prototypesTable.get(name);
         for (FunctionSymbol fnSymbol : matchingFunctions) {
             if (fnSymbol.hasCompatibleParams(types))
                 return fnSymbol;

@@ -1,17 +1,17 @@
-fn first(Array<generic> array): generic {
+prototype first(Array<generic> array): generic {
     return array[0];
 }
 
-fn last(Array<generic> array): generic {
+prototype last(Array<generic> array): generic {
     generic end = array[2];
     return end;
 }
 
-fn last(boolean something, Array<generic> array): generic {
+prototype last(boolean something, Array<generic> array): generic {
     return array[2];
 }
 
-fn end(Array<generic> array): generic {
+prototype end(Array<generic> array): generic {
     return array[2];
 }
 

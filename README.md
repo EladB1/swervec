@@ -59,6 +59,7 @@ Statements are:
 ### Reserved words:
  - `const`
  - `mut`
+ - `prototype`
  - `generic`
  - `int`
  - `float`
@@ -219,7 +220,7 @@ In order to make the type system slightly more flexible, the `generic` keyword w
 Generic arrays are arrays made of up of generic values (i.e. `Array<generic>`).
 Generic variables and arrays can only be used in a function definition.
 
-A generic function is any function with one or more generic parameters (generic variable/array). 
+A generic function AKA prototype is any function with one or more generic parameters (generic variable/array). 
 A generic function gets its proper types on function call. 
 Generic functions can return `generic` or `Array<generic>`, but you should consider 
 what your function is returning.

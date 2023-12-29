@@ -111,6 +111,10 @@ public class SemanticAnalyzer {
             else if (subTree.getName() == TokenType.KW_FN) {
                 handleFunctionDefinition(subTree.getChildren());
             }
+            // prototype
+            else if (subTree.getName() == TokenType.KW_PROTO) {
+                handlePrototypeDefinition(subTree.getChildren());
+            }
             else {
                 evaluateType(subTree);
             }
@@ -239,6 +243,78 @@ public class SemanticAnalyzer {
     }
 
     private void handleFunctionDefinition(List<AbstractSyntaxTree> fnDetails) {
+        int scope = symbolTable.enterScope();
+        int lineNum = fnDetails.get(0).getLineNumber();
+        int length = fnDetails.size();
+        String name = fnDetails.get(0).getValue();
+        EntityType fnReturnType = new EntityType(NodeType.NONE);
+        AbstractSyntaxTree body = null;
+        EntityType[] types = {};
+        Symbol[] params = {};
+        switch (length) {
+            case 1:
+                symbolTable.insert(new FunctionSymbol(name));
+                symbolTable.leaveScope();
+                return;
+            case 2:
+                if (isTypeLabel(fnDetails.get(1))) // has a returnType but no function body
+                    throw new TypeError(
+                        "Function " + name + "expected to return " + fnDetails.get(1) + " but returns nothing",
+                        lineNum
+                    );
+                else if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
+                    types = getParamTypes(fnDetails.get(1).getChildren());
+                    params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
+                }
+                else {
+                    body = fnDetails.get(1);
+                }
+                break;
+            case 3:
+                if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
+                    types = getParamTypes(fnDetails.get(1).getChildren());
+                    params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
+                    if (isTypeLabel(fnDetails.get(2)))
+                        throw new TypeError(
+                            "Function " + name + " expected to return " + fnDetails.get(1) + " but returns nothing",
+                            lineNum
+                        );
+                    else {
+                        body = fnDetails.get(2);
+                    }
+                }
+                if (isTypeLabel(fnDetails.get(1))) {
+                    fnReturnType = new EntityType(fnDetails.get(1));
+                    body = fnDetails.get(2);
+                }
+                break;
+            case 4:
+                types = getParamTypes(fnDetails.get(1).getChildren());
+                params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
+                fnReturnType = new EntityType(fnDetails.get(2));
+                body = fnDetails.get(3);
+                break;
+        }
+        for (Symbol param : params) {
+            symbolTable.insert(param);
+        }
+        FunctionSymbol function = new FunctionSymbol(name, fnReturnType, types, body);
+        symbolTable.insert(function);
+        if (function.hasGenericParam())
+            emitWarning("Function '" + name + "' uses one or more generic parameters. Generics can lead to bugs, so only use them carefully.");
+        if (body != null) {
+            // analyze needs to come first to get variables in scope
+            // but this will mean unreachable code errors come after other errors (even if they don't in the code)
+            analyze(body, false, true, fnReturnType);
+            if (!fnReturnType.isType(NodeType.NONE) && !functionReturns(body, fnReturnType))
+                throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
+        }
+
+        symbolTable.leaveScope();
+    }
+
+    private void handlePrototypeDefinition(List<AbstractSyntaxTree> fnDetails) {
+        // TODO: Change implementation
         int scope = symbolTable.enterScope();
         int lineNum = fnDetails.get(0).getLineNumber();
         int length = fnDetails.size();
