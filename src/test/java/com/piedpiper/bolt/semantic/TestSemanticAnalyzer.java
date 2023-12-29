@@ -31,7 +31,8 @@ public class TestSemanticAnalyzer {
     private final Token varToken = new VariableToken(TokenType.ID, "var");
 
     @Test
-    void test_semanticAnalyzer_varDecl_noValue() {
+    void test_varDecl_noValue() {
+        // int var;
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken)
         ));
@@ -39,7 +40,27 @@ public class TestSemanticAnalyzer {
     }
 
     @Test
-    void test_semanticAnalyzer_varDecl_sameNameSameScope() {
+    void test_varDecl_withValue() {
+        // int var = 5;
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken, new VariableToken(TokenType.NUMBER, "5"))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
+    }
+
+    @Test
+    void test_varDecl_withWrongTypeValue() {
+        // int var = "5";
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken, new VariableToken(TokenType.STRING, "\"5\""))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Right hand side of variable is STRING but INT expected", error.getMessage());
+    }
+
+    @Test
+    void test_varDecl_sameNameSameScope() {
+        // int var; int var;
         AbstractSyntaxTree varDeclaration = new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken);
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(varDeclaration, varDeclaration));
         NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));

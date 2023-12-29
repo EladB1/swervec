@@ -132,7 +132,7 @@ public class SemanticAnalyzer {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
             if (!lhsType.equals(rhsType) && !rhsType.isType(NodeType.NULL)) {
-                if (!details.get(offset + 2).getLabel().equals("FUNC-CALL") && rhsType.isType(NodeType.GENERIC))
+                if (!(rhsType.isType(NodeType.GENERIC) && details.get(offset + 2).getLabel().equals("FUNC-CALL")))
                     throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
             }
         }
@@ -202,7 +202,7 @@ public class SemanticAnalyzer {
             int length = conditionals.size();
             EntityType condition;
             AbstractSyntaxTree body;
-            for (int i = 0; i < length - 1; i++) {
+            for (int i = 0; i < length; i++) {
                 if (i == 0) {
                     if (conditionals.get(i).getName() != TokenType.KW_IF)
                         throw new IllegalStatementError("Conditional block must begin with if", conditionals.get(i).getLineNumber());
@@ -456,7 +456,7 @@ public class SemanticAnalyzer {
 
     public boolean conditionalBlockReturns(AbstractSyntaxTree conditionalBlock, EntityType returnType) {
         List<AbstractSyntaxTree> conditionals = conditionalBlock.getChildren();
-        if (conditionals.size() == 0)
+        if (conditionals.isEmpty())
             return false;
         if (conditionals.get(conditionals.size()-1).getName() != TokenType.KW_ELSE)
             return false;
@@ -502,7 +502,7 @@ public class SemanticAnalyzer {
 
     public boolean conditionalBlockHasLoopControl(AbstractSyntaxTree conditionalBlock) {
         List<AbstractSyntaxTree> conditionals = conditionalBlock.getChildren();
-        if (conditionals.size() == 0)
+        if (conditionals.isEmpty())
             return false;
         if (conditionals.get(conditionals.size() - 1).getName() != TokenType.KW_ELSE)
             return false;
