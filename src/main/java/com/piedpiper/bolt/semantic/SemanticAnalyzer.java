@@ -7,6 +7,7 @@ import com.piedpiper.bolt.error.UnreachableCodeError;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import com.piedpiper.bolt.symboltable.FunctionSymbol;
+import com.piedpiper.bolt.symboltable.PrototypeSymbol;
 import com.piedpiper.bolt.symboltable.Symbol;
 import com.piedpiper.bolt.symboltable.SymbolTable;
 
@@ -300,8 +301,6 @@ public class SemanticAnalyzer {
         }
         FunctionSymbol function = new FunctionSymbol(name, fnReturnType, types, body);
         symbolTable.insert(function);
-        if (function.hasGenericParam())
-            emitWarning("Function '" + name + "' uses one or more generic parameters. Generics can lead to bugs, so only use them carefully.");
         if (body != null) {
             // analyze needs to come first to get variables in scope
             // but this will mean unreachable code errors come after other errors (even if they don't in the code)
@@ -313,15 +312,15 @@ public class SemanticAnalyzer {
         symbolTable.leaveScope();
     }
 
-    private void handlePrototypeDefinition(List<AbstractSyntaxTree> fnDetails) {
-        // TODO: Change implementation
+    private void handlePrototypeDefinition(List<AbstractSyntaxTree> protoDetails) {
         int scope = symbolTable.enterScope();
-        int lineNum = fnDetails.get(0).getLineNumber();
-        int length = fnDetails.size();
-        String name = fnDetails.get(0).getValue();
-        EntityType fnReturnType = new EntityType(NodeType.NONE);
+        int lineNum = protoDetails.get(0).getLineNumber();
+        int length = protoDetails.size();
+        String name = protoDetails.get(0).getValue();
+        EntityType protoReturnType = new EntityType(NodeType.NONE);
         AbstractSyntaxTree body = null;
         EntityType[] types = {};
+        String[] paramNames = {};
         Symbol[] params = {};
         switch (length) {
             case 1:
@@ -329,59 +328,59 @@ public class SemanticAnalyzer {
                 symbolTable.leaveScope();
                 return;
             case 2:
-                if (isTypeLabel(fnDetails.get(1))) // has a returnType but no function body
+                if (isTypeLabel(protoDetails.get(1))) // has a returnType but no function body
                     throw new TypeError(
-                        "Function " + name + "expected to return " + fnDetails.get(1) + " but returns nothing",
+                        "Prototype " + name + "expected to return " + protoDetails.get(1) + " but returns nothing",
                         lineNum
                     );
-                else if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
-                    types = getParamTypes(fnDetails.get(1).getChildren());
-                    params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
+                else if (protoDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
+                    types = getParamTypes(protoDetails.get(1).getChildren());
+                    paramNames = getParamNames(protoDetails.get(1).getChildren());
+                    params = paramsToSymbols(protoDetails.get(1).getChildren(), scope);
                 }
                 else {
-                    body = fnDetails.get(1);
+                    body = protoDetails.get(1);
                 }
                 break;
             case 3:
-                if (fnDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
-                    types = getParamTypes(fnDetails.get(1).getChildren());
-                    params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
-                    if (isTypeLabel(fnDetails.get(2)))
+                if (protoDetails.get(1).getLabel().equals("FUNC-PARAMS")) {
+                    types = getParamTypes(protoDetails.get(1).getChildren());
+                    paramNames = getParamNames(protoDetails.get(1).getChildren());
+                    params = paramsToSymbols(protoDetails.get(1).getChildren(), scope);
+                    if (isTypeLabel(protoDetails.get(2)))
                         throw new TypeError(
-                            "Function " + name + " expected to return " + fnDetails.get(1) + " but returns nothing",
+                            "Prototype " + name + " expected to return " + protoDetails.get(1) + " but returns nothing",
                             lineNum
                         );
                     else {
-                        body = fnDetails.get(2);
+                        body = protoDetails.get(2);
                     }
                 }
-                if (isTypeLabel(fnDetails.get(1))) {
-                    fnReturnType = new EntityType(fnDetails.get(1));
-                    body = fnDetails.get(2);
+                if (isTypeLabel(protoDetails.get(1))) {
+                    protoReturnType = new EntityType(protoDetails.get(1));
+                    body = protoDetails.get(2);
                 }
                 break;
             case 4:
-                types = getParamTypes(fnDetails.get(1).getChildren());
-                params = paramsToSymbols(fnDetails.get(1).getChildren(), scope);
-                fnReturnType = new EntityType(fnDetails.get(2));
-                body = fnDetails.get(3);
+                types = getParamTypes(protoDetails.get(1).getChildren());
+                paramNames = getParamNames(protoDetails.get(1).getChildren());
+                params = paramsToSymbols(protoDetails.get(1).getChildren(), scope);
+                protoReturnType = new EntityType(protoDetails.get(2));
+                body = protoDetails.get(3);
                 break;
         }
         for (Symbol param : params) {
             symbolTable.insert(param);
         }
-        FunctionSymbol function = new FunctionSymbol(name, fnReturnType, types, body);
-        symbolTable.insert(function);
-        if (function.hasGenericParam())
-            emitWarning("Function '" + name + "' uses one or more generic parameters. Generics can lead to bugs, so only use them carefully.");
+        PrototypeSymbol prototype = new PrototypeSymbol(name, protoReturnType, types, paramNames, body);
+        symbolTable.insert(prototype);
         if (body != null) {
             // analyze needs to come first to get variables in scope
             // but this will mean unreachable code errors come after other errors (even if they don't in the code)
-            analyze(body, false, true, fnReturnType);
-            if (!fnReturnType.isType(NodeType.NONE) && !functionReturns(body, fnReturnType))
-                throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
+            analyze(body, false, true, protoReturnType);
+            if (!protoReturnType.isType(NodeType.NONE) && !functionReturns(body, protoReturnType))
+                throw new TypeError("Prototype " + name + " expected to return " + protoReturnType + " but does not return for all branches", lineNum);
         }
-
         symbolTable.leaveScope();
     }
 
@@ -621,6 +620,16 @@ public class SemanticAnalyzer {
         return types;
     }
 
+    private String[] getParamNames(List<AbstractSyntaxTree> params) {
+        String[] names = new String[params.size()];
+        AbstractSyntaxTree param;
+        for (int i = 0; i < params.size(); i++) {
+            param = params.get(i);
+            names[i] = param.getChildren().get(1).getValue();
+        }
+        return names;
+    }
+
     private EntityType handleTernary(AbstractSyntaxTree node) {
         if (!evaluateType(node.getChildren().get(0)).isType(NodeType.BOOLEAN))
             throw new TypeError("Ternary expression must start with boolean expression");
@@ -781,8 +790,15 @@ public class SemanticAnalyzer {
                 }
             }
             matchingDefinition = symbolTable.lookup(name, types);
-            if (matchingDefinition == null)
-                throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
+            if (matchingDefinition == null) {
+                // check if there is a matching prototype
+                PrototypeSymbol prototype = symbolTable.lookupPrototype(name, types);
+                if (prototype == null)
+                    throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
+                System.out.println(prototype);
+                matchingDefinition = new FunctionSymbol(prototype, types);
+                // transform the prototype into a concrete function
+            }
             return matchingDefinition.getReturnType();
         }
         if (node.getLabel().equals("ARRAY-LIT"))

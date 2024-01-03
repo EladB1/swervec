@@ -97,31 +97,29 @@ public class BuiltIns {
         entry("print", List.of(new FunctionSymbol("print", stringType, true)))
     );
 
-    public static final Map<String, List<FunctionSymbol>> Prototypes = Map.ofEntries(
+    public static final Map<String, List<PrototypeSymbol>> Prototypes = Map.ofEntries(
         // Define function bodies in IR phase of compiler
         entry("length", List.of(
-            new FunctionSymbol("length", intType, new EntityType[]{genericArrayType}, true)
+            new PrototypeSymbol("length", intType, new EntityType[]{genericArrayType}, new String[]{"array"}, true)
         )),
         entry("toString", List.of(
-            new FunctionSymbol("toString", stringType, new EntityType[]{genericArrayType}, true)
+            new PrototypeSymbol("toString", stringType, new EntityType[]{genericArrayType}, new String[]{"array"}, true)
         )),
         entry("contains", List.of(
-            new FunctionSymbol("contains", booleanType, new EntityType[]{genericArrayType, genericType}, true)
+            new PrototypeSymbol("contains", booleanType, new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true)
         )),
         entry("remove", List.of(
-            new FunctionSymbol("remove", stringType, new EntityType[]{stringType}, true),
-            new FunctionSymbol("remove", stringType, new EntityType[]{intType}, true)
+            new PrototypeSymbol("remove", stringType, new EntityType[]{stringType}, new String[]{"array"}, true),
+            new PrototypeSymbol("remove", stringType, new EntityType[]{intType}, new String[]{"array"}, true)
         )),
 
-        // at some point, will need to add type checking for these calls...
-        entry("pop", List.of(new FunctionSymbol("pop", genericType, new EntityType[]{genericArrayType}, true))),
-        entry("append", List.of(new FunctionSymbol("append", new EntityType[]{genericArrayType, genericType}, true))),
-        entry("prepend", List.of(new FunctionSymbol("prepend", new EntityType[]{genericArrayType, genericType}, true))),
-        entry("sort", List.of(new FunctionSymbol("sort", genericArrayType, new EntityType[]{genericArrayType}, true))),
+        entry("pop", List.of(new PrototypeSymbol("pop", genericType, new EntityType[]{genericArrayType}, new String[]{"array"}, true))),
+        entry("append", List.of(new PrototypeSymbol("append", new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true))),
+        entry("prepend", List.of(new PrototypeSymbol("prepend", new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true))),
+        entry("sort", List.of(new PrototypeSymbol("sort", genericArrayType, new EntityType[]{genericArrayType}, new String[]{"array"}, true))),
 
-        entry("search", List.of(new FunctionSymbol("search", intType, new EntityType[]{stringType, stringType}, true))),
-        entry("reverse", List.of(new FunctionSymbol("reverse", stringType, new EntityType[]{stringType}, true))),
-        entry("at", List.of(new FunctionSymbol("at", stringType, new EntityType[]{stringType, intType}, true))),
-        entry("print", List.of(new FunctionSymbol("print", stringType, true)))
+        entry("indexOf", List.of(new PrototypeSymbol("indexOf", intType, new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true))),
+        entry("reverse", List.of(new PrototypeSymbol("reverse", new EntityType[]{genericArrayType}, new String[]{"array"}, true))),
+        entry("print", List.of(new PrototypeSymbol("print", new EntityType[]{genericArrayType}, new String[]{"array"}, true)))
     );
 }

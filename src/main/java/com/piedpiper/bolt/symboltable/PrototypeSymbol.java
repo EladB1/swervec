@@ -1,6 +1,5 @@
 package com.piedpiper.bolt.symboltable;
 
-import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import com.piedpiper.bolt.semantic.EntityType;
 import com.piedpiper.bolt.semantic.NodeType;
@@ -11,91 +10,57 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 /*
-valid function cases:
-  - fn name() {} => [name]
-  - fn name() {body} => [name, body]
-  - fn name(): type {body} => [name, type, body]
+valid prototype cases:
   - fn name(params) {} => [name, params]
   - fn name(params) {body} => [name, params, body]
   - fn name(params): type {body} => [name, params, type, body]
 */
+
 @RequiredArgsConstructor
 @AllArgsConstructor
 @Data
-public class FunctionSymbol {
+public class PrototypeSymbol {
     @NonNull
     private String name;
     private EntityType returnType = null; // need to handle complex return values like Array<Array<int>>
     private EntityType[] paramTypes = {};
+    private String[] paramNames = {};
     private Boolean builtIn = false;
     private AbstractSyntaxTree fnBodyNode = null;
 
-    public FunctionSymbol(@NonNull String name, Boolean builtIn) {
+    public PrototypeSymbol(@NonNull String name, EntityType[] paramTypes, String[] paramNames, Boolean builtIn) {
         this.name = name;
+        this.paramTypes = paramTypes;
+        this.paramNames = paramNames;
         this.builtIn = builtIn;
     }
 
-    public FunctionSymbol(@NonNull String name, EntityType returnType, Boolean builtIn) {
+    public PrototypeSymbol(@NonNull String name, EntityType returnType, EntityType[] paramTypes, String[] paramNames, Boolean builtIn) {
         this.name = name;
         this.returnType = returnType;
+        this.paramTypes = paramTypes;
+        this.paramNames = paramNames;
         this.builtIn = builtIn;
     }
-
-    public FunctionSymbol(@NonNull String name, EntityType[] paramTypes, Boolean builtIn) {
+    public PrototypeSymbol(@NonNull String name, EntityType[] paramTypes, String[] paramNames) {
         this.name = name;
         this.paramTypes = paramTypes;
-        this.builtIn = builtIn;
+        this.paramNames = paramNames;
     }
 
-    public FunctionSymbol(@NonNull String name, EntityType returnType, EntityType[] paramTypes, Boolean builtIn) {
+    public PrototypeSymbol(@NonNull String name, EntityType[] paramTypes, String[] paramNames, AbstractSyntaxTree fnBodyNode) {
+        this.name = name;
+        this.paramTypes = paramTypes;
+        this.paramNames = paramNames;
+        this.fnBodyNode = fnBodyNode;
+    }
+
+    public PrototypeSymbol(@NonNull String name, EntityType returnType, EntityType[] paramTypes, String[] paramNames, AbstractSyntaxTree fnBodyNode) {
         this.name = name;
         this.returnType = returnType;
         this.paramTypes = paramTypes;
-        this.builtIn = builtIn;
-    }
-
-    public FunctionSymbol(@NonNull String name, AbstractSyntaxTree fnBodyNode) {
-        this.name = name;
+        this.paramNames = paramNames;
         this.fnBodyNode = fnBodyNode;
-    }
-
-    public FunctionSymbol(@NonNull String name, EntityType returnType, AbstractSyntaxTree fnBodyNode) {
-        this.name = name;
-        this.returnType = returnType;
-        this.fnBodyNode = fnBodyNode;
-    }
-
-    public FunctionSymbol(@NonNull String name, EntityType[] paramTypes) {
-        this.name = name;
-        this.paramTypes = paramTypes;
-    }
-
-    public FunctionSymbol(@NonNull String name, EntityType[] paramTypes, AbstractSyntaxTree fnBodyNode) {
-        this.name = name;
-        this.paramTypes = paramTypes;
-        this.fnBodyNode = fnBodyNode;
-    }
-
-    public FunctionSymbol(@NonNull String name, EntityType returnType, EntityType[] paramTypes, AbstractSyntaxTree fnBodyNode) {
-        this.name = name;
-        this.paramTypes = paramTypes;
-        this.returnType = returnType;
-        this.fnBodyNode = fnBodyNode;
-    }
-
-    public FunctionSymbol(PrototypeSymbol prototype, EntityType[] calledParamTypes) {
-        this.name = prototype.getName();
-        this.builtIn = prototype.isBuiltIn();
-        if (prototype.getReturnType().isType(NodeType.GENERIC) || prototype.getReturnType().containsSubType(NodeType.GENERIC)) {
-            this.returnType = prototype.getReturnType();
-        }
-        else
-            this.returnType = prototype.getReturnType();
-        this.paramTypes = calledParamTypes;
-        if (!prototype.hasCompatibleParams(calledParamTypes))
-            throw new TypeError("Prototype " + prototype.formFnSignature() + " called incorrectly as " + this.formFnSignature());
-        
-
     }
 
     public boolean isBuiltIn() {
@@ -109,13 +74,16 @@ public class FunctionSymbol {
         }
         return false;
     }
-
+    
     public boolean hasCompatibleParams(EntityType[] params) {
         if (params.length != paramTypes.length)
             return false; // skip the ones with a different number of params
         for (int i = 0; i < params.length; i++) {
-            if (!paramTypes[i].equals(params[i]))
-                return false;
+            if (!paramTypes[i].equals(params[i])) {
+                if (!(paramTypes[i].isType(NodeType.GENERIC) || (params[i].startsWith(NodeType.ARRAY) && paramTypes[i].containsSubType(NodeType.GENERIC)))) {
+                    return false;
+                }
+            }
         }
         return true;
     }
@@ -130,5 +98,10 @@ public class FunctionSymbol {
         }
         output.append(")");
         return output.toString();
+    }
+
+    public AbstractSyntaxTree deGenericizeBody(EntityType[] calledParamTypes) {
+        AbstractSyntaxTree copy = this.fnBodyNode;
+        return copy;
     }
 }
