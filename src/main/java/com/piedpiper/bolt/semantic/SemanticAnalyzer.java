@@ -136,6 +136,7 @@ public class SemanticAnalyzer {
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
+            System.out.println("RHS: " + rhsType + ",LHS: " + lhsType);
             if (!lhsType.equals(rhsType) && !rhsType.isType(NodeType.NULL)) {
                 if (!(rhsType.isType(NodeType.GENERIC) && details.get(offset + 2).getLabel().equals("FUNC-CALL")))
                     throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
@@ -396,7 +397,7 @@ public class SemanticAnalyzer {
             else
                 break;
         }
-        if (sizes.size() == 0)
+        if (sizes.isEmpty())
             throw new IllegalStatementError("Array sizes missing valid values", sizeNode.getLineNumber());
         return sizes;
     }
@@ -796,7 +797,8 @@ public class SemanticAnalyzer {
                 if (prototype == null)
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
                 System.out.println(prototype);
-                matchingDefinition = new FunctionSymbol(prototype, types);
+                matchingDefinition = prototypeToFunction(prototype, types);
+                //System.out.println(matchingDefinition);
                 // transform the prototype into a concrete function
             }
             return matchingDefinition.getReturnType();
@@ -967,5 +969,27 @@ public class SemanticAnalyzer {
         if (!indexType.isType(NodeType.INT))
             throw new TypeError("Array can only be indexed using int values, not " + indexType + " values", node.getLineNumber());
         return symbol.getType().index(depth, node.getLineNumber());
+    }
+
+    private FunctionSymbol prototypeToFunction(PrototypeSymbol prototypeSymbol, EntityType[] calledParams) {
+        FunctionSymbol fnDefinition = new FunctionSymbol(prototypeSymbol.getName(), calledParams, prototypeSymbol.getBuiltIn());
+        // transform body
+        symbolTable.enterScope();
+        for (int i = 0; i < calledParams.length; i++) {
+            symbolTable.insert(new Symbol(prototypeSymbol.getParamNames()[i], calledParams[i]));
+        }
+        analyze(prototypeSymbol.getFnBodyNode(), false, true, prototypeSymbol.getReturnType());
+        symbolTable.leaveScope();
+        fnDefinition.setFnBodyNode(prototypeSymbol.getFnBodyNode());
+        if (fnDefinition.getReturnType() != null) {
+            if (fnDefinition.getReturnType().isType(NodeType.GENERIC) || fnDefinition.getReturnType().containsSubType(NodeType.GENERIC)) {
+                // TODO
+                fnDefinition.setReturnType(prototypeSymbol.getReturnType());
+            }
+            else {
+                fnDefinition.setReturnType(prototypeSymbol.getReturnType());
+            }
+        }
+        return fnDefinition;
     }
 }
