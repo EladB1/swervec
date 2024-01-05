@@ -807,6 +807,7 @@ public class SemanticAnalyzer {
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
                 System.out.println(prototype);
                 matchingDefinition = prototypeToFunction(prototype, types);
+                System.out.println(symbolTable);
                 //System.out.println(matchingDefinition);
                 // transform the prototype into a concrete function
             }
@@ -1000,6 +1001,7 @@ public class SemanticAnalyzer {
         }
         symbolTable.leaveScope();
         System.out.println(fnDefinition);
+        symbolTable.insert(fnDefinition, true);
         return fnDefinition;
     }
 

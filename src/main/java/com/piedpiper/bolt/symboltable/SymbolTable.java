@@ -73,6 +73,10 @@ public class SymbolTable {
     }
 
     public void insert(FunctionSymbol fnSymbol) {
+        insert(fnSymbol, false);
+    }
+
+    public void insert(FunctionSymbol fnSymbol, boolean fromPrototypeTranslation) {
         String name = fnSymbol.getName();
         if (!functionTable.containsKey(name)) {
             if (fnSymbol.getReturnType() != null) {
@@ -85,7 +89,7 @@ public class SymbolTable {
         }
         boolean isBuiltIn = functionTable.get(name).get(0).isBuiltIn();
 
-        if (isBuiltIn)
+        if (isBuiltIn && !fromPrototypeTranslation)
             throw new NameError("Function '" + name + "' is builtin so its name cannot be reused");
 
         EntityType storedReturnType = functionTable.get(name).get(0).getReturnType();
@@ -96,7 +100,7 @@ public class SymbolTable {
             }
         }
 
-        if (!Objects.equals(storedReturnType, returnType)) {
+        if (!Objects.equals(storedReturnType, returnType) && !fromPrototypeTranslation) {
             String message = String.format(
                 "Function '%s' cannot have return type %s because another definition returns type %s",
                 name,

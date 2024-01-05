@@ -1,5 +1,5 @@
 prototype first(Array<generic> array): generic {
-    generic elem= array[0];
+    generic elem = array[0];
     return elem;
 }
 /*
