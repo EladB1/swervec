@@ -16,7 +16,7 @@ public class StaticToken implements Token {
     private String value = "";
     private Integer lineNumber = 0;
 
-    public StaticToken(TokenType name, Integer lineNumber) {
+    public StaticToken(@NonNull TokenType name, Integer lineNumber) {
         this.name = name;
         this.lineNumber = lineNumber;
     }

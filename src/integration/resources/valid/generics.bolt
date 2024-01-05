@@ -1,5 +1,5 @@
 prototype first(Array<generic> array): generic {
-    generic elem = array[0];
+    generic elem= array[0];
     return elem;
 }
 /*
@@ -18,4 +18,5 @@ prototype end(Array<generic> array): generic {
 */
 Array<float> floats[3] = {-9.8, 3.14, 6.67 * 10 ** -11};
 float f = first(floats);
+string s = first({"hello", "world"});
 //last(floats);

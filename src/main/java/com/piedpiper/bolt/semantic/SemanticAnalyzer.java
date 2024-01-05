@@ -13,6 +13,7 @@ import com.piedpiper.bolt.symboltable.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -72,13 +73,13 @@ public class SemanticAnalyzer {
     }
 
     public void analyze(AbstractSyntaxTree AST) {
-        analyze(AST, false, false, new EntityType(NodeType.NONE));
+        analyze(AST, new EntityType(NodeType.NONE), false, false, false);
     }
 
-    public void analyze(AbstractSyntaxTree AST, boolean inLoop, boolean inFunc, EntityType returnType) {
+    public void analyze(AbstractSyntaxTree AST, EntityType returnType, boolean inFunc, boolean inLoop, boolean translatingPrototype) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
             if (matchesLabelNode(subTree, "VAR-DECL")) {
-                handleVariableDeclaration(subTree, inFunc);
+                handleVariableDeclaration(subTree, inFunc, translatingPrototype);
             }
             else if (matchesLabelNode(subTree, "ARRAY-DECL")) {
                 handleArrayDeclaration(subTree, inFunc);
@@ -122,11 +123,12 @@ public class SemanticAnalyzer {
         }
     }
 
-    private void handleVariableDeclaration(AbstractSyntaxTree node, boolean inFunc) {
+    private void handleVariableDeclaration(AbstractSyntaxTree node, boolean inFunc, boolean translatingPrototype) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
-        if (details.get(0).getName() == TokenType.KW_CONST) {
+        boolean isConst = details.get(0).getName() == TokenType.KW_CONST;
+        if (isConst) {
             offset++;
             if (node.countChildren() != 4)
                 throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
@@ -136,9 +138,15 @@ public class SemanticAnalyzer {
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
-            System.out.println("RHS: " + rhsType + ",LHS: " + lhsType);
+            System.out.println("LHS: " + lhsType + ",RHS: " + rhsType);
             if (!lhsType.equals(rhsType) && !rhsType.isType(NodeType.NULL)) {
-                if (!(rhsType.isType(NodeType.GENERIC) && details.get(offset + 2).getLabel().equals("FUNC-CALL")))
+                if (translatingPrototype && lhsType.isType(NodeType.GENERIC)) {
+                    Symbol symbol = new Symbol(details.get(offset+1).getValue(), rhsType, isConst, details.get(offset+2), scope);
+                    System.out.println(symbol);
+                    symbolTable.insert(symbol);
+                    return;
+                }
+                //if (!(rhsType.isType(NodeType.GENERIC) && details.get(offset + 2).getLabel().equals("FUNC-CALL")))
                     throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
             }
         }
@@ -239,7 +247,7 @@ public class SemanticAnalyzer {
                     }
                 }
                 symbolTable.enterScope();
-                analyze(body, inLoop, inFunc, returnType);
+                analyze(body, returnType, inFunc, inLoop, false);
                 symbolTable.leaveScope();
             }
     }
@@ -305,7 +313,7 @@ public class SemanticAnalyzer {
         if (body != null) {
             // analyze needs to come first to get variables in scope
             // but this will mean unreachable code errors come after other errors (even if they don't in the code)
-            analyze(body, false, true, fnReturnType);
+            analyze(body, fnReturnType, true, false, false);
             if (!fnReturnType.isType(NodeType.NONE) && !functionReturns(body, fnReturnType))
                 throw new TypeError("Function " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
         }
@@ -378,7 +386,7 @@ public class SemanticAnalyzer {
         if (body != null) {
             // analyze needs to come first to get variables in scope
             // but this will mean unreachable code errors come after other errors (even if they don't in the code)
-            analyze(body, false, true, protoReturnType);
+            analyze(body, protoReturnType, true, false, false);
             if (!protoReturnType.isType(NodeType.NONE) && !functionReturns(body, protoReturnType))
                 throw new TypeError("Prototype " + name + " expected to return " + protoReturnType + " but does not return for all branches", lineNum);
         }
@@ -413,7 +421,7 @@ public class SemanticAnalyzer {
         if (body.getLabel().equals("BLOCK-BODY")) {
             loopHasControlFlow(body); // this will check for unreachable code
             symbolTable.enterScope();
-            analyze(body, true, inFunc, returnType);
+            analyze(body, returnType, inFunc, true, false);
             symbolTable.leaveScope();
         }
     }
@@ -474,7 +482,7 @@ public class SemanticAnalyzer {
                     break;
             }
             if (body != null)
-                analyze(body, true, inFunc, returnType);
+                analyze(body, returnType, inFunc, true, false);
             symbolTable.leaveScope();
     }
 
@@ -492,6 +500,7 @@ public class SemanticAnalyzer {
                 throw new TypeError("Expected return type " + returnType + " but didn't return a value", controlFlow.getChildren().get(0).getLineNumber());
             AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
             EntityType actualReturnType = evaluateType(returnValue);
+            System.out.println("Expected return : " + returnType + ", Actual return: " + actualReturnType);
             if (!actualReturnType.equals(returnType) && returnValue.getName() != TokenType.KW_NULL)
                 throw new TypeError("Expected " + returnType + " to be returned but got " + actualReturnType, returnValue.getLineNumber());
         }
@@ -978,18 +987,30 @@ public class SemanticAnalyzer {
         for (int i = 0; i < calledParams.length; i++) {
             symbolTable.insert(new Symbol(prototypeSymbol.getParamNames()[i], calledParams[i]));
         }
-        analyze(prototypeSymbol.getFnBodyNode(), false, true, prototypeSymbol.getReturnType());
-        symbolTable.leaveScope();
+        analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), true, false, true);
+
         fnDefinition.setFnBodyNode(prototypeSymbol.getFnBodyNode());
-        if (fnDefinition.getReturnType() != null) {
-            if (fnDefinition.getReturnType().isType(NodeType.GENERIC) || fnDefinition.getReturnType().containsSubType(NodeType.GENERIC)) {
-                // TODO
-                fnDefinition.setReturnType(prototypeSymbol.getReturnType());
+        if (prototypeSymbol.getReturnType() != null) {
+            if (prototypeSymbol.getReturnType().isType(NodeType.GENERIC) || prototypeSymbol.getReturnType().containsSubType(NodeType.GENERIC)) {
+                fnDefinition.setReturnType(estimateReturnType(prototypeSymbol, calledParams));
             }
             else {
                 fnDefinition.setReturnType(prototypeSymbol.getReturnType());
             }
         }
+        symbolTable.leaveScope();
+        System.out.println(fnDefinition);
         return fnDefinition;
+    }
+
+    private EntityType estimateReturnType(PrototypeSymbol prototype, EntityType[] calledParams) {
+        Set<EntityType> returnTypes = new HashSet<>();
+        for (AbstractSyntaxTree child : prototype.getFnBodyNode().getChildren()) {
+            if (child.getLabel().equals("CONTROL-FLOW") && child.getChildren().size() == 2 && child.getChildren().get(0).getName() == TokenType.KW_RET)
+                returnTypes.add(evaluateType(child.getChildren().get(1)));
+        }
+        if (returnTypes.size() > 1)
+            throw new TypeError("Prototype " + prototype.getName() + " returns more than one type with parameter types " + Arrays.toString(calledParams));
+        return returnTypes.iterator().next();
     }
 }

@@ -26,15 +26,16 @@ public class Symbol {
     private AbstractSyntaxTree valueNodes = null;
 
     // use this to add builtin variables
-    public Symbol(String name, EntityType type, Token value) {
+    public Symbol(@NonNull String name, @NonNull EntityType type, Token value) {
         this.name = name;
         this.type = type;
         this.scope = 0;
         this.isConstant = true;
         this.valueNodes = new AbstractSyntaxTree(value);
     }
+
     // use this to add builtin variables without values
-    public Symbol(String name, EntityType type) {
+    public Symbol(@NonNull String name, @NonNull EntityType type) {
         this.name = name;
         this.type = type;
         this.scope = 0;
@@ -42,7 +43,7 @@ public class Symbol {
     }
 
     // Array declaration?
-    public Symbol(AbstractSyntaxTree arrayDeclaration, List<Integer> arraySizes, EntityType type, Integer valueIndex, Integer scope) {
+    public Symbol(AbstractSyntaxTree arrayDeclaration, List<Integer> arraySizes, @NonNull EntityType type, Integer valueIndex, @NonNull Integer scope) {
         this.scope = scope;
         this.arraySizes = arraySizes;
         this.type = type;
@@ -57,7 +58,7 @@ public class Symbol {
             this.valueNodes = children.get(valueIndex);
     }
 
-    public Symbol(AbstractSyntaxTree node, Integer scope) {
+    public Symbol(AbstractSyntaxTree node, @NonNull Integer scope) {
         this.scope = scope;
         List<AbstractSyntaxTree> children = node.getChildren();
         this.isConstant = children.get(0).getName() == TokenType.KW_CONST;
@@ -72,5 +73,13 @@ public class Symbol {
             this.type = new EntityType(children.get(0));
             this.name = children.get(1).getValue();
         }
+    }
+
+    public Symbol(@NonNull String name, @NonNull EntityType type, boolean isConstant, AbstractSyntaxTree value, @NonNull Integer scope) {
+        this.name = name;
+        this.type = type;
+        this.isConstant = isConstant;
+        this.valueNodes = value;
+        this.scope = scope;
     }
 }
