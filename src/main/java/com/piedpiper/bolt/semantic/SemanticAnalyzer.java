@@ -82,7 +82,7 @@ public class SemanticAnalyzer {
                 handleVariableDeclaration(subTree, inFunc, translatingPrototype);
             }
             else if (matchesLabelNode(subTree, "ARRAY-DECL")) {
-                handleArrayDeclaration(subTree, inFunc);
+                handleArrayDeclaration(subTree, inFunc, translatingPrototype);
             }
             // break / continue / return
             else if (subTree.getLabel().equals("CONTROL-FLOW")) {
@@ -142,24 +142,21 @@ public class SemanticAnalyzer {
             if (!lhsType.equals(rhsType) && !rhsType.isType(NodeType.NULL)) {
                 if (translatingPrototype && lhsType.isType(NodeType.GENERIC)) {
                     Symbol symbol = new Symbol(details.get(offset+1).getValue(), rhsType, isConst, details.get(offset+2), scope);
-                    System.out.println(symbol);
                     symbolTable.insert(symbol);
                     return;
                 }
-                //if (!(rhsType.isType(NodeType.GENERIC) && details.get(offset + 2).getLabel().equals("FUNC-CALL")))
-                    throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
+                throw new TypeError("Right hand side of variable is " + rhsType + " but " + lhsType + " expected", node.getLineNumber());
             }
         }
         symbolTable.insert(new Symbol(node, scope));
     }
 
-    private void handleArrayDeclaration(AbstractSyntaxTree node, boolean inFunc) {
+    private void handleArrayDeclaration(AbstractSyntaxTree node, boolean inFunc, boolean translatingPrototype) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
         int valueIndex = 0;
         boolean isConstantImmutable = false;
-        EntityType literalType;
         if (details.get(0).getName() == TokenType.KW_CONST) {
             if (details.get(1).getName() == TokenType.KW_MUT)
                 offset = 2;
@@ -184,16 +181,12 @@ public class SemanticAnalyzer {
                         throw new IllegalStatementError("Constant immutable array " + name + " must be set to a value", node.getLineNumber());
                     valueIndex = 3;
                     sizes = ArrayChecks.estimateArraySizes(details.get(3));
-                    literalType = estimateArrayTypes(details.get(3));
-                    if (!declaredType.containsSubType(literalType))
-                        throw new TypeError("Array literal type " + literalType + " does not match declared array type " + declaredType, node.getLineNumber());
+                    declaredType = validateArrayType(details.get(valueIndex), declaredType, translatingPrototype);
                     break;
                 case 5:
                     valueIndex = 4;
-                    sizes = handleArraySizes(details.get(3));
-                    literalType = estimateArrayTypes(details.get(4));
-                    if (!declaredType.containsSubType(literalType))
-                        throw new TypeError("Array literal type " + literalType + " does not match declared array type " + declaredType, node.getLineNumber());
+                    sizes = handleArraySizes(details.get(valueIndex - 1));
+                    declaredType = validateArrayType(details.get(valueIndex), declaredType, translatingPrototype);
                     break;
             }
         } else {
@@ -204,12 +197,21 @@ public class SemanticAnalyzer {
                 throw new IllegalStatementError("Constant mutable array " + name + " missing value", node.getLineNumber());
             if (details.size() == offset + 4) {
                 valueIndex = offset + 3;
-                literalType = estimateArrayTypes(details.get(offset + 3));
-                if (!declaredType.containsSubType(literalType))
-                    throw new TypeError("Array literal type " + literalType + " does not match declared array type " + declaredType, node.getLineNumber());
+                declaredType = validateArrayType(details.get(valueIndex), declaredType, translatingPrototype);
             }
         }
         symbolTable.insert(new Symbol(node, sizes, declaredType, valueIndex, scope));
+    }
+
+    private EntityType validateArrayType(AbstractSyntaxTree valueNode, EntityType declaredType, boolean translatingPrototype) {
+        EntityType literalType = estimateArrayTypes(valueNode);
+        if (!declaredType.containsSubType(literalType)) {
+            if (translatingPrototype && literalType.startsWith(NodeType.ARRAY) && declaredType.containsSubType(NodeType.GENERIC)) {
+                return literalType;
+            }
+            throw new TypeError("Array literal type " + literalType + " does not match declared array type " + declaredType, valueNode.getLineNumber());
+        }
+        return declaredType;
     }
 
     private void handleConditionalBlock(List<AbstractSyntaxTree> conditionals, boolean inLoop, boolean inFunc, EntityType returnType) {
@@ -428,62 +430,62 @@ public class SemanticAnalyzer {
 
     private void handleForLoop(AbstractSyntaxTree loopNode, boolean inFunc, EntityType returnType) {
         int scope = symbolTable.enterScope();
-            int lineNum = loopNode.getLineNumber();
-            List<AbstractSyntaxTree> loopDetails = loopNode.getChildren();
-            int length = loopDetails.size();
-            AbstractSyntaxTree body = null;
-            switch (length) {
-                case 3: // for (float element : array) {}
-                    if (!loopDetails.get(0).getLabel().equals("VAR-DECL"))
-                        throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
-                    if (loopDetails.get(0).countChildren() != 2)
-                        throw new IllegalStatementError("Loop variable must be non-constant and not-initialized", lineNum);
-                    Symbol loopVar = new Symbol(loopDetails.get(0), scope);
-                    EntityType loopVarType = loopVar.getType();
+        int lineNum = loopNode.getLineNumber();
+        List<AbstractSyntaxTree> loopDetails = loopNode.getChildren();
+        int length = loopDetails.size();
+        AbstractSyntaxTree body = null;
+        switch (length) {
+            case 3: // for (float element : array) {}
+                if (!loopDetails.get(0).getLabel().equals("VAR-DECL"))
+                    throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
+                if (loopDetails.get(0).countChildren() != 2)
+                    throw new IllegalStatementError("Loop variable must be non-constant and not-initialized", lineNum);
+                Symbol loopVar = new Symbol(loopDetails.get(0), scope);
+                EntityType loopVarType = loopVar.getType();
 
-                    Symbol container = symbolTable.lookup(loopDetails.get(1).getValue());
-                    if (container == null)
-                        throw new ReferenceError("Variable " + loopDetails.get(1).getValue() + " used before being defined in current scope", lineNum);
-                    EntityType containerType = container.getType();
-                    if (!containerType.startsWith(NodeType.ARRAY) && !containerType.isType(NodeType.STRING))
-                        throw new TypeError("Cannot use for (each) loop on non-container type: " + containerType, lineNum);
+                Symbol container = symbolTable.lookup(loopDetails.get(1).getValue());
+                if (container == null)
+                    throw new ReferenceError("Variable " + loopDetails.get(1).getValue() + " used before being defined in current scope", lineNum);
+                EntityType containerType = container.getType();
+                if (!containerType.startsWith(NodeType.ARRAY) && !containerType.isType(NodeType.STRING))
+                    throw new TypeError("Cannot use for (each) loop on non-container type: " + containerType, lineNum);
 
-                    if (!loopVarType.isType(NodeType.STRING) && containerType.isType(NodeType.STRING)) {
-                        throw new TypeError("Cannot loop over string with type " + loopVarType, lineNum);
-                    }
-                    symbolTable.insert(loopVar);
-                    body = loopDetails.get(2);
-                    break;
-                case 4: // for (int i = 0; i < 10; i++) {}
-                    EntityType varType;
-                    if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
-                        Symbol symbol = new Symbol(loopDetails.get(0), scope);
-                        varType = symbol.getType();
-                        if (loopDetails.get(0).countChildren() != 3)
-                            throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
-                        symbolTable.insert(symbol);
-                    }
-                    else if (loopDetails.get(0).getValue().equals("=")) {
-                        Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
-                        if (symbol == null)
-                            throw new ReferenceError("Variable " + loopDetails.get(0).getValue() + " used before being defined in current scope", lineNum);
-                        varType = symbol.getType();
-                        validateAssignment(loopDetails.get(1));
-                    }
-                    else {
-                        throw new IllegalStatementError("For loop must start with variable declaration or assignment", lineNum);
-                    }
-                    if (!evaluateType(loopDetails.get(1)).isType(NodeType.BOOLEAN))
-                        throw new IllegalStatementError("Middle for loop expression must be boolean", lineNum);
-                    EntityType thirdPartType = evaluateType(loopDetails.get(2));
-                    if (varType != thirdPartType)
-                        throw new IllegalStatementError("End for loop expression must match type " + varType + " but was " + thirdPartType, lineNum);
-                    body = loopDetails.get(3);
-                    break;
-            }
-            if (body != null)
-                analyze(body, returnType, inFunc, true, false);
-            symbolTable.leaveScope();
+                if (!loopVarType.isType(NodeType.STRING) && containerType.isType(NodeType.STRING)) {
+                    throw new TypeError("Cannot loop over string with type " + loopVarType, lineNum);
+                }
+                symbolTable.insert(loopVar);
+                body = loopDetails.get(2);
+                break;
+            case 4: // for (int i = 0; i < 10; i++) {}
+                EntityType varType;
+                if (loopDetails.get(0).getLabel().equals("VAR-DECL")) {
+                    Symbol symbol = new Symbol(loopDetails.get(0), scope);
+                    varType = symbol.getType();
+                    if (loopDetails.get(0).countChildren() != 3)
+                        throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
+                    symbolTable.insert(symbol);
+                }
+                else if (loopDetails.get(0).getValue().equals("=")) {
+                    Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
+                    if (symbol == null)
+                        throw new ReferenceError("Variable " + loopDetails.get(0).getValue() + " used before being defined in current scope", lineNum);
+                    varType = symbol.getType();
+                    validateAssignment(loopDetails.get(1));
+                }
+                else {
+                    throw new IllegalStatementError("For loop must start with variable declaration or assignment", lineNum);
+                }
+                if (!evaluateType(loopDetails.get(1)).isType(NodeType.BOOLEAN))
+                    throw new IllegalStatementError("Middle for loop expression must be boolean", lineNum);
+                EntityType thirdPartType = evaluateType(loopDetails.get(2));
+                if (varType != thirdPartType)
+                    throw new IllegalStatementError("End for loop expression must match type " + varType + " but was " + thirdPartType, lineNum);
+                body = loopDetails.get(3);
+                break;
+        }
+        if (body != null)
+            analyze(body, returnType, inFunc, true, false);
+        symbolTable.leaveScope();
     }
 
     private void validateReturn(AbstractSyntaxTree controlFlow, EntityType returnType) {
@@ -702,11 +704,11 @@ public class SemanticAnalyzer {
 
     public void validateAssignment(AbstractSyntaxTree assignmentNode) {
         EntityType varType;
+        String varName = assignmentNode.getChildren().get(0).getValue();
         if (assignmentNode.getChildren().get(0).hasChildren()) {
             varType = handleArrayIndex(assignmentNode.getChildren().get(0));
         }
         else {
-            String varName = assignmentNode.getChildren().get(0).getValue();
             Symbol symbol = symbolTable.lookup(varName);
             if (symbol == null)
                 throw new ReferenceError("Variable " + varName + " is used before being defined in current scope", assignmentNode.getLineNumber());
@@ -727,8 +729,14 @@ public class SemanticAnalyzer {
         EntityType rhsType = evaluateType(rightHandSide);
         switch (assignmentNode.getValue()) {
             case "=":
-                if (!rhsType.isType(NodeType.NULL) && !rhsType.equals(varType))
+                if (!rhsType.isType(NodeType.NULL) && !rhsType.equals(varType)) {
+                    if (varType.isType(NodeType.GENERIC) || varType.containsSubType(NodeType.GENERIC)) {
+                        Symbol concreteSymbol = new Symbol(varName, rhsType, false, rightHandSide, symbolTable.getScopeLevel());
+                        symbolTable.replace(varName, concreteSymbol);
+                        return;
+                    }
                     throw new TypeError("Cannot assign " + rhsType + " to variable of type " + varType, assignmentNode.getLineNumber());
+                }
                 break;
             case "+=":
                 handleAddition(assignmentNode);
@@ -805,9 +813,9 @@ public class SemanticAnalyzer {
                 PrototypeSymbol prototype = symbolTable.lookupPrototype(name, types);
                 if (prototype == null)
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
-                System.out.println(prototype);
+                //System.out.println(prototype);
                 matchingDefinition = prototypeToFunction(prototype, types);
-                System.out.println(symbolTable);
+                //System.out.println(symbolTable);
                 //System.out.println(matchingDefinition);
                 // transform the prototype into a concrete function
             }
@@ -1000,7 +1008,7 @@ public class SemanticAnalyzer {
             }
         }
         symbolTable.leaveScope();
-        System.out.println(fnDefinition);
+        //System.out.println(fnDefinition);
         symbolTable.insert(fnDefinition, true);
         return fnDefinition;
     }
@@ -1008,11 +1016,44 @@ public class SemanticAnalyzer {
     private EntityType estimateReturnType(PrototypeSymbol prototype, EntityType[] calledParams) {
         Set<EntityType> returnTypes = new HashSet<>();
         for (AbstractSyntaxTree child : prototype.getFnBodyNode().getChildren()) {
+            System.out.println(child);
+            //if (child.getLabel().equals("COND") || (child.getName() != null && (child.getName().equals(TokenType.KW_FOR) || child.getName().equals(TokenType.KW_WHILE))))
+                //returnTypes.addAll(getReturnTypesFromBlocks(child));
             if (child.getLabel().equals("CONTROL-FLOW") && child.getChildren().size() == 2 && child.getChildren().get(0).getName() == TokenType.KW_RET)
                 returnTypes.add(evaluateType(child.getChildren().get(1)));
         }
+        System.out.println(returnTypes);
         if (returnTypes.size() > 1)
             throw new TypeError("Prototype " + prototype.getName() + " returns more than one type with parameter types " + Arrays.toString(calledParams));
         return returnTypes.iterator().next();
+    }
+
+    private Set<EntityType> getReturnTypesFromBlocks(AbstractSyntaxTree block) {
+        Set<EntityType> returnTypes = new HashSet<>();
+        if (block.getName() != null && (block.getName().equals(TokenType.KW_FOR) || block.getName().equals(TokenType.KW_WHILE))) {
+            AbstractSyntaxTree lastChild = block.getChildren().get(block.countChildren() - 1);
+            if (lastChild.getLabel().equals("BLOCK-BODY")) {
+                for (AbstractSyntaxTree child : lastChild.getChildren()) {
+                    if (child.getLabel().equals("CONTROL-FLOW") && child.getChildren().size() == 2 && child.getChildren().get(0).getName() == TokenType.KW_RET)
+                        returnTypes.add(evaluateType(child.getChildren().get(1)));
+                    if (child.getLabel().equals("COND") || (child.getName() != null && (child.getName().equals(TokenType.KW_FOR) || child.getName().equals(TokenType.KW_WHILE))))
+                        returnTypes.addAll(getReturnTypesFromBlocks(child));
+                }
+            }
+        }
+        if (block.getLabel().equals("COND")) {
+            for (AbstractSyntaxTree child : block.getChildren()) {
+                AbstractSyntaxTree lastChild = child.getChildren().get(child.countChildren() - 1);
+                if (lastChild.getLabel().equals("BLOCK-BODY")) {
+                    for (AbstractSyntaxTree body : lastChild.getChildren()) {
+                        if (body.getLabel().equals("CONTROL-FLOW") && body.getChildren().size() == 2 && body.getChildren().get(0).getName() == TokenType.KW_RET)
+                            returnTypes.add(evaluateType(body.getChildren().get(1)));
+                        if (child.getLabel().equals("COND") || (child.getName() != null && (child.getName().equals(TokenType.KW_FOR) || child.getName().equals(TokenType.KW_WHILE))))
+                            returnTypes.addAll(getReturnTypesFromBlocks(body));
+                    }
+                }
+            }
+        }
+        return returnTypes;
     }
 }

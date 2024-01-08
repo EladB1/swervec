@@ -1,6 +1,10 @@
 prototype first(Array<generic> array): generic {
-    generic elem = array[0];
-    return elem;
+    int count = 0;
+    for (generic elem : array) {
+        if (count == 0)
+            return count;
+    }
+    return array[0];
 }
 /*
 prototype last(Array<generic> array): generic {

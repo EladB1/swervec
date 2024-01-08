@@ -193,6 +193,13 @@ public class SymbolTable {
         return null;
     }
 
+    public void replace(String name, Symbol newSymbol) {
+        List<Symbol> matchingSymbols = table.get(name);
+        matchingSymbols.remove(matchingSymbols.size() - 1);
+        matchingSymbols.add(newSymbol);
+        table.replace(name, matchingSymbols);
+    }
+
     @Override
     public String toString() {
         if (table.isEmpty() && functionTable.isEmpty())
