@@ -1015,17 +1015,24 @@ public class SemanticAnalyzer {
 
     private EntityType estimateReturnType(PrototypeSymbol prototype, EntityType[] calledParams) {
         Set<EntityType> returnTypes = new HashSet<>();
+        EntityType nullType = new EntityType(NodeType.NULL);
         for (AbstractSyntaxTree child : prototype.getFnBodyNode().getChildren()) {
             System.out.println(child);
-            //if (child.getLabel().equals("COND") || (child.getName() != null && (child.getName().equals(TokenType.KW_FOR) || child.getName().equals(TokenType.KW_WHILE))))
-                //returnTypes.addAll(getReturnTypesFromBlocks(child));
+            if (child.getLabel().equals("COND") || (child.getName() != null && (child.getName().equals(TokenType.KW_FOR) || child.getName().equals(TokenType.KW_WHILE))))
+                returnTypes.addAll(getReturnTypesFromBlocks(child));
             if (child.getLabel().equals("CONTROL-FLOW") && child.getChildren().size() == 2 && child.getChildren().get(0).getName() == TokenType.KW_RET)
                 returnTypes.add(evaluateType(child.getChildren().get(1)));
         }
         System.out.println(returnTypes);
-        if (returnTypes.size() > 1)
+        if (returnTypes.size() > 1) {
+            if (returnTypes.contains(nullType)) {
+                returnTypes.remove(nullType);
+                if (returnTypes.size() == 1)
+                    return returnTypes.iterator().next();
+            }
             throw new TypeError("Prototype " + prototype.getName() + " returns more than one type with parameter types " + Arrays.toString(calledParams));
-        return returnTypes.iterator().next();
+        }
+        return returnTypes.iterator().hasNext() ? returnTypes.iterator().next() : new EntityType(NodeType.NONE);
     }
 
     private Set<EntityType> getReturnTypesFromBlocks(AbstractSyntaxTree block) {

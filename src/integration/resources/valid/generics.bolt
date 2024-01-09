@@ -2,9 +2,10 @@ prototype first(Array<generic> array): generic {
     int count = 0;
     for (generic elem : array) {
         if (count == 0)
-            return count;
+            return array[count];
+        else
+            return array[count + 1];
     }
-    return array[0];
 }
 /*
 prototype last(Array<generic> array): generic {
