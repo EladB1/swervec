@@ -24,6 +24,8 @@ public class SemanticAnalyzer {
     private final List<String> arithmeticOperators = List.of("-", "/", "%", "**");
     private final List<String> assignmentOperators = List.of("=", "+=", "-=", "*=", "/=");
 
+    private final Set<String> translatedCalls = new HashSet<>();
+
     private final List<TokenType> typeTokens = List.of(
         TokenType.KW_BOOL,
         TokenType.KW_INT,
@@ -814,6 +816,9 @@ public class SemanticAnalyzer {
                 if (prototype == null)
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
                 //System.out.println(prototype);
+                //if (!prototype.isBuiltIn())
+                if (translatedCalls.contains(prototype.formFnSignature()) && (prototype.getReturnType().isType(NodeType.GENERIC) || prototype.getReturnType().containsSubType(NodeType.GENERIC)))
+                    return new EntityType(NodeType.NULL);
                 matchingDefinition = prototypeToFunction(prototype, types);
                 //System.out.println(symbolTable);
                 //System.out.println(matchingDefinition);
@@ -996,7 +1001,8 @@ public class SemanticAnalyzer {
         for (int i = 0; i < calledParams.length; i++) {
             symbolTable.insert(new Symbol(prototypeSymbol.getParamNames()[i], calledParams[i]));
         }
-        analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), true, false, true);
+        if (!prototypeSymbol.isBuiltIn())
+            analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), true, false, true);
 
         fnDefinition.setFnBodyNode(prototypeSymbol.getFnBodyNode());
         if (prototypeSymbol.getReturnType() != null) {
@@ -1014,10 +1020,11 @@ public class SemanticAnalyzer {
     }
 
     private EntityType estimateReturnType(PrototypeSymbol prototype, EntityType[] calledParams) {
+        String signature = prototype.formFnSignature();
+        translatedCalls.add(signature);
         Set<EntityType> returnTypes = new HashSet<>();
         EntityType nullType = new EntityType(NodeType.NULL);
         for (AbstractSyntaxTree child : prototype.getFnBodyNode().getChildren()) {
-            System.out.println(child);
             if (child.getLabel().equals("COND") || (child.getName() != null && (child.getName().equals(TokenType.KW_FOR) || child.getName().equals(TokenType.KW_WHILE))))
                 returnTypes.addAll(getReturnTypesFromBlocks(child));
             if (child.getLabel().equals("CONTROL-FLOW") && child.getChildren().size() == 2 && child.getChildren().get(0).getName() == TokenType.KW_RET)
@@ -1027,11 +1034,14 @@ public class SemanticAnalyzer {
         if (returnTypes.size() > 1) {
             if (returnTypes.contains(nullType)) {
                 returnTypes.remove(nullType);
-                if (returnTypes.size() == 1)
+                if (returnTypes.size() == 1) {
+                    translatedCalls.remove(signature);
                     return returnTypes.iterator().next();
+                }
             }
             throw new TypeError("Prototype " + prototype.getName() + " returns more than one type with parameter types " + Arrays.toString(calledParams));
         }
+        translatedCalls.remove(signature);
         return returnTypes.iterator().hasNext() ? returnTypes.iterator().next() : new EntityType(NodeType.NONE);
     }
 

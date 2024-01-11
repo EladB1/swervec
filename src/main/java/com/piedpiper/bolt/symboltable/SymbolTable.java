@@ -80,7 +80,7 @@ public class SymbolTable {
         String name = fnSymbol.getName();
         if (!functionTable.containsKey(name)) {
             if (fnSymbol.getReturnType() != null) {
-                if (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC) || fnSymbol.hasGenericParam()) {
+                if (!fromPrototypeTranslation && (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC) || fnSymbol.hasGenericParam())) {
                     throw new IllegalStatementError("Generic parameter found in function definition; generics can only be used in prototype");
                 }
             }
@@ -95,7 +95,7 @@ public class SymbolTable {
         EntityType storedReturnType = functionTable.get(name).get(0).getReturnType();
         EntityType returnType = fnSymbol.getReturnType();
         if (storedReturnType != null) {
-            if (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC) || fnSymbol.hasGenericParam()) {
+            if (!fromPrototypeTranslation && (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC) || fnSymbol.hasGenericParam())) {
                 throw new IllegalStatementError("Generic parameter found in function definition; generics can only be used in prototype");
             }
         }

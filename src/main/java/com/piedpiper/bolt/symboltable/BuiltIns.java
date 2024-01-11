@@ -109,8 +109,7 @@ public class BuiltIns {
             new PrototypeSymbol("contains", booleanType, new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true)
         )),
         entry("remove", List.of(
-            new PrototypeSymbol("remove", stringType, new EntityType[]{stringType}, new String[]{"array"}, true),
-            new PrototypeSymbol("remove", stringType, new EntityType[]{intType}, new String[]{"array"}, true)
+            new PrototypeSymbol("remove", new EntityType[]{genericArrayType, intType}, new String[]{"array", "index"}, true)
         )),
 
         entry("pop", List.of(new PrototypeSymbol("pop", genericType, new EntityType[]{genericArrayType}, new String[]{"array"}, true))),

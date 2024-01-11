@@ -1,12 +1,13 @@
-prototype first(Array<generic> array): generic {
-    int count = 0;
-    for (generic elem : array) {
-        if (count == 0)
-            return array[count];
-        else
-            return array[count + 1];
-    }
+prototype first(Array<generic> array, int start, int end): generic {
+    if (start >= end)
+        return array[start];
+    return first(array, start+1, end-1);
 }
+
+prototype first(Array<generic> array): generic {
+    return first(array, 0, length(array) - 1);
+}
+
 /*
 prototype last(Array<generic> array): generic {
     generic end = array[2];
