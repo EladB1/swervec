@@ -20,8 +20,8 @@ class TestApp {
     }
     @ParameterizedTest
     @ValueSource(strings = {
-        //"examples/valid.bolt",
-        //"src/integration/resources/valid/fn_returns.bolt",
+        "examples/valid.bolt",
+        "src/integration/resources/valid/fn_returns.bolt",
         "src/integration/resources/valid/generics.bolt"
     })
     void testValidProgram(String src) {

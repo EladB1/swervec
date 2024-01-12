@@ -42,6 +42,13 @@ public class PrototypeSymbol {
         this.paramNames = paramNames;
         this.builtIn = builtIn;
     }
+
+    public PrototypeSymbol(@NonNull String name, EntityType returnType, Boolean builtIn) {
+        this.name = name;
+        this.returnType = returnType;
+        this.builtIn = builtIn;
+    }
+
     public PrototypeSymbol(@NonNull String name, EntityType[] paramTypes, String[] paramNames) {
         this.name = name;
         this.paramTypes = paramTypes;
@@ -61,6 +68,11 @@ public class PrototypeSymbol {
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
         this.fnBodyNode = fnBodyNode;
+    }
+
+    public PrototypeSymbol(@NonNull String name, EntityType returnType) {
+        this.name = name;
+        this.returnType = returnType;
     }
 
     public boolean isBuiltIn() {

@@ -189,7 +189,7 @@ public class TestSymbolTable {
     @Test
     void test_calling_generic_function() {
         EntityType[] paramTypes = new EntityType[] {new EntityType(NodeType.ARRAY, NodeType.STRING)};
-        FunctionSymbol popFn = table.lookup("pop", paramTypes);
+        PrototypeSymbol popFn = table.lookupPrototype("pop", paramTypes);
         assertNotNull(popFn);
         assertTrue(popFn.isBuiltIn());
         assertTrue(popFn.hasGenericParam());
@@ -198,15 +198,22 @@ public class TestSymbolTable {
 
     @Test
     void test_generic_return_no_params() {
-        FunctionSymbol symbol = new FunctionSymbol("test", new EntityType(NodeType.GENERIC), false);
+        PrototypeSymbol symbol = new PrototypeSymbol("test", new EntityType(NodeType.GENERIC), false);
         IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
-        assertEquals("Cannot return generic from function with no parameters", error.getMessage());
+        assertEquals("Prototype definition must contain at least one generic parameter", error.getMessage());
     }
 
     @Test
     void test_generic_array_return_no_params() {
+        PrototypeSymbol symbol = new PrototypeSymbol("test", new EntityType(NodeType.ARRAY, NodeType.GENERIC), false);
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
+        assertEquals("Prototype definition must contain at least one generic parameter", error.getMessage());
+    }
+
+    @Test
+    void test_function_def_with_generic_param() {
         FunctionSymbol symbol = new FunctionSymbol("test", new EntityType(NodeType.ARRAY, NodeType.GENERIC), false);
         IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
-        assertEquals("Cannot return generic from function with no parameters", error.getMessage());
+        assertEquals("Generic parameter found in function definition; generics can only be used in prototype", error.getMessage());
     }
 }
