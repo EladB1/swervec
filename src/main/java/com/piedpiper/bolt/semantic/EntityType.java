@@ -8,8 +8,6 @@ import static java.util.Map.entry;
 import java.util.ArrayList;
 
 import com.piedpiper.bolt.error.ArrayBoundsError;
-import com.piedpiper.bolt.lexer.StaticToken;
-import com.piedpiper.bolt.lexer.Token;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 
@@ -101,20 +99,6 @@ public class EntityType {
 
     private void setType(List<NodeType> type) {
         this.type = type;
-    }
-
-    public AbstractSyntaxTree reverseMap(int lineNum) {
-        if (!startsWith(NodeType.ARRAY)) {
-            for (Map.Entry<TokenType, NodeType> entry : typeMappings.entrySet()) {
-                if (this.isType(entry.getValue()))
-                    return new AbstractSyntaxTree(new StaticToken(entry.getKey(), lineNum));
-            }
-            return null;
-        }
-        int size = type.size();
-        EntityType subType = new EntityType();
-        subType.setType(type.subList(1, size));
-        return new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR, lineNum), List.of(subType.reverseMap(lineNum)));
     }
 
     public EntityType index(int depth, int lineNumber) {

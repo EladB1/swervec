@@ -86,6 +86,10 @@ public class PrototypeSymbol {
         }
         return false;
     }
+
+    public boolean returnsGeneric() {
+        return returnType.isType(NodeType.GENERIC) || returnType.containsSubType(NodeType.GENERIC);
+    }
     
     public boolean hasCompatibleParams(EntityType[] params) {
         if (params.length != paramTypes.length)

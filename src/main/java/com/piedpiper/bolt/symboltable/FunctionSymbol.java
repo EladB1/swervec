@@ -110,6 +110,10 @@ public class FunctionSymbol {
         return false;
     }
 
+    public boolean returnsGeneric() {
+        return returnType.isType(NodeType.GENERIC) || returnType.containsSubType(NodeType.GENERIC);
+    }
+
     public boolean hasCompatibleParams(EntityType[] params) {
         if (params.length != paramTypes.length)
             return false; // skip the ones with a different number of params
