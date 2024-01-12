@@ -1,7 +1,9 @@
 package com.piedpiper.bolt.symboltable;
 
+import com.piedpiper.bolt.lexer.StaticToken;
 import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.lexer.VariableToken;
+import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import com.piedpiper.bolt.semantic.EntityType;
 import com.piedpiper.bolt.semantic.NodeType;
 
@@ -94,8 +96,75 @@ public class BuiltIns {
             new FunctionSymbol("join", stringType, new EntityType[]{stringArrayType, stringType}, true)
         )),
         entry("at", List.of(new FunctionSymbol("at", stringType, new EntityType[]{stringType, intType}, true))),
-        entry("print", List.of(new FunctionSymbol("print", stringType, true)))
+        entry("print", List.of(new FunctionSymbol("print", new EntityType[]{stringType}, true)))
     );
+
+    /*
+    Code:
+        if (array == null || length(array) == 0) {
+            print("Cannot pop from empty array");
+            exit(1);
+        }
+        generic top = array[0];
+        remove(array, 0);
+        return top;
+     */
+    private static AbstractSyntaxTree getPopBody() {
+        AbstractSyntaxTree zeroNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0"));
+        AbstractSyntaxTree topNode = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "top"));
+        AbstractSyntaxTree arrayNode = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "array"));
+        return new AbstractSyntaxTree("BLOCK-BODY", List.of(
+            new AbstractSyntaxTree("COND", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF, 2), List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.OP, "||", 2), List.of(
+                        new AbstractSyntaxTree(new VariableToken(TokenType.OP, "==", 2), List.of(
+                            arrayNode,
+                            new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL, 2))
+                        )),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.OP, "==", 2), List.of(
+                            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length", 2)),
+                                new AbstractSyntaxTree("FUNC-PARAMS", List.of(arrayNode))
+                            )),
+                            zeroNode
+                        ))
+                    )),
+                    new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                        new AbstractSyntaxTree("FUNC-CALL", List.of(
+                            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "print", 3)),
+                            new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                                new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"Cannot pop from empty array\"", 3))
+                            ))
+                        )),
+                        new AbstractSyntaxTree("FUNC-CALL", List.of(
+                            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "exit", 4)),
+                            new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1", 4))
+                            ))
+                        ))
+                    ))
+                ))
+            )),
+            new AbstractSyntaxTree("VAR-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_GEN, 4)),
+                topNode,
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "array" ,4), List.of(
+                    new AbstractSyntaxTree("ARRAY-INDEX", 4, List.of(zeroNode))
+                ))
+            )),
+            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "remove", 5)),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    arrayNode,
+                    zeroNode
+                ))
+            )),
+            new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET, 6)),
+                topNode
+            ))
+        ));
+    }
 
     public static final Map<String, List<PrototypeSymbol>> Prototypes = Map.ofEntries(
         // Define function bodies in IR phase of compiler
@@ -112,10 +181,10 @@ public class BuiltIns {
             new PrototypeSymbol("remove", new EntityType[]{genericArrayType, intType}, new String[]{"array", "index"}, true)
         )),
 
-        entry("pop", List.of(new PrototypeSymbol("pop", genericType, new EntityType[]{genericArrayType}, new String[]{"array"}, true))),
+        entry("pop", List.of(new PrototypeSymbol("pop", genericType, new EntityType[]{genericArrayType}, new String[]{"array"}, true, getPopBody()))),
         entry("append", List.of(new PrototypeSymbol("append", new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true))),
         entry("prepend", List.of(new PrototypeSymbol("prepend", new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true))),
-        entry("sort", List.of(new PrototypeSymbol("sort", genericArrayType, new EntityType[]{genericArrayType}, new String[]{"array"}, true))),
+        entry("sort", List.of(new PrototypeSymbol("sort", new EntityType[]{genericArrayType}, new String[]{"array"}, true))),
 
         entry("indexOf", List.of(new PrototypeSymbol("indexOf", intType, new EntityType[]{genericArrayType, genericType}, new String[]{"array", "element"}, true))),
         entry("reverse", List.of(new PrototypeSymbol("reverse", new EntityType[]{genericArrayType}, new String[]{"array"}, true))),

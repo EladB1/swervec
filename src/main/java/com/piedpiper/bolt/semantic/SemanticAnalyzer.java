@@ -75,6 +75,7 @@ public class SemanticAnalyzer {
     }
 
     public void analyze(AbstractSyntaxTree AST) {
+        handleBuiltInPrototype("pop", new EntityType[]{new EntityType(NodeType.ARRAY, NodeType.GENERIC)});
         analyze(AST, new EntityType(NodeType.NONE), false, false, false);
     }
 
@@ -140,7 +141,7 @@ public class SemanticAnalyzer {
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));
-            System.out.println("LHS: " + lhsType + ",RHS: " + rhsType);
+            //System.out.println("LHS: " + lhsType + ",RHS: " + rhsType);
             if (!lhsType.equals(rhsType) && !rhsType.isType(NodeType.NULL)) {
                 if (translatingPrototype && lhsType.isType(NodeType.GENERIC)) {
                     Symbol symbol = new Symbol(details.get(offset+1).getValue(), rhsType, isConst, details.get(offset+2), scope);
@@ -337,7 +338,7 @@ public class SemanticAnalyzer {
         Symbol[] params = {};
         switch (length) {
             case 1:
-                symbolTable.insert(new FunctionSymbol(name));
+                symbolTable.insert(new PrototypeSymbol(name));
                 symbolTable.leaveScope();
                 return;
             case 2:
@@ -394,6 +395,18 @@ public class SemanticAnalyzer {
             if (!protoReturnType.isType(NodeType.NONE) && !functionReturns(body, protoReturnType))
                 throw new TypeError("Prototype " + name + " expected to return " + protoReturnType + " but does not return for all branches", lineNum);
         }
+        symbolTable.leaveScope();
+    }
+
+    private void handleBuiltInPrototype(String name, EntityType[] paramTypes) {
+        PrototypeSymbol prototype = symbolTable.lookupPrototype(name, paramTypes);
+        int scope = symbolTable.enterScope();
+        for (int i = 0; i < paramTypes.length; i++) {
+            symbolTable.insert(new Symbol(prototype.getParamNames()[i], paramTypes[i], scope));
+        }
+        //symbolTable.enterScope();
+        analyze(prototype.getFnBodyNode(), prototype.getReturnType(), true, false, false);
+        //symbolTable.leaveScope();
         symbolTable.leaveScope();
     }
 
@@ -504,7 +517,7 @@ public class SemanticAnalyzer {
                 throw new TypeError("Expected return type " + returnType + " but didn't return a value", controlFlow.getChildren().get(0).getLineNumber());
             AbstractSyntaxTree returnValue = controlFlow.getChildren().get(1);
             EntityType actualReturnType = evaluateType(returnValue);
-            System.out.println("Expected return : " + returnType + ", Actual return: " + actualReturnType);
+            //System.out.println("Expected return : " + returnType + ", Actual return: " + actualReturnType);
             if (!actualReturnType.equals(returnType) && returnValue.getName() != TokenType.KW_NULL)
                 throw new TypeError("Expected " + returnType + " to be returned but got " + actualReturnType, returnValue.getLineNumber());
         }
@@ -997,13 +1010,12 @@ public class SemanticAnalyzer {
     private FunctionSymbol prototypeToFunction(PrototypeSymbol prototypeSymbol, EntityType[] calledParams) {
         FunctionSymbol fnDefinition = new FunctionSymbol(prototypeSymbol.getName(), calledParams, prototypeSymbol.getBuiltIn());
         // transform body
-        symbolTable.enterScope();
+        int scope = symbolTable.enterScope();
         for (int i = 0; i < calledParams.length; i++) {
-            symbolTable.insert(new Symbol(prototypeSymbol.getParamNames()[i], calledParams[i]));
+            symbolTable.insert(new Symbol(prototypeSymbol.getParamNames()[i], calledParams[i], scope));
         }
-        if (!prototypeSymbol.isBuiltIn())
+        if (!prototypeSymbol.isBuiltIn() || (prototypeSymbol.isBuiltIn()) && prototypeSymbol.getFnBodyNode() != null)
             analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), true, false, true);
-
         fnDefinition.setFnBodyNode(prototypeSymbol.getFnBodyNode());
         if (prototypeSymbol.getReturnType() != null) {
             if (prototypeSymbol.getReturnType().isType(NodeType.GENERIC) || prototypeSymbol.getReturnType().containsSubType(NodeType.GENERIC)) {
@@ -1030,7 +1042,7 @@ public class SemanticAnalyzer {
             if (child.getLabel().equals("CONTROL-FLOW") && child.getChildren().size() == 2 && child.getChildren().get(0).getName() == TokenType.KW_RET)
                 returnTypes.add(evaluateType(child.getChildren().get(1)));
         }
-        System.out.println(returnTypes);
+        //System.out.println(returnTypes);
         if (returnTypes.size() > 1) {
             if (returnTypes.contains(nullType)) {
                 returnTypes.remove(nullType);

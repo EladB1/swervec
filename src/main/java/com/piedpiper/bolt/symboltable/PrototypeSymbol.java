@@ -99,9 +99,4 @@ public class PrototypeSymbol {
         output.append(")");
         return output.toString();
     }
-
-    public AbstractSyntaxTree deGenericizeBody(EntityType[] calledParamTypes) {
-        AbstractSyntaxTree copy = this.fnBodyNode;
-        return copy;
-    }
 }
