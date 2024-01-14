@@ -30,27 +30,36 @@ public class TestSemanticAnalyzer {
     private final Token intTypeToken = new StaticToken(TokenType.KW_INT);
     private final Token varToken = new VariableToken(TokenType.ID, "var");
 
+    /**
+     * Source Code:
+     *  int var;
+     */
     @Test
     void test_varDecl_noValue() {
-        // int var;
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken)
         ));
         assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
     }
 
+    /**
+     * Source Code:
+     *  int var = 5;
+     */
     @Test
     void test_varDecl_withValue() {
-        // int var = 5;
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken, new VariableToken(TokenType.NUMBER, "5"))
         ));
         assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
     }
 
+    /**
+     * Source Code:
+     *  int var = "5";
+     */
     @Test
     void test_varDecl_withWrongTypeValue() {
-        // int var = "5";
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken, new VariableToken(TokenType.STRING, "\"5\""))
         ));
@@ -58,9 +67,13 @@ public class TestSemanticAnalyzer {
         assertEquals("Right hand side of variable is STRING but INT expected", error.getMessage());
     }
 
+    /**
+     * Source Code:
+     *  int var;
+     *  int var;
+     */
     @Test
     void test_varDecl_sameNameSameScope() {
-        // int var; int var;
         AbstractSyntaxTree varDeclaration = new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken);
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(varDeclaration, varDeclaration));
         NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));
@@ -88,9 +101,12 @@ public class TestSemanticAnalyzer {
         assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.BOOLEAN));
     }
 
+    /**
+     * Source Code:
+     *  2 > "2";
+     */
     @Test
     void test_evaluateType_nonEqualityComparison_wrongTypes() {
-        // 2 > "2"
         AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, ">"), List.of(
             numNode,
@@ -118,9 +134,12 @@ public class TestSemanticAnalyzer {
         assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.INT));
     }
 
+    /**
+     * Source Code:
+     *  2 ^ (2 < 2)
+     */
     @Test
     void test_evaluateType_bitwise_complex() {
-        // 2 ^ (2 < 2)
         AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "^"), List.of(
             numNode,
@@ -235,9 +254,12 @@ public class TestSemanticAnalyzer {
         assertEquals(new EntityType(NodeType.ARRAY, NodeType.ARRAY), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
+    /**
+     * Source Code:
+     *  { { {"Typescript"}, {"C", "C++"} }, { {"PostgreSQL", "MongoDB"} } }
+     */
     @Test
     void test_estimateArrayTypes_nestedArrays() {
-        // { { {"Typescript"}, {"C", "C++"} }, { {"PostgreSQL", "MongoDB"} } }
         AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
             new AbstractSyntaxTree("ARRAY-LIT", List.of(
                 new AbstractSyntaxTree("ARRAY-LIT", List.of(
@@ -258,9 +280,12 @@ public class TestSemanticAnalyzer {
         assertEquals(new EntityType(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.STRING), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
+    /**
+     * Source Code:
+     *  { {}, { {true, true}, {} }, { {}, {true} } }
+     */
     @Test
     void test_estimateArrayTypes_mixedDepths() {
-        // { {}, { {true, true}, {} }, { {}, {true} } }
         AbstractSyntaxTree trueNode = new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE));
         AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
             new AbstractSyntaxTree("ARRAY-LIT"),
@@ -290,9 +315,12 @@ public class TestSemanticAnalyzer {
         assertEquals(error.getMessage(), "Cannot mix INT elements with STRING elements in array literal");
     }
 
+    /**
+     * Source Code:
+     *  {1, {1, 1}, 1}
+     */
     @Test
     void test_estimateArrayTypes_improperNestingError() {
-        // {1, {1, 1}, 1}
         AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"));
         AbstractSyntaxTree AST = new AbstractSyntaxTree("ARRAY-LIT", List.of(
             numNode,
@@ -348,9 +376,12 @@ public class TestSemanticAnalyzer {
         assertEquals("Cannot return value from void function", error.getMessage());
     }
 
+    /**
+     * Source Code:
+     *  { return 2 + 2 }, NONE
+     */
     @Test
     void test_functionReturns_voidReturnTypeError() {
-        // { return 2 + 2 }, NONE
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
             new AbstractSyntaxTree("CONTROL-FLOW", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
@@ -485,9 +516,13 @@ public class TestSemanticAnalyzer {
         assertEquals("Cannot use generic variable outside of function definition", error.getMessage());
     }
 
+    /**
+     * Source Code:
+     *  Array<int> nums[2] = {2, 4}; 
+     *  pop(nums);
+     */
     @Test
     void test_generic_return_fn_call() {
-        // Array<int> nums[2] = {2, 4}; pop(nums);
         AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
@@ -503,9 +538,13 @@ public class TestSemanticAnalyzer {
         assertDoesNotThrow(() -> semanticAnalyzer.analyze(fnCall));
     }
 
+    /**
+     * Source Code:
+     *  Array<int> nums[2] = {2, 4}; 
+     *  int num = pop(nums);
+     */
     @Test
     void test_generic_return_fn_call_assignment() {
-        // Array<int> nums[2] = {2, 4}; int num = pop(nums);
         AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),

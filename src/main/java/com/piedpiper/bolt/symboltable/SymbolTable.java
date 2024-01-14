@@ -4,7 +4,6 @@ import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.NameError;
 import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.semantic.EntityType;
-import com.piedpiper.bolt.semantic.NodeType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,7 +19,6 @@ public class SymbolTable {
     private final Map<String, List<PrototypeSymbol>> prototypesTable = new HashMap<>(BuiltIns.Prototypes);
     private final Stack<Integer> scopes = new Stack<>();
     private int scopeLevel = 1;
-
     private int scopeSerial = 1;
 
     public SymbolTable() {
@@ -52,6 +50,19 @@ public class SymbolTable {
         return scopeLevel;
     }
 
+    private void appendToExistingDefinition(ProcedureSymbol symbol, List matchingSymbols) {
+        if (symbol instanceof FunctionSymbol) {
+            List<FunctionSymbol> symbols = new ArrayList<FunctionSymbol>(matchingSymbols);
+            symbols.add((FunctionSymbol) symbol);
+            functionTable.put(symbol.getName(), symbols);
+        }
+        else {
+            List<PrototypeSymbol> symbols = new ArrayList<PrototypeSymbol>(matchingSymbols);
+            symbols.add((PrototypeSymbol) symbol);
+            prototypesTable.put(symbol.getName(), symbols);
+        }
+    }
+
     public void insert(Symbol symbol) {
         String name = symbol.getName();
         if (!table.containsKey(name)) {
@@ -72,90 +83,61 @@ public class SymbolTable {
         table.put(name, symbols);
     }
 
-    public void insert(FunctionSymbol fnSymbol) {
-        insert(fnSymbol, false);
+    public void insert(ProcedureSymbol symbol) {
+        insert(symbol, false);
     }
 
-    public void insert(FunctionSymbol fnSymbol, boolean fromPrototypeTranslation) {
-        String name = fnSymbol.getName();
-        if (!functionTable.containsKey(name)) {
-            if (fnSymbol.getReturnType() != null) {
-                if (!fromPrototypeTranslation && (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC) || fnSymbol.hasGenericParam())) {
-                    throw new IllegalStatementError("Generic parameter found in function definition; generics can only be used in prototype");
-                }
-            }
-            functionTable.put(name, List.of(fnSymbol));
-            return;
-        }
-        boolean isBuiltIn = functionTable.get(name).get(0).isBuiltIn();
-
-        if (isBuiltIn && !fromPrototypeTranslation)
-            throw new NameError("Function '" + name + "' is builtin so its name cannot be reused");
-
-        EntityType storedReturnType = functionTable.get(name).get(0).getReturnType();
-        EntityType returnType = fnSymbol.getReturnType();
-        if (storedReturnType != null) {
-            if (!fromPrototypeTranslation && (fnSymbol.getReturnType().isType(NodeType.GENERIC) || fnSymbol.getReturnType().containsSubType(NodeType.GENERIC) || fnSymbol.hasGenericParam())) {
+    public void insert(ProcedureSymbol symbol, boolean fromPrototypeTranslation) {
+        String name = symbol.getName();
+        boolean isFunction = symbol instanceof FunctionSymbol;
+        String entity;
+        ProcedureSymbol existingSymbol;
+        List matchingSymbols;
+        if (isFunction) {
+            if (!fromPrototypeTranslation && symbol.hasGenericParam())
                 throw new IllegalStatementError("Generic parameter found in function definition; generics can only be used in prototype");
+            if (!fromPrototypeTranslation && symbol.returnsGeneric())
+                throw new IllegalStatementError("Generic return found in function definition; generics can only be used in prototype");
+            if (!functionTable.containsKey(name)) {
+                functionTable.put(name, List.of((FunctionSymbol) symbol));
+                return;
             }
+            entity = "Function";
+            matchingSymbols = functionTable.get(name);
+            existingSymbol = (ProcedureSymbol) matchingSymbols.get(0);
+            if (lookup(name, symbol.getParamTypes()) != null)
+                throw new NameError("Function '" + symbol.formSignature() + "' is already defined");
         }
+        else {
+            if (!symbol.hasGenericParam())
+                throw new IllegalStatementError("Prototype definition must contain at least one generic parameter");
+            if (!prototypesTable.containsKey(name)) {
+                prototypesTable.put(name, List.of((PrototypeSymbol) symbol));
+                return;
+            }
+            entity = "Prototype";
+            matchingSymbols = prototypesTable.get(name);
+            existingSymbol = (ProcedureSymbol) matchingSymbols.get(0);
+            if (lookup(name, symbol.getParamTypes()) != null)
+                throw new NameError("Prototype '" + symbol.formSignature() + "' is already defined");
+        }
+        if (existingSymbol.isBuiltIn() && !fromPrototypeTranslation)
+            throw new NameError(entity + " '" + name + "' is builtin so its name cannot be reused");
+        EntityType storedReturnType = existingSymbol.getReturnType();
+        EntityType returnType = symbol.getReturnType();
 
         if (!Objects.equals(storedReturnType, returnType) && !fromPrototypeTranslation) {
             String message = String.format(
-                "Function '%s' cannot have return type %s because another definition returns type %s",
+                "%s '%s' cannot have return type %s because another definition returns type %s",
+                entity,
                 name,
-                fnSymbol.getReturnType(),
+                returnType,
                 storedReturnType
             );
             throw new TypeError(message);
         }
+        appendToExistingDefinition(symbol, matchingSymbols);
 
-        if (lookup(name, fnSymbol.getParamTypes()) != null)
-            throw new NameError("Function '" + fnSymbol.formFnSignature() + "' is already defined");
-
-        List<FunctionSymbol> functionSymbols = functionTable.get(name);
-
-        functionSymbols = new ArrayList<>(functionSymbols);
-        functionSymbols.add(fnSymbol);
-        functionTable.put(name, functionSymbols);
-    }
-
-    public void insert(PrototypeSymbol prototype) {
-        String name = prototype.getName();
-        if (!prototypesTable.containsKey(name)) {
-            if (prototype.getParamTypes().length == 0 || !prototype.hasGenericParam())
-                throw new IllegalStatementError("Prototype definition must contain at least one generic parameter");
-            prototypesTable.put(name, List.of(prototype));
-            return;
-        }
-        boolean isBuiltIn = prototypesTable.get(name).get(0).isBuiltIn();
-
-        if (isBuiltIn)
-            throw new NameError("Prototype '" + name + "' is builtin so its name cannot be reused");
-
-        EntityType storedReturnType = prototypesTable.get(name).get(0).getReturnType();
-        EntityType returnType = prototype.getReturnType();
-        if (prototype.getParamTypes().length == 0 || !prototype.hasGenericParam())
-            throw new IllegalStatementError("Prototype definition must contain at least one generic parameter");
-
-        if (!Objects.equals(storedReturnType, returnType)) {
-            String message = String.format(
-                "Prototype '%s' cannot have return type %s because another definition returns type %s",
-                name,
-                prototype.getReturnType(),
-                storedReturnType
-            );
-            throw new TypeError(message);
-        }
-
-        if (lookup(name, prototype.getParamTypes()) != null)
-            throw new NameError("Prototype '" + prototype.formFnSignature() + "' is already defined");
-
-        List<PrototypeSymbol> prototypeSymbols = prototypesTable.get(name);
-
-        prototypeSymbols = new ArrayList<>(prototypeSymbols);
-        prototypeSymbols.add(prototype);
-        prototypesTable.put(name, prototypeSymbols);
     }
 
     public Symbol lookup(String symbolName) {
@@ -194,7 +176,7 @@ public class SymbolTable {
     }
 
     public void replace(String name, Symbol newSymbol) {
-        List<Symbol> matchingSymbols = table.get(name);
+        List<Symbol> matchingSymbols = new ArrayList<>(table.get(name));
         matchingSymbols.remove(matchingSymbols.size() - 1);
         matchingSymbols.add(newSymbol);
         table.replace(name, matchingSymbols);

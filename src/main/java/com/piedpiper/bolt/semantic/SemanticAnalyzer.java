@@ -699,7 +699,7 @@ public class SemanticAnalyzer {
                 PrototypeSymbol prototype = symbolTable.lookupPrototype(name, types);
                 if (prototype == null)
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
-                if (translatedCalls.contains(prototype.formFnSignature()) && prototype.returnsGeneric())
+                if (translatedCalls.contains(prototype.formSignature()) && prototype.returnsGeneric())
                     return new EntityType(NodeType.NULL);
                 matchingDefinition = prototypeToFunction(prototype, types);
             }
@@ -895,7 +895,7 @@ public class SemanticAnalyzer {
     }
 
     private EntityType estimateReturnType(PrototypeSymbol prototype, EntityType[] calledParams) {
-        String signature = prototype.formFnSignature();
+        String signature = prototype.formSignature();
         translatedCalls.add(signature);
         Set<EntityType> returnTypes = new HashSet<>();
         EntityType nullType = new EntityType(NodeType.NULL);

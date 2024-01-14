@@ -59,7 +59,7 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_insertAndLookup_basic() {
+    void test_insertAndLookup_variable_basic() {
         Symbol symbol = new Symbol("var", stringType, 1);
         table.insert(symbol);
         Symbol storedSymbol = table.lookup("var");
@@ -68,7 +68,7 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_insertAndLookup_previousScope() {
+    void test_insertAndLookup_variable_previousScope() {
         Symbol symbol = new Symbol("var", stringType, 1);
         table.insert(symbol);
         table.enterScope();
@@ -79,7 +79,7 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_insertAndLookup_sameNameDifferentScopes() {
+    void test_insertAndLookup_variable_sameNameDifferentScopes() {
         table.insert(new Symbol("var", stringType, 1));
         table.enterScope();
         table.insert(new Symbol("var", stringType, 2));
@@ -92,7 +92,7 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_insert_sameNameSameScope() {
+    void test_insert_variable_sameNameSameScope() {
         Symbol var = new Symbol("var", stringType, 1);
         table.insert(var);
         NameError error = assertThrows(NameError.class, () -> table.insert(var));
@@ -100,7 +100,20 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_insertAndLookup_functionFound() {
+    void test_insertAndReplaceVariable() {
+        AbstractSyntaxTree rightSide = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "param"));
+        Symbol genericSymbol = new Symbol("var", new EntityType(NodeType.GENERIC), false, rightSide, table.getScopeLevel());
+        table.insert(genericSymbol);
+        assertTrue(genericSymbol.getType().isType(NodeType.GENERIC));
+        Symbol concreteSymbol = genericSymbol;
+        concreteSymbol.setType(intType);
+        table.replace("var", concreteSymbol);
+        Symbol symbol = table.lookup("var");
+        assertEquals(concreteSymbol, symbol);
+    }
+
+    @Test
+    void test_insertAndLookup_function_found() {
         AbstractSyntaxTree funcBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
             new AbstractSyntaxTree("CONTROL-FLOW", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
@@ -116,7 +129,14 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_insertAndLookup_wrongParamTypesReturnNull() {
+    void test_lookup_function_notFound() {
+        EntityType[] params = {stringType};
+        FunctionSymbol storedSymbol = table.lookup("test", params);
+        assertNull(storedSymbol);
+    }
+
+    @Test
+    void test_insertAndLookup_function_wrongParamTypes_returnNull() {
         AbstractSyntaxTree funcBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
             new AbstractSyntaxTree("CONTROL-FLOW", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
@@ -131,14 +151,7 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_lookup_functionNotFound() {
-        EntityType[] params = {stringType};
-        FunctionSymbol storedSymbol = table.lookup("test", params);
-        assertNull(storedSymbol);
-    }
-
-    @Test
-    void test_insertAndLookup_functionWithParams() {
+    void test_insertAndLookup_function_withParams() {
         EntityType[] params = {stringType, stringType};
         FunctionSymbol fnSymbol = new FunctionSymbol("concat", params);
         table.insert(fnSymbol);
@@ -148,7 +161,7 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_insert_multipleFunctions() {
+    void test_insert_multipleFunctions_sameName_diffParams() {
         EntityType[] params1 = {stringType, stringType};
         EntityType[] params2 = {stringType, stringType, stringType};
         FunctionSymbol fnSymbol1 = new FunctionSymbol("concat", params1);
@@ -165,9 +178,26 @@ public class TestSymbolTable {
 
     @Test
     void test_insert_redefineFunction_noParams() {
-        table.insert(new FunctionSymbol("test"));
-        NameError error = assertThrows(NameError.class, () -> table.insert(new FunctionSymbol("test")));
+        FunctionSymbol function = new FunctionSymbol("test");
+        table.insert(function);
+        NameError error = assertThrows(NameError.class, () -> table.insert(function));
         assertEquals("Function 'test()' is already defined", error.getMessage());
+    }
+
+    @Test
+    void test_insert_function_with_generic_param() {
+        FunctionSymbol symbol = new FunctionSymbol("test", new EntityType[]{ new EntityType(NodeType.ARRAY, NodeType.GENERIC) }, false);
+        assertTrue(symbol.hasGenericParam());
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
+        assertEquals("Generic parameter found in function definition; generics can only be used in prototype", error.getMessage());
+    }
+
+    @Test
+    void test_insert_function_with_generic_return() {
+        FunctionSymbol symbol = new FunctionSymbol("test", new EntityType(NodeType.GENERIC), false);
+        assertTrue(symbol.returnsGeneric());
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
+        assertEquals("Generic return found in function definition; generics can only be used in prototype", error.getMessage());
     }
 
     @Test
@@ -187,7 +217,13 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_calling_generic_function() {
+    void test_lookupPrototype_notFound() {
+        PrototypeSymbol storedSymbol = table.lookupPrototype("test", new EntityType[]{});
+        assertNull(storedSymbol);
+    }
+
+    @Test
+    void test_lookup_builtin_prototype() {
         EntityType[] paramTypes = new EntityType[] {new EntityType(NodeType.ARRAY, NodeType.STRING)};
         PrototypeSymbol popFn = table.lookupPrototype("pop", paramTypes);
         assertNotNull(popFn);
@@ -197,23 +233,47 @@ public class TestSymbolTable {
     }
 
     @Test
-    void test_generic_return_no_params() {
+    void test_prototype_generic_return_withoutParams() {
         PrototypeSymbol symbol = new PrototypeSymbol("test", new EntityType(NodeType.GENERIC), false);
         IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
         assertEquals("Prototype definition must contain at least one generic parameter", error.getMessage());
     }
 
     @Test
-    void test_generic_array_return_no_params() {
+    void test_prototype_genericArray_return_withoutParams() {
         PrototypeSymbol symbol = new PrototypeSymbol("test", new EntityType(NodeType.ARRAY, NodeType.GENERIC), false);
         IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
         assertEquals("Prototype definition must contain at least one generic parameter", error.getMessage());
     }
 
     @Test
-    void test_function_def_with_generic_param() {
-        FunctionSymbol symbol = new FunctionSymbol("test", new EntityType(NodeType.ARRAY, NodeType.GENERIC), false);
-        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> table.insert(symbol));
-        assertEquals("Generic parameter found in function definition; generics can only be used in prototype", error.getMessage());
+    void test_insertAndLookup_prototype() {
+        EntityType[] params = {new EntityType(NodeType.ARRAY, NodeType.GENERIC)};
+        PrototypeSymbol symbol = new PrototypeSymbol("first", new EntityType(NodeType.GENERIC), params, new String[]{ "array" }, false);
+        table.insert(symbol);
+        PrototypeSymbol storedSymbol = table.lookupPrototype("first", params);
+        assertNotNull(storedSymbol);
+        assertEquals(symbol, storedSymbol);
+    }
+
+    @Test
+    void test_insertAndLookup_prototype_withCompatibleParams() {
+        EntityType[] params = {new EntityType(NodeType.ARRAY, NodeType.GENERIC)};
+        EntityType[] compatibleParams = {new EntityType(NodeType.ARRAY, NodeType.STRING)};
+        PrototypeSymbol symbol = new PrototypeSymbol("first", new EntityType(NodeType.GENERIC), params, new String[]{ "array" }, false);
+        table.insert(symbol);
+        PrototypeSymbol storedSymbol = table.lookupPrototype("first", compatibleParams);
+        assertNotNull(storedSymbol);
+        assertEquals(symbol, storedSymbol);
+    }
+
+    @Test
+    void test_insertAndLookup_prototype_withNonCompatibleParams() {
+        EntityType[] params = {new EntityType(NodeType.ARRAY, NodeType.GENERIC)};
+        EntityType[] nonCompatibleParams = {new EntityType(NodeType.STRING)};
+        PrototypeSymbol symbol = new PrototypeSymbol("first", new EntityType(NodeType.GENERIC), params, new String[]{ "array" }, false);
+        table.insert(symbol);
+        PrototypeSymbol storedSymbol = table.lookupPrototype("first", nonCompatibleParams);
+        assertNull(storedSymbol);
     }
 }

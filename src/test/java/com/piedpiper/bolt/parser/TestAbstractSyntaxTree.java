@@ -1,6 +1,8 @@
 package com.piedpiper.bolt.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -11,6 +13,71 @@ import com.piedpiper.bolt.lexer.TokenType;
 import com.piedpiper.bolt.lexer.VariableToken;
 
 public class TestAbstractSyntaxTree {
+    @Test
+    void test_appendChildren() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree("FUNC-CALL");
+        assertFalse(tree.hasChildren());
+        tree.appendChildren(new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length")));
+        assertTrue(tree.hasChildren());
+        assertEquals(tree.countChildren(), 1);
+    }
+
+    @Test
+    void test_matchesLabel_true() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree("FUNC-CALL");
+        assertTrue(tree.matchesLabel("FUNC-CALL"));
+    }
+
+    @Test
+    void test_matchesLabel_false() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length"));
+        assertFalse(tree.matchesLabel("FUNC-CALL"));
+    }
+
+    @Test
+    void test_matchesStaticToken_true() {
+        StaticToken token = new StaticToken(TokenType.KW_TRUE);
+        AbstractSyntaxTree tree = new AbstractSyntaxTree(token);
+        assertTrue(tree.matchesStaticToken(TokenType.KW_TRUE));
+    }
+
+    @Test
+    void test_matchesStaticToken_false() {
+        StaticToken token = new StaticToken(TokenType.KW_TRUE);
+        AbstractSyntaxTree tree = new AbstractSyntaxTree(token);
+        assertFalse(tree.matchesStaticToken(TokenType.KW_FALSE));
+    }
+
+    @Test
+    void test_matchesValue_true() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length"));
+        assertTrue(tree.matchesValue("length"));
+    }
+
+    @Test
+    void test_matchesValue_false() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree("FUNC-CALL");
+        assertFalse(tree.matchesValue("length"));
+    }
+
+    @Test
+    void test_isTypeLabel_true() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree(new StaticToken(TokenType.KW_BOOL));
+        assertTrue(tree.isTypeLabel());
+    }
+
+    @Test
+    void test_isTypeLabel_false() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree(new StaticToken(TokenType.KW_FOR));
+        assertFalse(tree.isTypeLabel());
+    }
+
+    @Test
+    void test_isTypeLabel_false_label() {
+        AbstractSyntaxTree tree = new AbstractSyntaxTree("ARRAY-LIT");
+        assertFalse(tree.isTypeLabel());
+    }
+
     @Test
     void test_toString_singleNodeNonTerminalTree() {
         AbstractSyntaxTree tree = new AbstractSyntaxTree("STMNT");

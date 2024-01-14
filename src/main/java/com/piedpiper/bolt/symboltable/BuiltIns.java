@@ -99,8 +99,7 @@ public class BuiltIns {
         entry("print", List.of(new FunctionSymbol("print", new EntityType[]{stringType}, true)))
     );
 
-    /*
-    Code:
+    /** Function body:
         if (array == null || length(array) == 0) {
             print("Cannot pop from empty array");
             exit(1);
@@ -108,7 +107,7 @@ public class BuiltIns {
         generic top = array[0];
         remove(array, 0);
         return top;
-     */
+    */
     private static AbstractSyntaxTree getPopBody() {
         AbstractSyntaxTree zeroNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0"));
         AbstractSyntaxTree topNode = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "top"));

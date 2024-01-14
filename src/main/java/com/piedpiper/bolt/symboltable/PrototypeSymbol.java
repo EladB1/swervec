@@ -19,7 +19,7 @@ valid prototype cases:
 @RequiredArgsConstructor
 @AllArgsConstructor
 @Data
-public class PrototypeSymbol {
+public class PrototypeSymbol implements ProcedureSymbol {
     @NonNull
     private String name;
     private EntityType returnType = null; // need to handle complex return values like Array<Array<int>>
@@ -88,7 +88,7 @@ public class PrototypeSymbol {
     }
 
     public boolean returnsGeneric() {
-        return returnType.isType(NodeType.GENERIC) || returnType.containsSubType(NodeType.GENERIC);
+        return returnType != null && (returnType.isType(NodeType.GENERIC) || returnType.containsSubType(NodeType.GENERIC));
     }
     
     public boolean hasCompatibleParams(EntityType[] params) {
@@ -104,7 +104,7 @@ public class PrototypeSymbol {
         return true;
     }
 
-    public String formFnSignature() {
+    public String formSignature() {
         StringBuilder output = new StringBuilder(name);
         output.append("(");
         for (int i = 0; i < paramTypes.length; i++) {

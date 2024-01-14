@@ -22,7 +22,7 @@ valid function cases:
 @RequiredArgsConstructor
 @AllArgsConstructor
 @Data
-public class FunctionSymbol {
+public class FunctionSymbol implements ProcedureSymbol {
     @NonNull
     private String name;
     private EntityType returnType = null; // need to handle complex return values like Array<Array<int>>
@@ -93,7 +93,7 @@ public class FunctionSymbol {
             this.returnType = prototype.getReturnType();
         this.paramTypes = calledParamTypes;
         if (!prototype.hasCompatibleParams(calledParamTypes))
-            throw new TypeError("Prototype " + prototype.formFnSignature() + " called incorrectly as " + this.formFnSignature());
+            throw new TypeError("Prototype " + prototype.formSignature() + " called incorrectly as " + this.formSignature());
         
 
     }
@@ -111,7 +111,7 @@ public class FunctionSymbol {
     }
 
     public boolean returnsGeneric() {
-        return returnType.isType(NodeType.GENERIC) || returnType.containsSubType(NodeType.GENERIC);
+        return returnType != null && (returnType.isType(NodeType.GENERIC) || returnType.containsSubType(NodeType.GENERIC));
     }
 
     public boolean hasCompatibleParams(EntityType[] params) {
@@ -124,7 +124,7 @@ public class FunctionSymbol {
         return true;
     }
 
-    public String formFnSignature() {
+    public String formSignature() {
         StringBuilder output = new StringBuilder(name);
         output.append("(");
         for (int i = 0; i < paramTypes.length; i++) {
