@@ -277,6 +277,26 @@ fn test(int i, int j): int {
                                     i   j
 ```
 
+**Code**:
+
+```
+prototype test(generic i, Array<generic> j): generic {}
+```
+
+**AST**:
+
+```
+                  prototype
+            /     /          \
+           test  params     generic
+                /     |            
+              param   param 
+              |  |    \    \
+         generic i   Array   j
+                       |
+                     generic
+```
+
 ## Function Calls
 
 **Code**:

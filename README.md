@@ -212,24 +212,7 @@ Other type requirements
    - cannot return any value (including `null`) during explicit return
  - non-void functions
    - must have explicit `return` that returns a value matching the declared return type
-   - all branches (conditionals, loops, etc.) must lead to return 
-
-#### Generics
-
-In order to make the type system slightly more flexible, the `generic` keyword was introduced.
-Generic arrays are arrays made of up of generic values (i.e. `Array<generic>`).
-Generic variables and arrays can only be used in a function definition.
-
-A generic function AKA prototype is any function with one or more generic parameters (generic variable/array). 
-A generic function gets its proper types on function call. 
-Generic functions can return `generic` or `Array<generic>`, but you should consider 
-what your function is returning.
-
-> Generics can lead to unsafe and/or buggy code, so you should only use them when needed; the compiler will warn you about using generics
-
-Generic arrays are the main motivation behind generic functions, they allow you to treat an array
-the same no matter what kind of data it contains or what depth it's nested at.
-This can be necessary for dealing with arrays.
+   - all branches (conditionals, loops, etc.) must lead to return
 
 ### Variable Declarations
 variables declarations must have a type and can optionally be `const`
@@ -347,4 +330,58 @@ Invalid Example:
       }
     ```
 
-The order of function declarations matter so if you have a function calling another one, the caller must be defined after the called function
+The order of function declarations matter so if you have a function calling another one, the caller must be defined after the called function.
+
+### Prototypes and generics
+
+There are certain times when the developers will want to pass in Arrays as parameters to functions but don't necessarily care what's in the arrays.
+
+For example, when you want to get the length of an array, it doesn't matter whether the array is of type `Array<string>` or `Array<Array<int>>`.
+
+In order to add flexibility to the type system without completely giving up type safety, two new keywords were introduced, `prototype` and `generic`.
+
+#### Generics
+
+The `generic` keyword is a type label that can be placed in front of a variable during declaration that states that we'll figure out the type later on.
+
+You cannot perform any operations on generic variables that aren't compatible with every type.
+
+Example:
+```
+  generic var1;
+  generic var2;
+  // ...assign them values at some point
+  var1 + var2;
+```
+
+The above example will produce an error because you aren't allowed to do addition with generics.
+
+Generic arrays are declared by using `Array<generic>` which let you treat the variable as an array without caring about what subtype it contains.
+
+When you index a generic array, it will return a generic type. You can't index `Array<generic>` twice, but you can index `Array<Array<generic>>` twice.
+
+#### Prototypes
+
+A prototype is a function definition that contains one or more generic parameters. It can return nothing, a concrete (non-generic) type, or a generic type.
+
+The use of the `generic` keyword outside a prototype definition is not allowed. You cannot initialize a generic to any literal type except for `null`.
+
+When a prototype is called with concrete types, the semantic analyzer will re-analyze it with the concrete parameter types in place of the generic ones to make sure it's type safe and to place any local variables that were generic as concrete types in the symbol table.
+Generic returns are analyzed to approximate their return types and transformed into functions.
+
+#### Translation to functions (AKA Monomorphization)
+
+On a function call:
+
+1. Check the function part of the symbol table for a matching definition; if found, return that
+2. Check prototypes part of symbol table for a matching definition; if not found, throw error
+3. If prototype returns nothing or concrete type, run process of type checking local variables and de-genericizing them in the symbol table, return the return type
+4. If prototype returns generic type (`generic` or array of generics), do the same analysis of step 3 but also derive a concrete return type
+5. Return the first non-null return type derived from step 4; if there are more than one non-null types, throw an error
+
+Since generics can call other generics, this process is inherently recursive.
+
+Prototypes can also be directly or indirectly (they call functions that call them) recursive, we need to store a queue of the prototypes being translated and if we detect a duplicate translation, we return null for that call.
+
+> Prototypes can slow compilation due to this process and are still less type safe than normal functions
+> so use them sparingly and only when the types truly don't matter

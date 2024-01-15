@@ -914,7 +914,6 @@ public class SemanticAnalyzer {
         }
         symbolTable.leaveScope();
         symbolTable.insert(fnDefinition, true);
-        //resetState();
         return fnDefinition;
     }
 

@@ -4,22 +4,6 @@ prototype first(Array<generic> array): generic {
     return pop(array);
 }
 
-/*
-prototype last(Array<generic> array): generic {
-    generic end = array[2];
-    return end;
-}
-
-prototype last(boolean something, Array<generic> array): generic {
-    return array[2];
-}
-
-prototype end(Array<generic> array): generic {
-    return array[2];
-}
-*/
 Array<float> floats[3] = {-9.8, 3.14, 6.67 * 10 ** -11};
-//float f = pop(floats);
 float f = first(floats);
 string s = first({"hello", "world"});
-//last(floats);
