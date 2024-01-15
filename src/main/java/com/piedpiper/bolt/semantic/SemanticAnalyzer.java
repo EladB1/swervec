@@ -24,6 +24,9 @@ public class SemanticAnalyzer {
     private final List<String> assignmentOperators = List.of("=", "+=", "-=", "*=", "/=");
     private final Set<String> translatedCalls = new HashSet<>();
 
+    public SemanticAnalyzer() {
+        handleBuiltInPrototype("pop", new EntityType[]{new EntityType(NodeType.ARRAY, NodeType.GENERIC)});
+    }
     private void handleBuiltInPrototype(String name, EntityType[] paramTypes) {
         PrototypeSymbol prototype = symbolTable.lookupPrototype(name, paramTypes);
         int scope = symbolTable.enterScope();
@@ -35,7 +38,6 @@ public class SemanticAnalyzer {
     }
 
     public void analyze(AbstractSyntaxTree AST) {
-        handleBuiltInPrototype("pop", new EntityType[]{new EntityType(NodeType.ARRAY, NodeType.GENERIC)});
         analyze(AST, new EntityType(NodeType.NONE), false, false, false);
     }
 
@@ -96,7 +98,7 @@ public class SemanticAnalyzer {
                 throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
         }
         if (details.get(offset).matchesStaticToken(TokenType.KW_GEN) && !inFunc)
-            throw new IllegalStatementError("Cannot use generic variable outside of function definition", node.getLineNumber());
+            throw new IllegalStatementError("Cannot use generic variable outside of prototype definition", node.getLineNumber());
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
             EntityType lhsType = new EntityType(details.get(offset));

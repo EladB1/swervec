@@ -2,6 +2,7 @@ package com.piedpiper.bolt.semantic;
 
 import com.piedpiper.bolt.error.IllegalStatementError;
 import com.piedpiper.bolt.error.NameError;
+import com.piedpiper.bolt.error.ReferenceError;
 import com.piedpiper.bolt.error.TypeError;
 import com.piedpiper.bolt.error.UnreachableCodeError;
 import com.piedpiper.bolt.lexer.StaticToken;
@@ -35,7 +36,7 @@ public class TestSemanticAnalyzer {
      *  int var;
      */
     @Test
-    void test_varDecl_noValue() {
+    void test_variableDeclaration_noValue() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken)
         ));
@@ -47,7 +48,7 @@ public class TestSemanticAnalyzer {
      *  int var = 5;
      */
     @Test
-    void test_varDecl_withValue() {
+    void test_variableDeclaration_withValue() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken, new VariableToken(TokenType.NUMBER, "5"))
         ));
@@ -59,7 +60,7 @@ public class TestSemanticAnalyzer {
      *  int var = "5";
      */
     @Test
-    void test_varDecl_withWrongTypeValue() {
+    void test_variableDeclaration_withWrongTypeValue() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken, new VariableToken(TokenType.STRING, "\"5\""))
         ));
@@ -73,7 +74,7 @@ public class TestSemanticAnalyzer {
      *  int var;
      */
     @Test
-    void test_varDecl_sameNameSameScope() {
+    void test_variableDeclaration_sameNameSameScope() {
         AbstractSyntaxTree varDeclaration = new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken);
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(varDeclaration, varDeclaration));
         NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));
@@ -151,6 +152,10 @@ public class TestSemanticAnalyzer {
         assertTrue(semanticAnalyzer.evaluateType(AST).isType(NodeType.INT));
     }
 
+    /**
+     * Source code:
+     *  false & "false"
+     */
     @Test
     void test_evaluateType_bitwise_invalid() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "&"), List.of(
@@ -181,6 +186,10 @@ public class TestSemanticAnalyzer {
         assertTrue(semanticAnalyzer.evaluateType(AST).isType(expectedType));
     }
 
+    /**
+     * Source code:
+     *  3.14 * "a"
+     */
     @Test
     void test_evaluateType_multiplicationOperator_wrongMix() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), List.of(
@@ -191,6 +200,10 @@ public class TestSemanticAnalyzer {
         assertEquals("Cannot multiply FLOAT with STRING", error.getMessage());
     }
 
+    /**
+     * Source code:
+     *  null > 2 * 2
+     */
     @Test
     void test_evaluateType_multiplicationOperator_completelyWrongTypes() {
         AbstractSyntaxTree numNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
@@ -334,6 +347,10 @@ public class TestSemanticAnalyzer {
         assertEquals(error.getMessage(), "Cannot mix non-array elements with nested array elements in array literal");
     }
 
+    /**
+     * Source code
+     *  { 2 + 2; }
+     */
     @Test
     void test_functionReturns_voidNoExplicitReturn() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
@@ -346,6 +363,13 @@ public class TestSemanticAnalyzer {
         assertFalse(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
+    /**
+     * Source code
+     *  {
+     *      2 + 2;
+     *      return;
+     *  }
+     */
     @Test
     void test_functionReturns_voidExplicitReturn() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
@@ -359,13 +383,13 @@ public class TestSemanticAnalyzer {
         assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
+    /**
+     * Source code:
+     *  { return null; }
+     */
     @Test
     void test_functionReturns_voidExplicitNullReturn() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
-            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
-                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2")),
-                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
-            )),
             new AbstractSyntaxTree("CONTROL-FLOW", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_NULL))
@@ -378,7 +402,7 @@ public class TestSemanticAnalyzer {
 
     /**
      * Source Code:
-     *  { return 2 + 2 }, NONE
+     *  { return 2 + 2; }
      */
     @Test
     void test_functionReturns_voidReturnTypeError() {
@@ -397,6 +421,13 @@ public class TestSemanticAnalyzer {
         assertEquals("Cannot return value from void function", error.getMessage());
     }
 
+    /**
+     * Source code
+     *  {
+     *     return;
+     *     2 + 2;
+     *  }
+     */
     @Test
     void test_functionReturns_returnWrongPlace() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
@@ -414,6 +445,10 @@ public class TestSemanticAnalyzer {
         assertEquals("Unreachable statement following return", error.getMessage());
     }
 
+    /**
+     * Source code
+     *  { return 2 + 2; }
+     */
     @Test
     void test_functionReturns_nonVoidProperReturn() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
@@ -430,6 +465,10 @@ public class TestSemanticAnalyzer {
         assertTrue(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
+    /**
+     * Source code:
+     *  { return "+"; }
+     */
     @Test
     void test_functionReturns_nonVoidReturnTypeError() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
@@ -444,6 +483,10 @@ public class TestSemanticAnalyzer {
         assertEquals("Expected INT to be returned but got STRING", error.getMessage());
     }
 
+    /**
+     * Source code:
+     *  { return; }
+     */
     @Test
     void test_functionReturns_nonVoidMissingReturnValue() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", List.of(
@@ -457,6 +500,10 @@ public class TestSemanticAnalyzer {
         assertEquals("Expected return type INT but didn't return a value", error.getMessage());
     }
 
+    /**
+     * Source code:
+     *  { true; }
+     */
     @Test
     void test_functionReturns_nonVoidMissingReturn() {
         AbstractSyntaxTree functionBody = new AbstractSyntaxTree("BLOCK-BODY", new StaticToken(TokenType.KW_TRUE));
@@ -465,6 +512,15 @@ public class TestSemanticAnalyzer {
         assertFalse(semanticAnalyzer.functionReturns(functionBody, expectedReturnType));
     }
 
+    /**
+     * Source code:
+     *  {
+     *      if (true)
+     *          return true;
+     *      else
+     *          return false;
+     *  }
+     */
     @Test
     void test_conditionalBlockReturns_simple_true() {
         AbstractSyntaxTree conditionalBlock = new AbstractSyntaxTree("COND", List.of(
@@ -490,6 +546,13 @@ public class TestSemanticAnalyzer {
         assertTrue(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, expectedReturnType));
     }
 
+    /**
+     * Source code:
+     *  {
+     *      if (true)
+     *          return true;
+     *  }
+     */
     @Test
     void test_conditionalBlockReturns_simple_false() {
         AbstractSyntaxTree conditionalBlock = new AbstractSyntaxTree("COND", List.of(
@@ -507,13 +570,17 @@ public class TestSemanticAnalyzer {
         assertFalse(semanticAnalyzer.conditionalBlockReturns(conditionalBlock, expectedReturnType));
     }
 
+    /**
+     * Source code:
+     *  generic var;
+     */
     @Test
-    void test_generic_var_outside_function() {
+    void test_generic_var_outside_prototype() {
         AbstractSyntaxTree declaration = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL", new StaticToken(TokenType.KW_GEN), new VariableToken(TokenType.ID, "var"))
         ));
         IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(declaration));
-        assertEquals("Cannot use generic variable outside of function definition", error.getMessage());
+        assertEquals("Cannot use generic variable outside of prototype definition", error.getMessage());
     }
 
     /**
@@ -522,7 +589,7 @@ public class TestSemanticAnalyzer {
      *  pop(nums);
      */
     @Test
-    void test_generic_return_fn_call() {
+    void test_builtInPrototype_return_fn_call() {
         AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
@@ -544,7 +611,7 @@ public class TestSemanticAnalyzer {
      *  int num = pop(nums);
      */
     @Test
-    void test_generic_return_fn_call_assignment() {
+    void test_generic_return_prototype_call_assignment() {
         AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
@@ -563,5 +630,77 @@ public class TestSemanticAnalyzer {
 
         ));
         assertDoesNotThrow(() -> semanticAnalyzer.analyze(fnCall));
+    }
+
+    /**
+     * Source code:
+     *   test();
+     */
+    @Test
+    void test_nonDeclaredFunction_call_throwsError() {
+        AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("FUNC-CALL", new VariableToken(TokenType.ID, "test"))
+        ));
+        ReferenceError error = assertThrows(ReferenceError.class, () -> semanticAnalyzer.analyze(fnCall));
+        assertEquals("Could not find function definition for test([])", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *   fn test() {}
+     *   test();
+     */
+    @Test
+    void test_declareAndCallFunction() {
+        Token name = new VariableToken(TokenType.ID, "test");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), name),
+            new AbstractSyntaxTree("FUNC-CALL", name)
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     *  fn test(generic var) {}
+     */
+    @Test
+    void test_functionHasGenericParam() {
+        Token name = new VariableToken(TokenType.ID, "test");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_GEN)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "var"))
+                    ))
+                ))
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Generic parameter found in function definition; generics can only be used in prototype", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *  fn test(): generic {
+     *      return null;
+     *  }
+     */
+    @Test
+    void test_functionHasGenericReturn() {
+        Token name = new VariableToken(TokenType.ID, "test");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_GEN)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", new StaticToken(TokenType.KW_RET), new StaticToken(TokenType.KW_NULL))
+                ))
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Generic return found in function definition; generics can only be used in prototype", error.getMessage());
     }
 }
