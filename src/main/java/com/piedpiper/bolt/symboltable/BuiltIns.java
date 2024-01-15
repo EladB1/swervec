@@ -83,8 +83,11 @@ public class BuiltIns {
             new FunctionSymbol("slice", stringType, new EntityType[]{stringType, intType, intType}, true)
         )),
         entry("remove", List.of(
-            new FunctionSymbol("remove", stringType, new EntityType[]{stringType}, true),
-            new FunctionSymbol("remove", stringType, new EntityType[]{intType}, true)
+            new FunctionSymbol("remove", stringType, new EntityType[]{stringType, stringType}, true),
+            new FunctionSymbol("remove", stringType, new EntityType[]{stringType, intType}, true)
+        )),
+        entry("removeAll", List.of(
+            new FunctionSymbol("remove", stringType, new EntityType[]{stringType, stringType}, true)
         )),
         entry("search", List.of(new FunctionSymbol("search", intType, new EntityType[]{stringType, stringType}, true))),
         entry("reverse", List.of(new FunctionSymbol("reverse", stringType, new EntityType[]{stringType}, true))),
@@ -96,7 +99,12 @@ public class BuiltIns {
             new FunctionSymbol("join", stringType, new EntityType[]{stringArrayType, stringType}, true)
         )),
         entry("at", List.of(new FunctionSymbol("at", stringType, new EntityType[]{stringType, intType}, true))),
-        entry("print", List.of(new FunctionSymbol("print", new EntityType[]{stringType}, true)))
+        entry("print", List.of(
+            new FunctionSymbol("print", new EntityType[]{stringType}, true),
+            new FunctionSymbol("print", new EntityType[]{intType}, true),
+            new FunctionSymbol("print", new EntityType[]{floatType}, true),
+            new FunctionSymbol("print", new EntityType[]{booleanType}, true)
+        ))
     );
 
     /** Function body:
