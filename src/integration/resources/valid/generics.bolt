@@ -4,10 +4,6 @@ prototype first(Array<generic> array): generic {
     return pop(array);
 }
 
-fn func() {
-    generic var;
-}
-
 /*
 prototype last(Array<generic> array): generic {
     generic end = array[2];

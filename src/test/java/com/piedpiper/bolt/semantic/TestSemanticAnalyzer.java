@@ -348,7 +348,103 @@ public class TestSemanticAnalyzer {
     }
 
     /**
-     * Source code
+     * Source code:
+     *  const Array<float> f = {9.8, 3.14};
+     *  f[0];
+     */
+    @Test
+    void test_arrayIndex_number() {
+        Token name = new VariableToken(TokenType.ID, "f");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
+            )),
+            new AbstractSyntaxTree(name, List.of(
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "0"))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     * int i = 0;
+     *  const Array<float> f = {9.8, 3.14};
+     *  f[i];
+     */
+    @Test
+    void test_arrayIndex_variable() {
+        Token name = new VariableToken(TokenType.ID, "i");
+        Token arrayName = new VariableToken(TokenType.ID, "f");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("VAR-DECL", new StaticToken(TokenType.KW_INT), name, new VariableToken(TokenType.NUMBER, "0")),
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(arrayName),
+                new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
+            )),
+            new AbstractSyntaxTree(arrayName, List.of(
+                new AbstractSyntaxTree("ARRAY-INDEX", name)
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     *  const Array<float> f = {9.8, 3.14};
+     *  f["0"];
+     */
+    @Test
+    void test_arrayIndex_nonNumber() {
+        Token name = new VariableToken(TokenType.ID, "f");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
+            )),
+            new AbstractSyntaxTree(name, List.of(
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.STRING, "\"0\""))
+            ))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Array can only be indexed using int values, not STRING values", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *  const Array<float> f = {9.8, 3.14};
+     *  float g = f[0];
+     */
+    @Test
+    void test_arrayIndex_returnsSubType() {
+        Token name = new VariableToken(TokenType.ID, "f");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
+            )),
+            new AbstractSyntaxTree("VAR-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "g")),
+                new AbstractSyntaxTree(name, List.of(
+                    new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "0"))
+                ))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
      *  { 2 + 2; }
      */
     @Test
@@ -702,5 +798,290 @@ public class TestSemanticAnalyzer {
         ));
         IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
         assertEquals("Generic return found in function definition; generics can only be used in prototype", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *  fn test() {
+     *      generic var;
+     *  }
+     */
+    @Test
+    void test_functionBodyContainsGeneric() {
+        Token name = new VariableToken(TokenType.ID, "test");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("VAR-DECL", new StaticToken(TokenType.KW_GEN), new VariableToken(TokenType.ID, "var"))
+                ))
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Cannot use generic variable outside of prototype definition", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *  prototype test() {}
+     */
+    @Test
+    void test_prototypeDefinition_withoutParams() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), new VariableToken(TokenType.ID, "test"))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Prototype definition must contain at least one generic parameter", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *  prototype test(int i) {}
+     */
+    @Test
+    void test_prototypeDefinition_withNonGenericParams() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), new VariableToken(TokenType.ID, "test")),
+            new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                new AbstractSyntaxTree("FUNC-PARAM", new StaticToken(TokenType.KW_INT), new VariableToken(TokenType.ID, "i"))
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Prototype definition must contain at least one generic parameter", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *  prototype test(generic g) {}
+     */
+    @Test
+    void test_prototypeDefinition_withGenericParam() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "test")),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", new StaticToken(TokenType.KW_GEN), new VariableToken(TokenType.ID, "g"))
+                ))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     *  prototype test(Array<generic> a) {}
+     */
+    @Test
+    void test_prototypeDefinition_withGenericArrayParam() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "test")),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_GEN)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+                    ))
+                ))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     *  prototype test(Array<generic> a, generic g) {}
+     */
+    @Test
+    void test_prototypeDefinition_withMultipleGenericParams() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "test")),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_GEN)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+                    )),
+                    new AbstractSyntaxTree("FUNC-PARAM", new StaticToken(TokenType.KW_GEN), new VariableToken(TokenType.ID, "g"))
+                ))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     *   prototype isEmpty(Array<generic> a): boolean {
+     *       return length(a) == 0;
+     *   }
+     *   isEmpty({});
+     */
+    @Test
+    void test_defineAndCall_prototype_withConcreteReturn() {
+        Token name = new VariableToken(TokenType.ID, "isEmpty");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_GEN)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+                    ))
+                )),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_BOOL)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.OP, "=="), List.of(
+                            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length")),
+                                new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "a"))
+                            )),
+                            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0"))
+                        ))
+                    ))
+                ))
+            )),
+            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(new AbstractSyntaxTree("ARRAY-LIT")))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     *   prototype test(Array<generic> a): generic {
+     *       return length(a) - 1;
+     *   }
+     *   test({5});
+     */
+    @Test
+    void test_defineAndCall_prototype_withGenericReturn_returnsWrongType() {
+        Token name = new VariableToken(TokenType.ID, "isEmpty");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_GEN)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+                    ))
+                )),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_GEN)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.OP, "-"), List.of(
+                            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length")),
+                                new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "a"))
+                            )),
+                            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
+                        ))
+                    ))
+                ))
+            )),
+            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "5"))))
+            ))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Expected GENERIC to be returned but got INT", error.getMessage());
+    }
+
+    /**
+     * Source code:
+     *   prototype test(Array<generic> a): generic {
+     *       return a[length(a) - 1];
+     *   }
+     *   test({5});
+     */
+    @Test
+    void test_defineAndCall_prototype_withGenericReturn() {
+        Token name = new VariableToken(TokenType.ID, "isEmpty");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_GEN)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+                    ))
+                )),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_GEN)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"), List.of(
+                            new AbstractSyntaxTree("ARRAY-INDEX", List.of(
+                                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "-"), List.of(
+                                    new AbstractSyntaxTree("FUNC-CALL", List.of(
+                                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length")),
+                                        new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "a"))
+                                    )),
+                                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
+                                ))
+                            ))
+                        ))
+                    ))
+                ))
+            )),
+            new AbstractSyntaxTree("FUNC-CALL", List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "5"))))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * Source code:
+     *   prototype test(Array<generic> a): generic {
+     *       return a[length(a) - 1];
+     *   }
+     *   int val = test({5});
+     */
+    @Test
+    void test_defineAndCall_prototype_translation() {
+        Token name = new VariableToken(TokenType.ID, "isEmpty");
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_PROTO), List.of(
+                new AbstractSyntaxTree(name),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_GEN)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+                    ))
+                )),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_GEN)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_RET)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"), List.of(
+                            new AbstractSyntaxTree("ARRAY-INDEX", List.of(
+                                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "-"), List.of(
+                                    new AbstractSyntaxTree("FUNC-CALL", List.of(
+                                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "length")),
+                                        new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "a"))
+                                    )),
+                                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
+                                ))
+                            ))
+                        ))
+                    ))
+                ))
+            )),
+            new AbstractSyntaxTree("VAR-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "val")),
+                new AbstractSyntaxTree("FUNC-CALL", List.of(
+                    new AbstractSyntaxTree(name),
+                    new AbstractSyntaxTree("FUNC-PARAMS", List.of(new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "5"))))
+                ))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
     }
 }

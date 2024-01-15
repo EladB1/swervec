@@ -23,9 +23,17 @@ public class SemanticAnalyzer {
     private final List<String> arithmeticOperators = List.of("-", "/", "%", "**");
     private final List<String> assignmentOperators = List.of("=", "+=", "-=", "*=", "/=");
     private final Set<String> translatedCalls = new HashSet<>();
+    private boolean inFunc = false;
+    private boolean inPrototype = false;
+    // NOTE: inLoop and translatingPrototype flags cannot be part of class state because loops and translations can be nested
 
     public SemanticAnalyzer() {
         handleBuiltInPrototype("pop", new EntityType[]{new EntityType(NodeType.ARRAY, NodeType.GENERIC)});
+    }
+
+    private void resetState() {
+        inFunc = false;
+        inPrototype = false;
     }
     private void handleBuiltInPrototype(String name, EntityType[] paramTypes) {
         PrototypeSymbol prototype = symbolTable.lookupPrototype(name, paramTypes);
@@ -33,25 +41,27 @@ public class SemanticAnalyzer {
         for (int i = 0; i < paramTypes.length; i++) {
             symbolTable.insert(new Symbol(prototype.getParamNames()[i], paramTypes[i], scope));
         }
-        analyze(prototype.getFnBodyNode(), prototype.getReturnType(), true, false, false);
+        inPrototype = true;
+        analyze(prototype.getFnBodyNode(), prototype.getReturnType(), false, false);
         symbolTable.leaveScope();
+        resetState();
     }
 
     public void analyze(AbstractSyntaxTree AST) {
-        analyze(AST, new EntityType(NodeType.NONE), false, false, false);
+        analyze(AST, new EntityType(NodeType.NONE), false, false);
     }
 
-    public void analyze(AbstractSyntaxTree AST, EntityType returnType, boolean inFunc, boolean inLoop, boolean translatingPrototype) {
+    public void analyze(AbstractSyntaxTree AST, EntityType returnType, boolean inLoop, boolean translatingPrototype) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
             if (subTree.matchesLabel("VAR-DECL")) {
-                handleVariableDeclaration(subTree, inFunc, translatingPrototype);
+                handleVariableDeclaration(subTree, translatingPrototype);
             }
             else if (subTree.matchesLabel("ARRAY-DECL")) {
-                handleArrayDeclaration(subTree, inFunc, translatingPrototype);
+                handleArrayDeclaration(subTree, translatingPrototype);
             }
             // break / continue / return
             else if (subTree.matchesLabel("CONTROL-FLOW")) {
-                if (!inFunc && isReturn(subTree))
+                if (!(inFunc || inPrototype || translatingPrototype) && isReturn(subTree))
                     throw new IllegalStatementError("Cannot return outside of a function", subTree.getLineNumber());
                 if (!inLoop && !isReturn(subTree)) {
                     String controlType = subTree.getChildren().get(0).matchesStaticToken(TokenType.KW_BRK) ? "break" : "continue";
@@ -61,16 +71,16 @@ public class SemanticAnalyzer {
 
             // conditional
             else if (subTree.matchesLabel("COND")) {
-                handleConditionalBlock(subTree.getChildren(), returnType, inFunc, inLoop, translatingPrototype);
+                handleConditionalBlock(subTree.getChildren(), returnType, inLoop, translatingPrototype);
             }
 
             // loop
             else if (subTree.matchesStaticToken(TokenType.KW_WHILE)) {
-                handleWhileLoop(subTree, returnType, inFunc, translatingPrototype);
+                handleWhileLoop(subTree, returnType, translatingPrototype);
             }
 
             else if (subTree.matchesStaticToken(TokenType.KW_FOR)) {
-                handleForLoop(subTree, returnType, inFunc, translatingPrototype);
+                handleForLoop(subTree, returnType, translatingPrototype);
             }
 
             // function
@@ -87,7 +97,7 @@ public class SemanticAnalyzer {
         }
     }
 
-    private void handleVariableDeclaration(AbstractSyntaxTree node, boolean inFunc, boolean translatingPrototype) {
+    private void handleVariableDeclaration(AbstractSyntaxTree node, boolean translatingPrototype) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
@@ -97,7 +107,7 @@ public class SemanticAnalyzer {
             if (node.countChildren() != 4)
                 throw new IllegalStatementError("Constant variable must be initialized to a variable", node.getLineNumber());
         }
-        if (details.get(offset).matchesStaticToken(TokenType.KW_GEN) && !inFunc)
+        if (details.get(offset).matchesStaticToken(TokenType.KW_GEN) && !(inPrototype || translatingPrototype))
             throw new IllegalStatementError("Cannot use generic variable outside of prototype definition", node.getLineNumber());
         if (node.countChildren() == offset + 3) {
             EntityType rhsType = evaluateType(details.get(offset + 2));
@@ -114,7 +124,7 @@ public class SemanticAnalyzer {
         symbolTable.insert(new Symbol(node, scope));
     }
 
-    private void handleArrayDeclaration(AbstractSyntaxTree node, boolean inFunc, boolean translatingPrototype) {
+    private void handleArrayDeclaration(AbstractSyntaxTree node, boolean translatingPrototype) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
         int offset = 0;
@@ -131,7 +141,7 @@ public class SemanticAnalyzer {
         else if (details.get(0).matchesStaticToken(TokenType.KW_MUT))
             offset = 1;
         EntityType declaredType = new EntityType(details.get(offset));
-        if (declaredType.containsSubType(NodeType.GENERIC) && !inFunc)
+        if (declaredType.containsSubType(NodeType.GENERIC) && !(inPrototype || translatingPrototype))
             throw new IllegalStatementError("Cannot declare generic array outside of function definition", node.getLineNumber());
         String name = details.get(offset + 1).getValue();
         List<Integer> sizes = List.of(0);
@@ -179,7 +189,7 @@ public class SemanticAnalyzer {
         return declaredType;
     }
 
-    private void handleConditionalBlock(List<AbstractSyntaxTree> conditionals, EntityType returnType, boolean inFunc, boolean inLoop, boolean translatingPrototype) {
+    private void handleConditionalBlock(List<AbstractSyntaxTree> conditionals, EntityType returnType, boolean inLoop, boolean translatingPrototype) {
             int length = conditionals.size();
             EntityType condition;
             AbstractSyntaxTree body;
@@ -197,12 +207,12 @@ public class SemanticAnalyzer {
                     body = conditionals.get(i).getChildren().get(1);
                 }
                 symbolTable.enterScope();
-                analyze(body, returnType, inFunc, inLoop, translatingPrototype);
+                analyze(body, returnType, inLoop, translatingPrototype);
                 symbolTable.leaveScope();
             }
     }
 
-    private void handleWhileLoop(AbstractSyntaxTree loopNode, EntityType returnType, boolean inFunc, boolean translatingPrototype) {
+    private void handleWhileLoop(AbstractSyntaxTree loopNode, EntityType returnType, boolean translatingPrototype) {
         // check loop signature
         EntityType condition = evaluateType(loopNode.getChildren().get(0));
         if (!condition.isType(NodeType.BOOLEAN)) {
@@ -213,12 +223,12 @@ public class SemanticAnalyzer {
         if (body.matchesLabel("BLOCK-BODY")) {
             loopHasControlFlow(body); // this will check for unreachable code
             symbolTable.enterScope();
-            analyze(body, returnType, inFunc, true, translatingPrototype);
+            analyze(body, returnType, true, translatingPrototype);
             symbolTable.leaveScope();
         }
     }
 
-    private void handleForLoop(AbstractSyntaxTree loopNode, EntityType returnType, boolean inFunc, boolean translatingPrototype) {
+    private void handleForLoop(AbstractSyntaxTree loopNode, EntityType returnType, boolean translatingPrototype) {
         int scope = symbolTable.enterScope();
         int lineNum = loopNode.getLineNumber();
         List<AbstractSyntaxTree> loopDetails = loopNode.getChildren();
@@ -253,7 +263,7 @@ public class SemanticAnalyzer {
                     varType = symbol.getType();
                     if (loopDetails.get(0).countChildren() != 3)
                         throw new IllegalStatementError("Loop variable must be non-constant and assigned to a value", lineNum);
-                    handleVariableDeclaration(loopDetails.get(0), inFunc, false);
+                    handleVariableDeclaration(loopDetails.get(0), false);
                 }
                 else if (loopDetails.get(0).matchesValue("=")) {
                     Symbol symbol = symbolTable.lookup(loopDetails.get(0).getValue());
@@ -274,11 +284,15 @@ public class SemanticAnalyzer {
                 break;
         }
         if (body != null)
-            analyze(body, returnType, inFunc, true, translatingPrototype);
+            analyze(body, returnType, true, translatingPrototype);
         symbolTable.leaveScope();
     }
 
     private void handleFunctionDefinition(List<AbstractSyntaxTree> fnDetails, boolean isPrototype) {
+        if (isPrototype)
+            inPrototype = true;
+        else
+            inFunc = true;
         int scope = symbolTable.enterScope();
         int lineNum = fnDetails.get(0).getLineNumber();
         int length = fnDetails.size();
@@ -291,6 +305,8 @@ public class SemanticAnalyzer {
         String defType = isPrototype ? "Prototype" : "Function";
         switch (length) {
             case 1:
+                if (isPrototype)
+                    throw new IllegalStatementError("Prototype definition must contain at least one generic parameter", lineNum);
                 symbolTable.insert(new FunctionSymbol(name));
                 symbolTable.leaveScope();
                 return;
@@ -344,6 +360,8 @@ public class SemanticAnalyzer {
         }
         if (isPrototype) {
             PrototypeSymbol function = new PrototypeSymbol(name, fnReturnType, types, paramNames, body);
+            if (!function.hasGenericParam())
+                throw new IllegalStatementError("Prototype definition must contain at least one generic parameter", lineNum);
             symbolTable.insert(function);
 
         }
@@ -354,12 +372,13 @@ public class SemanticAnalyzer {
         if (body != null) {
             // analyze needs to come first to get variables in scope
             // but this will mean unreachable code errors come after other errors (even if they don't in the code)
-            analyze(body, fnReturnType, true, false, false);
+            analyze(body, fnReturnType, false, false);
             if (!fnReturnType.isType(NodeType.NONE) && !functionReturns(body, fnReturnType))
                 throw new TypeError(defType + " " + name + " expected to return " + fnReturnType + " but does not return for all branches", lineNum);
         }
 
         symbolTable.leaveScope();
+        resetState();
     }
 
     private List<Integer> handleArraySizes(AbstractSyntaxTree sizeNode) {
@@ -699,8 +718,10 @@ public class SemanticAnalyzer {
             if (matchingDefinition == null) {
                 // check if there is a matching prototype
                 PrototypeSymbol prototype = symbolTable.lookupPrototype(name, types);
-                if (prototype == null)
+                if (prototype == null) {
+                    System.out.println(Arrays.toString(types));
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
+                }
                 if (translatedCalls.contains(prototype.formSignature()) && prototype.returnsGeneric())
                     return new EntityType(NodeType.NULL);
                 matchingDefinition = prototypeToFunction(prototype, types);
@@ -883,7 +904,7 @@ public class SemanticAnalyzer {
             symbolTable.insert(new Symbol(prototypeSymbol.getParamNames()[i], calledParams[i], scope));
         }
         if (!prototypeSymbol.isBuiltIn() || (prototypeSymbol.isBuiltIn() && prototypeSymbol.getFnBodyNode() != null))
-            analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), true, false, true);
+            analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), false, true);
         fnDefinition.setFnBodyNode(prototypeSymbol.getFnBodyNode());
         if (prototypeSymbol.getReturnType() != null && prototypeSymbol.returnsGeneric()) {
             fnDefinition.setReturnType(estimateReturnType(prototypeSymbol, calledParams));
@@ -893,6 +914,7 @@ public class SemanticAnalyzer {
         }
         symbolTable.leaveScope();
         symbolTable.insert(fnDefinition, true);
+        //resetState();
         return fnDefinition;
     }
 
