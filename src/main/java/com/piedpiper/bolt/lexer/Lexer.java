@@ -18,6 +18,7 @@ public class Lexer {
         entry("float", new StaticToken(TokenType.KW_FLOAT)),
         entry("string", new StaticToken(TokenType.KW_STR)),
         entry("boolean", new StaticToken(TokenType.KW_BOOL)),
+        entry("prototype", new StaticToken(TokenType.KW_PROTO)),
         entry("generic", new StaticToken(TokenType.KW_GEN)),
         entry("fn", new StaticToken(TokenType.KW_FN)),
         entry("return", new StaticToken(TokenType.KW_RET)),

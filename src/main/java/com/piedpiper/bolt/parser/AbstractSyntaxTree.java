@@ -108,6 +108,52 @@ public class AbstractSyntaxTree {
         return children.size();
     }
 
+    public boolean matchesLabel(String value) {
+        return label.equals(value);
+    }
+
+    public boolean matchesStaticToken(TokenType value) {
+        return name == value;
+    }
+
+    public boolean matchesValue(String value) {
+        return this.value.equals(value);
+    }
+
+    public boolean isFloatLiteral() {
+        return name == TokenType.NUMBER;
+    }
+
+    public boolean isIntegerLiteral() {
+        return name == TokenType.NUMBER && !value.contains(".");
+    }
+
+    public boolean isStringLiteral() {
+        return name == TokenType.STRING;
+    }
+
+    public boolean isBooleanLiteral() {
+        return matchesStaticToken(TokenType.KW_TRUE) || matchesStaticToken(TokenType.KW_FALSE);
+    }
+
+    public boolean isArrayLiteral() {
+        return matchesLabel("ARRAY-LIT");
+    }
+
+    public boolean isTypeLabel() {
+        final List<TokenType> typeTokens = List.of(
+            TokenType.KW_BOOL,
+            TokenType.KW_INT,
+            TokenType.KW_FLOAT,
+            TokenType.KW_STR,
+            TokenType.KW_ARR,
+            TokenType.KW_GEN
+        );
+        if (name == null)
+            return false;
+        return typeTokens.contains(name);
+    }
+
     @Override
     public String toString() {
         return toString(0);
@@ -118,7 +164,7 @@ public class AbstractSyntaxTree {
         StringBuilder output = new StringBuilder(indentation + "AST => ");
         if (label.equals("terminal")) {
             output.append("Token: ").append(name);
-            if (!value.equals(""))
+            if (!value.isEmpty())
                 output.append(" ('").append(value).append("')");
         }
         else {

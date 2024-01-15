@@ -1,20 +1,9 @@
-fn first(Array<generic> array): generic {
-    return array[0];
-}
-
-fn last(Array<generic> array): generic {
-    generic end = array[2];
-    return end;
-}
-
-fn last(boolean something, Array<generic> array): generic {
-    return array[2];
-}
-
-fn end(Array<generic> array): generic {
-    return array[2];
+prototype first(Array<generic> array): generic {
+    if (length(array) == 0)
+        return null;
+    return pop(array);
 }
 
 Array<float> floats[3] = {-9.8, 3.14, 6.67 * 10 ** -11};
-first(floats);
-last(floats);
+float f = first(floats);
+string s = first({"hello", "world"});

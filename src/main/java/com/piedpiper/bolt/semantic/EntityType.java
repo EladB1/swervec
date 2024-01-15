@@ -92,7 +92,7 @@ public class EntityType {
     }
 
     public boolean startsWith(NodeType type) {
-        if (this.type.size() == 0)
+        if (this.type.isEmpty())
             return false;
         return this.type.get(0) == type;
     }
@@ -113,7 +113,7 @@ public class EntityType {
 
     @Override
     public String toString() {
-        if (type.size() == 0)
+        if (type.isEmpty())
             return "";
         if (type.size() == 1)
             return this.type.get(0).toString();

@@ -37,7 +37,7 @@ public class Parser {
      * LOOP ::= ( WHILE-LOOP / FOR-LOOP ) "{" ( STMNT )* "}"
      * WHILE-LOOP ::= "while" "(" EXPR ")"
      * FOR-LOOP ::= "for" "(" ( ( ( VAR-DECL / VAR-ASSIGN ) ";" EXPR ";" EXPR ) / TYPE ID : EXPR ) ")"
-     * FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( STMNT )* "}"
+     * FUNC-DEF ::= ( "fn" / "prototype" ) ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( STMNT )* "}"
      * FUNC-PARAM ::= TYPE ID
      * ARRAY-TYPE ::= "Array" "<" TYPE ">"
      * IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" EXPR
@@ -97,7 +97,7 @@ public class Parser {
         AbstractSyntaxTree node = new AbstractSyntaxTree("PROGRAM");
 
         while (!atEnd()) {
-            if (current.getName() == TokenType.KW_FN) {
+            if (current.getName() == TokenType.KW_FN || current.getName() == TokenType.KW_PROTO) {
                 node.appendChildren(parseFunctionDefinition());
             }
             else {
@@ -587,9 +587,9 @@ public class Parser {
         return node;
     }
 
-    //  FUNC-DEF ::= "fn" ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
+    //  FUNC-DEF ::= ( "fn" / "prototype" ) ID "(" (FUNC-PARAM ("," FUNC-PARAM)* )? ")" ( ":" TYPE )? "{" ( BLOCK-BODY )* "}"
     private AbstractSyntaxTree parseFunctionDefinition() {
-        AbstractSyntaxTree node = parseExpectedToken(TokenType.KW_FN, current);
+        AbstractSyntaxTree node = current.getName() == TokenType.KW_FN ? parseExpectedToken(TokenType.KW_FN, current) : parseExpectedToken(TokenType.KW_PROTO, current);
         AbstractSyntaxTree functionNameNode = parseExpectedToken(TokenType.ID, current);
         node.appendChildren(functionNameNode);
         parseExpectedToken(TokenType.LEFT_PAREN, current);
