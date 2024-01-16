@@ -393,73 +393,73 @@ There are built-in variables, functions, and prototypes in order to make develop
 
 #### Variables
 
-| name      | type          | description                                          |
-|-----------|---------------|------------------------------------------------------|
-| INT_MIN   | int           | minimum value of an integer                          |
-| INT_MAX   | int           | maximum value of an integer                          |
-| FLOAT_MIN | float         | minimum value of a float                             |
-| FLOAT_MAX | float         | maximum value of a float                             |
-| argv      | Array<string> | array of strings representing command line arguments |
-| argc      | int           | length of `argv`                                     |
+| name      | type            | description                                          |
+|-----------|-----------------|------------------------------------------------------|
+| INT_MIN   | int             | minimum value of an integer                          |
+| INT_MAX   | int             | maximum value of an integer                          |
+| FLOAT_MIN | float           | minimum value of a float                             |
+| FLOAT_MAX | float           | maximum value of a float                             |
+| argv      | Array\<string\> | array of strings representing command line arguments |
+| argc      | int             | length of `argv`                                     |
 
 #### Functions
 
-| name         | param types           | return type   | description                                           |
-|--------------|-----------------------|---------------|-------------------------------------------------------|
-| length       | string                | int           | get length of string                                  |
-| toString     | int                   | string        | return string version of int                          |
-| toString     | float                 | string        | return string version of float                        |
-| toString     | boolean               | string        | return string version of boolean                      |
-| toInt        | float                 | int           | return int from float (rounds down)                   |
-| toInt        | string                | int           | return int from string                                |
-| toFloat      | int                   | float         | return float version of int                           |
-| toFloat      | string                | float         | return float from string                              |
-| max          | int, int              | int           | compare two values and return the greater one         |
-| max          | float, float          | float         | compare two values and return the greater one         |
-| max          | int, float            | float         | compare two values and return the greater one         |
-| max          | float, int            | float         | compare two values and return the greater one         |
-| min          | int, int              | int           | compare two values and return the lesser one          |
-| min          | float, float          | float         | compare two values and return the lesser one          |
-| min          | int, float            | float         | compare two values and return the lesser one          |
-| min          | float, int            | float         | compare two values and return the lesser one          |
-| contains     | string, string        | boolean       | check if string contains substring                    |
-| startsWith   | string, string        | boolean       | check if string starts with substring                 |
-| endsWith     | string, string        | boolean       | check if string ends with substring                   |
-| exit         | none                  | none          | stop the program with exit code 0                     |
-| exit         | int                   | none          | stop the program with supplied exit code              |
-| fileExists   | string                | boolean       | check if the file exists                              |
-| readFile     | string                | Array<string> | Get contents of file line by line                     |
-| writeFile    | string, string        | none          | Write to the file                                     |
-| appendToFile | string, string        | none          | Add to the end of the file                            |
-| sleep        | float                 | none          | pause execution for specified amount of time          |
-| slice        | string, int           | string        | Create string from the index to the end of the string |
-| slice        | string, int, int      | string        | Create string from start to end index of string       |
-| remove       | string, string        | string        | Remove first instance of substring                    |
-| remove       | string, int           | string        | Remove character at index                             |
-| removeAll    | string, string        | string        | Remove every instance of substring                    |
-| search       | string, int           | int           | Find index of start of substring                      |
-| reverse      | string                | string        | reverse string                                        |
-| split        | string                | Array<string> | Split string character by character                   |
-| split        | string, string        | Array<string> | Split string by delimeter                             |
-| join         | Array<string>, string | string        | Combine strings into one string with delimeter        |
-| at           | string, int           | string        | index string                                          |
-| print        | string                | none          | print to the screen                                   |
-| print        | int                   | none          | print to the screen                                   |
-| print        | float                 | none          | print to the screen                                   |
-| print        | boolean               | none          | print to the screen                                   |
+| name         | param types             | return type     | description                                           |
+|--------------|-------------------------|-----------------|-------------------------------------------------------|
+| length       | string                  | int             | get length of string                                  |
+| toString     | int                     | string          | return string version of int                          |
+| toString     | float                   | string          | return string version of float                        |
+| toString     | boolean                 | string          | return string version of boolean                      |
+| toInt        | float                   | int             | return int from float (rounds down)                   |
+| toInt        | string                  | int             | return int from string                                |
+| toFloat      | int                     | float           | return float version of int                           |
+| toFloat      | string                  | float           | return float from string                              |
+| max          | int, int                | int             | compare two values and return the greater one         |
+| max          | float, float            | float           | compare two values and return the greater one         |
+| max          | int, float              | float           | compare two values and return the greater one         |
+| max          | float, int              | float           | compare two values and return the greater one         |
+| min          | int, int                | int             | compare two values and return the lesser one          |
+| min          | float, float            | float           | compare two values and return the lesser one          |
+| min          | int, float              | float           | compare two values and return the lesser one          |
+| min          | float, int              | float           | compare two values and return the lesser one          |
+| contains     | string, string          | boolean         | check if string contains substring                    |
+| startsWith   | string, string          | boolean         | check if string starts with substring                 |
+| endsWith     | string, string          | boolean         | check if string ends with substring                   |
+| exit         | none                    | none            | stop the program with exit code 0                     |
+| exit         | int                     | none            | stop the program with supplied exit code              |
+| fileExists   | string                  | boolean         | check if the file exists                              |
+| readFile     | string                  | Array\<string\> | Get contents of file line by line                     |
+| writeFile    | string, string          | none            | Write to the file                                     |
+| appendToFile | string, string          | none            | Add to the end of the file                            |
+| sleep        | float                   | none            | pause execution for specified amount of time          |
+| slice        | string, int             | string          | Create string from the index to the end of the string |
+| slice        | string, int, int        | string          | Create string from start to end index of string       |
+| remove       | string, string          | string          | Remove first instance of substring                    |
+| remove       | string, int             | string          | Remove character at index                             |
+| removeAll    | string, string          | string          | Remove every instance of substring                    |
+| search       | string, int             | int             | Find index of start of substring                      |
+| reverse      | string                  | string          | reverse string                                        |
+| split        | string                  | Array\<string\> | Split string character by character                   |
+| split        | string, string          | Array\<string\> | Split string by delimeter                             |
+| join         | Array\<string\>, string | string          | Combine strings into one string with delimeter        |
+| at           | string, int             | string          | index string                                          |
+| print        | string                  | none            | print to the screen                                   |
+| print        | int                     | none            | print to the screen                                   |
+| print        | float                   | none            | print to the screen                                   |
+| print        | boolean                 | none            | print to the screen                                   |
 
 #### Prototypes
 
 | name     | param types             | return type | description                                               |
 |----------|-------------------------|-------------|-----------------------------------------------------------|
-| length   | Array<generic>          | int         | Return length of array                                    |
-| toString | Array<generic>          | string      | create string from Array                                  |
-| contains | Array<generic>, generic | boolean     | Check if the array contains an element                    |
-| remove   | Array<generic>, int     | none        | Remove element at index from array                        |
-| pop      | Array<generic>          | generic     | remove and return first element from array                |
-| append   | Array<generic>, generic | none        | Add an elment to the end of an array                      |
-| prepend  | Array<generic>, generic | none        | Add an elment to the beginning of an array                |
-| sort     | Array<generic>          | none        | In place sort an array                                    |
-| indexOf  | Array<generic>, generic | int         | Get the index of an array element; return -1 if not found |
-| reverse  | Array<generic>          | none        | In place reversing of array                               |
-| print    | Array<generic>          | none        | print array to screen                                     |
+| length   | Array\<generic\>          | int         | Return length of array                                    |
+| toString | Array\<generic\>          | string      | create string from Array                                  |
+| contains | Array\<generic\>, generic | boolean     | Check if the array contains an element                    |
+| remove   | Array\<generic\>, int     | none        | Remove element at index from array                        |
+| pop      | Array\<generic\>          | generic     | remove and return first element from array                |
+| append   | Array\<generic\>, generic | none        | Add an elment to the end of an array                      |
+| prepend  | Array\<generic\>, generic | none        | Add an elment to the beginning of an array                |
+| sort     | Array\<generic\>          | none        | In place sort an array                                    |
+| indexOf  | Array\<generic\>, generic | int         | Get the index of an array element; return -1 if not found |
+| reverse  | Array\<generic\>          | none        | In place reversing of array                               |
+| print    | Array\<generic\>          | none        | print array to screen                                     |
