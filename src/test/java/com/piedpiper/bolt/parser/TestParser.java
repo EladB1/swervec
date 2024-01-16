@@ -1445,37 +1445,6 @@ public class TestParser {
     }
 
     @Test
-    void test_parseArrayDeclaration_constMut() {
-        List<Token> tokens = List.of(
-            new StaticToken(TokenType.KW_CONST),
-            new StaticToken(TokenType.KW_MUT),
-            new StaticToken(TokenType.KW_ARR),
-            new VariableToken(TokenType.OP, "<"),
-            new StaticToken(TokenType.KW_FLOAT),
-            new VariableToken(TokenType.OP, ">"),
-            new VariableToken(TokenType.ID, "arr"),
-            leftSQBToken,
-            new VariableToken(TokenType.NUMBER, "2"),
-            rightSQBToken,
-            SCToken
-        );
-
-
-        AbstractSyntaxTree arrayType = new AbstractSyntaxTree(tokens.get(2));
-        arrayType.appendChildren(new AbstractSyntaxTree(tokens.get(4)));
-
-        AbstractSyntaxTree expectedAST = new AbstractSyntaxTree("ARRAY-DECL", List.of(
-            new AbstractSyntaxTree(tokens.get(0)),
-            new AbstractSyntaxTree(tokens.get(1)),
-            arrayType,
-            new AbstractSyntaxTree(tokens.get(6)),
-            new AbstractSyntaxTree("ARRAY-INDEX", tokens.get(8))
-        ));
-
-        assertAST(expectedAST, tokens);
-    }
-
-    @Test
     void test_parseArrayDeclaration_noSizeError() {
         // Array<float> magnitudes = {0.00035};
         List<Token> tokens = List.of(
@@ -1491,7 +1460,7 @@ public class TestParser {
         );
 
 
-        assertSyntaxError("Array size required for arrays that are not constant and immutable", tokens);
+        assertSyntaxError("Array size required for mutable arrays", tokens);
     }
 
     @Test

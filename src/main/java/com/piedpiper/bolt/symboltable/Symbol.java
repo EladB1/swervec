@@ -21,7 +21,6 @@ public class Symbol {
     @NonNull
     private Integer scope;
     private boolean isConstant = false;
-    private boolean isMutableArray = false;
     private List<Integer> arraySizes = List.of(0);
     private AbstractSyntaxTree valueNodes = null;
 
@@ -50,9 +49,6 @@ public class Symbol {
         List<AbstractSyntaxTree> children = arrayDeclaration.getChildren();
         this.isConstant = children.get(0).getName() == TokenType.KW_CONST;
         int offset = isConstant ? 1 : 0;
-        this.isMutableArray = children.get(offset).getName() == TokenType.KW_MUT;
-        if (isMutableArray)
-            offset++;
         this.name = children.get(offset + 1).getValue();
         if (valueIndex != 0)
             this.valueNodes = children.get(valueIndex);

@@ -9,13 +9,7 @@ string to_do = /"
 2 + 3 * 2 ** 4 - 5;
 
 const Array<string> langs[4] = {"C", "Java", "Python", "Typescript"}; //
-/*
-    An array declared with const is a constant reference to an immutable array by default
-    A const mut array is a constant reference to a mutable array 
-    mut allows your array to change but the variable that stores the array cannot be reassigned
-
-*/
-const mut Array<int> primes[10] = {2, 19};
+Array<int> primes[10] = {2, 19};
 
 // non-const arrays are mutable by default so mut is unnecessary
 Array<int> evens[5];
@@ -48,12 +42,9 @@ fn strtok(Array<string> strings): string {
 }
 
 fn main() {
-    //print(someValue)
     float y = someInteger * PI + 1;
-    //print(y++)
     y *= primes[1];
     const int x = (2 + 4) / 3;
-    mut Array<int> z[1] = {5};
+    Array<int> z[1] = {5};
     PI ** 2 ** 3 < 50 || y > 10;
-    //someValue
 }

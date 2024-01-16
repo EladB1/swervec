@@ -127,53 +127,40 @@ public class SemanticAnalyzer {
     private void handleArrayDeclaration(AbstractSyntaxTree node, boolean translatingPrototype) {
         int scope = symbolTable.getScopeLevel();
         List<AbstractSyntaxTree> details = node.getChildren();
-        int offset = 0;
         int valueIndex = 0;
-        boolean isConstantImmutable = false;
-        if (details.get(0).matchesStaticToken(TokenType.KW_CONST)) {
-            if (details.get(1).matchesStaticToken(TokenType.KW_MUT))
-                offset = 2;
-            else {
-                offset = 1;
-                isConstantImmutable = true;
-            }
-        }
-        else if (details.get(0).matchesStaticToken(TokenType.KW_MUT))
-            offset = 1;
+        boolean isConstant = details.get(0).matchesStaticToken(TokenType.KW_CONST);
+        int offset = isConstant ? 1 : 0;
         EntityType declaredType = new EntityType(details.get(offset));
         if (declaredType.containsSubType(NodeType.GENERIC) && !(inPrototype || translatingPrototype))
             throw new IllegalStatementError("Cannot declare generic array outside of function definition", node.getLineNumber());
         String name = details.get(offset + 1).getValue();
         List<Integer> sizes = List.of(0);
-        if (isConstantImmutable) {
-            switch (details.size()) {
-                case 3: // const Array<type> name;
-                    throw new IllegalStatementError("Constant immutable array " + name + " must be set to a value", node.getLineNumber());
-                case 4:
-                    if (details.get(3).matchesLabel("ARRAY-INDEX")) // const Array<type> name[number];
-                        throw new IllegalStatementError("Constant immutable array " + name + " must be set to a value", node.getLineNumber());
-                    // const Array<type> name = value;
-                    valueIndex = 3;
-                    sizes = ArrayChecks.estimateArraySizes(details.get(3));
-                    declaredType = validateArrayType(details.get(valueIndex), declaredType, translatingPrototype);
-                    break;
-                case 5:
-                    // const Array<type> name[number] = value;
-                    valueIndex = 4;
-                    sizes = handleArraySizes(details.get(valueIndex - 1));
-                    declaredType = validateArrayType(details.get(valueIndex), declaredType, translatingPrototype);
-                    break;
-            }
-        } else {
-            if (details.size() < offset + 3) // Array<type> name = value; OR mut Array<type> name = value;
-                throw new IllegalStatementError("Array " + name + " missing size", node.getLineNumber());
-            sizes = handleArraySizes(details.get(offset + 2));
-            if (offset == 2 && details.size() < offset + 4) // const mut Array<type> name[number]; OR mut Array<type> name[number];
-                throw new IllegalStatementError("Constant mutable array " + name + " missing value", node.getLineNumber());
-            if (details.size() == offset + 4) { // Array<type> name[number] = value; OR mut Array<type> name[number] = value; OR const mut Array<type> name[number] = value;
-                valueIndex = offset + 3;
-
-            }
+        switch(details.size()) {
+            case 2: // Invalid: Array<type> name;
+                throw new IllegalStatementError("Non-constant array '" + name + "' missing size", node.getLineNumber());
+            case 3: // Valid: Array<type> name[size]; Invalid: const Array<type> name, Array<type> name = value;
+                if (isConstant)
+                    throw new IllegalStatementError("Constant array '" + name + "' must be set to a value", node.getLineNumber());
+                if (!details.get(2).matchesLabel("ARRAY-INDEX"))
+                    throw new IllegalStatementError("Non-constant array '" + name + "' missing size", node.getLineNumber());
+                sizes = handleArraySizes(details.get(2));
+                break;
+            case 4: // Valid: Array<type> name[size] = value, const Array<type> name = value; Invalid: const Array<type> name[size];
+                valueIndex = 3;
+                if (isConstant) {
+                    if (details.get(3).matchesLabel("ARRAY-INDEX"))
+                        throw new IllegalStatementError("Constant array '" + name + "' must be set to a value", node.getLineNumber());
+                    sizes = ArrayChecks.estimateArraySizes(details.get(valueIndex));
+                }
+                else
+                    sizes = handleArraySizes(details.get(2));
+                declaredType = validateArrayType(details.get(valueIndex), declaredType, translatingPrototype);
+                break;
+            case 5: // Valid const Array<type> name[size] = value;
+                valueIndex = 4;
+                sizes = handleArraySizes(details.get(valueIndex - 1));
+                declaredType = validateArrayType(details.get(valueIndex), declaredType, translatingPrototype);
+                break;
         }
         symbolTable.insert(new Symbol(node, sizes, declaredType, valueIndex, scope));
     }
@@ -621,11 +608,8 @@ public class SemanticAnalyzer {
                 throw new ReferenceError("Variable " + varName + " is used before being defined in current scope", assignmentNode.getLineNumber());
             varType = symbol.getType();
             if (varType.startsWith(NodeType.ARRAY)) {
-                if (symbol.isConstant()) {
-                    if (symbol.isMutableArray())
-                        throw new IllegalStatementError("Cannot reassign constant array reference", assignmentNode.getLineNumber());
-                    throw new IllegalStatementError("Cannot reassign constant immutable array", assignmentNode.getLineNumber());
-                }
+                if (symbol.isConstant())
+                    throw new IllegalStatementError("Cannot reassign immutable array", assignmentNode.getLineNumber());
             }
             else {
                 if (symbol.isConstant())

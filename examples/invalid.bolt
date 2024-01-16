@@ -3,7 +3,7 @@ fn multiply(int x, float y): float {
 }
 
 
-const mut arr = {1,2,3} // this is a semantic error 
+const arr = {1,2,3} // this is a semantic error
 
 /" This
 is a multiline

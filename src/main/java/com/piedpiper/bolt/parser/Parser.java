@@ -41,7 +41,7 @@ public class Parser {
      * FUNC-PARAM ::= TYPE ID
      * ARRAY-TYPE ::= "Array" "<" TYPE ">"
      * IMMUTABLE-ARRAY-DECL ::= "const" ARRAY-TYPE ID ( ARRAY-INDEX )? "=" EXPR
-     * ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
+     * ARRAY-DECL ::= ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
      * VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
      * VAR-ASSIGN ::= ( ID / ARRAY-ACCESS )  ( "+" / "-" / "*" / "/" )? = EXPR
      * TYPE ::= "int" / "string" / "float" / "boolean" / "generic" / ARRAY-TYPE
@@ -121,7 +121,6 @@ public class Parser {
             AbstractSyntaxTree node = null;
             if (
                 current.getName() == TokenType.KW_CONST
-                || current.getName() == TokenType.KW_MUT
                 || isPrimitiveType(current)
                 || current.getName() == TokenType.KW_ARR
             ) {
@@ -657,24 +656,14 @@ public class Parser {
         return node;
     }
 
-    // ARRAY-DECL ::= ("const" "mut")? ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
+    // ARRAY-DECL ::= ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
     private AbstractSyntaxTree parseArrayDeclaration() {
         AbstractSyntaxTree node = new AbstractSyntaxTree("ARRAY-DECL", current.getLineNumber());
-        if (current.getName() == TokenType.KW_CONST) {
-            if (next != null && next.getName() == TokenType.KW_MUT) {
-                node.appendChildren(
-                    parseExpectedToken(TokenType.KW_CONST, current),
-                    parseExpectedToken(TokenType.KW_MUT, current)
-                );
-            }
-            else if (next != null)
-                return parseImmutableArrayDeclaration();
-        }
-        else if (current.getName() == TokenType.KW_MUT)
-            node.appendChildren(parseExpectedToken(TokenType.KW_MUT, current));
+        if (current.getName() == TokenType.KW_CONST)
+            return parseImmutableArrayDeclaration();
         node.appendChildren(parseArrayType(), parseExpectedToken(TokenType.ID, current));
         if (current.getName() != TokenType.LEFT_SQB)
-            throw new SyntaxError("Array size required for arrays that are not constant and immutable", current.getLineNumber());
+            throw new SyntaxError("Array size required for mutable arrays", current.getLineNumber());
         node.appendChildren(parseArrayIndex());
         if (current.getValue().equals("=")) {
             parseExpectedToken("=", current);
@@ -690,19 +679,14 @@ public class Parser {
         if (current.getName() == TokenType.KW_CONST) {
             isConst = true;
             if (
-                (current.getName() == TokenType.KW_MUT || current.getName() == TokenType.KW_ARR)
-                || (next != null && (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR))
+                (current.getName() == TokenType.KW_ARR)
+                || (next != null && (next.getName() == TokenType.KW_ARR))
             )
                  return parseArrayDeclaration(); // let array declaration do the rest
             else
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current));
         }
-        if (current.getName() == TokenType.KW_MUT && next.getName() != TokenType.KW_ARR)
-            throw new SyntaxError("Cannot use modifier 'mut' on non-array variables", current.getLineNumber());
-        if (
-            (current.getName() == TokenType.KW_MUT || current.getName() == TokenType.KW_ARR)
-            || (next != null && (next.getName() == TokenType.KW_MUT || next.getName() == TokenType.KW_ARR))
-        )
+        if (current.getName() == TokenType.KW_ARR)
             return parseArrayDeclaration(); // let array declaration do the rest
         node.appendChildren(parseType());
         if (next != null && next.getValue().equals("=")) {

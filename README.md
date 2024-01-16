@@ -65,7 +65,7 @@ Statements are:
 
 ### Reserved words:
  - `const`
- - `mut`
+ - `fn`
  - `prototype`
  - `generic`
  - `int`
@@ -73,7 +73,6 @@ Statements are:
  - `boolean`
  - `string`
  - `Array`
- - `fn`
  - `return`
  - `if`
  - `else`
@@ -235,22 +234,17 @@ Once a variable is declared, you can reassign it (unless it's a `const` variable
 #### Arrays
 Arrays can be declared using the `Array` keyword and must specify their types by wrapping the type in `<` and `>`. There are a few different ways to declare arrays that change their behavior.
 
-1. `const` arrays
+1. immutable arrays
  - The variable the array is set to cannot be reassigned and the array is immutable.
  - Since the array cannot change, the size is optional for these
  - Examples:
    - `const Array<int> fib = {1, 1, 2, 3, 5, 8};`
    - `const Array<string> items[2] = {"hammer", "nail"};`
-2. `const mut` arrays
-  - The variable the array is set to cannot be reassigned, but the array is immutable
-  - Example: `const mut Array<float> constants[3] = {3.14, 9.8, 6.67 * 10 ** -11};`
-3. regular arrays
-  - These are just arrays declared without `const`
-  - You can optionally declare them with the keyword `mut`, but that is unnecessary
+2. mutable arrays
+  - These are just arrays declared without `const` and are therefore the default
   - The variable the array is set to can be reassigned and the array is mutable
   - Examples:
     - `Array<int> scores[1] = {98};`
-    - `mut Array<string> values[4] = {"v1", "v2", "v3", "v4"};`
 
 #### Strings
 Regular strings, like in many other languages, must be wrapped in double quotes and can not contain any nested double quotes unless those are escaped

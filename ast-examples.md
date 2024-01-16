@@ -131,39 +131,6 @@
                      int           3   1    2    3
 ```
 
-**Code**:
-
-`const mut Array<int> arr[3] = {1, 2, 3}`
-
-**AST**:
-
-```
-                      array-decl
-
-                /     |      |    \   \      \
-               const  mut   Array  arr index  array-lit
-                             |           |    /   |   \
-                            int          3   1    2    3
-```
-
-**Code**:
-
-`mut Array<Array<string>> arr[4][5] = {}`
-
-**AST**:
-
-```
-                      array-decl
-
-                   /      |    \   \      \
-                 mut   Array  arr index  array-lit
-                         |          |   
-                       Array        4
-                         |          |
-                       string       5   
-```
-
-
 ## Function declarations
 
 **Code**:

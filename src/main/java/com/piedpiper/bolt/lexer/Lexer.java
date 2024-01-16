@@ -31,7 +31,6 @@ public class Lexer {
         entry("true", new StaticToken(TokenType.KW_TRUE)),
         entry("false", new StaticToken(TokenType.KW_FALSE)),
         entry("Array", new StaticToken(TokenType.KW_ARR)),
-        entry("mut", new StaticToken(TokenType.KW_MUT)),
         entry("null", new StaticToken(TokenType.KW_NULL))
     );
 

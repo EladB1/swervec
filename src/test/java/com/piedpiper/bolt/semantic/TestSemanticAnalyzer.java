@@ -348,6 +348,150 @@ public class TestSemanticAnalyzer {
     }
 
     /**
+     * handleArrayDeclaration -> case 2
+     * Source code:
+     *  Array<int> a;
+     */
+    @Test
+    void test_handleArrayDeclaration_mutable_missingSizeAndValue() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Non-constant array 'a' missing size", error.getMessage());
+    }
+
+    /**
+     * handleArrayDeclaration -> case 3
+     * Source code:
+     *  Array<int> a = {};
+     */
+    @Test
+    void test_handleArrayDeclaration_mutable_missingSize() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-LIT")
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Non-constant array 'a' missing size", error.getMessage());
+    }
+
+    /**
+     * handleArrayDeclaration -> case 3
+     * Source code:
+     *  const Array<int> a;
+     */
+    @Test
+    void test_handleArrayDeclaration_constant_missingSizeAndValue() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a"))
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Constant array 'a' must be set to a value", error.getMessage());
+    }
+
+    /**
+     * handleArrayDeclaration -> case 3
+     * Source code:
+     *  Array<int> a[3];
+     */
+    @Test
+    void test_handleArrayDeclaration_mutable_missingValue() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "3"))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * handleArrayDeclaration -> case 4
+     * Source code:
+     *  Array<int> a[3] = {};
+     */
+    @Test
+    void test_handleArrayDeclaration_mutable_full() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "3")),
+                new AbstractSyntaxTree("ARRAY-LIT")
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * handleArrayDeclaration -> case 4
+     * Source code:
+     *  const Array<int> a[3];
+     */
+    @Test
+    void test_handleArrayDeclaration_constant_missingValue() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "3"))
+            ))
+        ));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Constant array 'a' must be set to a value", error.getMessage());
+    }
+
+    /**
+     * handleArrayDeclaration -> case 3
+     * Source code:
+     *  const Array<int> a = {};
+     */
+    @Test
+    void test_handleArrayDeclaration_constant_missingSizeWithValue() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-LIT")
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * handleArrayDeclaration -> case 4
+     * Source code:
+     *  const Array<int> a[3] = {};
+     */
+    @Test
+    void test_handleArrayDeclaration_constant_full() {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PRGRM", List.of(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "3")),
+                new AbstractSyntaxTree("ARRAY-LIT")
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
      * Source code:
      *  const Array<float> f = {9.8, 3.14};
      *  f[0];
