@@ -399,8 +399,6 @@ There are built-in variables, functions, and prototypes in order to make develop
 | INT_MAX   | int             | maximum value of an integer                          |
 | FLOAT_MIN | float           | minimum value of a float                             |
 | FLOAT_MAX | float           | maximum value of a float                             |
-| argv      | Array\<string\> | array of strings representing command line arguments |
-| argc      | int             | length of `argv`                                     |
 
 #### Functions
 

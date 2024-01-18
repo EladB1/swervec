@@ -23,9 +23,7 @@ public class BuiltIns {
         entry("INT MIN", List.of(new Symbol("INT_MIN", intType, new VariableToken(TokenType.NUMBER, String.valueOf(Integer.MIN_VALUE))))),
         entry("INT_MAX", List.of(new Symbol("INT_MAX", intType, new VariableToken(TokenType.NUMBER, String.valueOf(Integer.MAX_VALUE))))),
         entry("FLOAT_MIN", List.of(new Symbol("FLOAT_MIN", floatType, new VariableToken(TokenType.NUMBER, String.valueOf(Float.MIN_VALUE))))),
-        entry("FLOAT_MAX", List.of(new Symbol("FLOAT_MAX", floatType, new VariableToken(TokenType.NUMBER, String.valueOf(Float.MAX_VALUE))))),
-        entry("argc", List.of(new Symbol("argc", intType))),
-        entry("argv", List.of(new Symbol("argv", stringArrayType)))
+        entry("FLOAT_MAX", List.of(new Symbol("FLOAT_MAX", floatType, new VariableToken(TokenType.NUMBER, String.valueOf(Float.MAX_VALUE)))))
     );
 
     public static final Map<String, List<FunctionSymbol>> Functions = Map.ofEntries(

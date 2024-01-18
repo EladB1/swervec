@@ -49,6 +49,15 @@ public class SemanticAnalyzer {
 
     public void analyze(AbstractSyntaxTree AST) {
         analyze(AST, new EntityType(NodeType.NONE), false, false);
+        FunctionSymbol mainNoParams = symbolTable.lookup("main", new EntityType[] {});
+        FunctionSymbol mainWithParams = symbolTable.lookup("main", new EntityType[]{new EntityType(NodeType.INT), new EntityType(NodeType.ARRAY, NodeType.STRING)});
+        if (mainNoParams == null && mainWithParams == null)
+            throw new ReferenceError("Could not find entry point function 'main()' or 'main(int, Array<string>)'");
+        else if (mainNoParams != null && mainWithParams != null)
+            throw new ReferenceError("Multiple entry point functions 'main' found. Could not resolve proper entry point.");
+        FunctionSymbol main = mainNoParams != null ? mainNoParams : mainWithParams;
+        if (!(main.getReturnType() == null || main.getReturnType().isType(NodeType.NONE) || main.getReturnType().isType(NodeType.INT)))
+            throw new TypeError("Entry point function 'main' must return INT or not return at all");
     }
 
     public void analyze(AbstractSyntaxTree AST, EntityType returnType, boolean inLoop, boolean translatingPrototype) {

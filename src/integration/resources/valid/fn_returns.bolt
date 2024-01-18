@@ -23,3 +23,7 @@ fn complex(int i): boolean {
     else
         return false;
 }
+
+fn main(int argc, Array<string> argv): int {
+    return 0;
+}
