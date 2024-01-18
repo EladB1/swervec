@@ -892,9 +892,7 @@ public class TestSemanticAnalyzer {
      */
     @Test
     void test_nonDeclaredFunction_call_throwsError() {
-        AbstractSyntaxTree fnCall = new AbstractSyntaxTree("PROGRAM", List.of(
-            new AbstractSyntaxTree("FUNC-CALL", new VariableToken(TokenType.ID, "test"))
-        ));
+        AbstractSyntaxTree fnCall = createASTOfMainBody(new AbstractSyntaxTree("FUNC-CALL", new VariableToken(TokenType.ID, "test")));
         ReferenceError error = assertThrows(ReferenceError.class, () -> semanticAnalyzer.analyze(fnCall));
         assertEquals("Could not find function definition for test([])", error.getMessage());
     }

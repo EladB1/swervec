@@ -38,7 +38,7 @@ class TestApp {
     @Test
     void test_loopScope() {
         String[] args = new String[]{"src/integration/resources/invalid/loop_scope.bolt"};
-        assertError(args, ReferenceError.class, "Variable 'y' used before being defined in current scope", 10);
+        assertError(args, ReferenceError.class, "Variable 'y' used before being defined in current scope", 11);
     }
 
     @Test

@@ -62,6 +62,18 @@ public class SemanticAnalyzer {
 
     public void analyze(AbstractSyntaxTree AST, EntityType returnType, boolean inLoop, boolean translatingPrototype) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
+            if (!(inFunc || inPrototype || translatingPrototype)) {
+                if (subTree.matchesLabel("CONTROL-FLOW") &&  isReturn(subTree))
+                    throw new IllegalStatementError("Cannot return outside of a function", subTree.getLineNumber());
+                else if (!(
+                    subTree.matchesLabel("VAR-DECL") ||
+                    subTree.matchesLabel("ARRAY-DECL") ||
+                    subTree.matchesStaticToken(TokenType.KW_FN) ||
+                    subTree.matchesStaticToken(TokenType.KW_PROTO)
+                ))
+                    throw new IllegalStatementError("Can only declare variables outside of a function definition", subTree.getLineNumber());
+
+            }
             if (subTree.matchesLabel("VAR-DECL")) {
                 handleVariableDeclaration(subTree, translatingPrototype);
             }
@@ -70,8 +82,6 @@ public class SemanticAnalyzer {
             }
             // break / continue / return
             else if (subTree.matchesLabel("CONTROL-FLOW")) {
-                if (!(inFunc || inPrototype || translatingPrototype) && isReturn(subTree))
-                    throw new IllegalStatementError("Cannot return outside of a function", subTree.getLineNumber());
                 if (!inLoop && !isReturn(subTree)) {
                     String controlType = subTree.getChildren().get(0).matchesStaticToken(TokenType.KW_BRK) ? "break" : "continue";
                     throw new IllegalStatementError("Cannot use " + controlType  + " outside of a loop", subTree.getLineNumber());
