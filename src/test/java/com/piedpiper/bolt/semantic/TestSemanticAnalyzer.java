@@ -59,6 +59,16 @@ public class TestSemanticAnalyzer {
         ));
     }
 
+    private AbstractSyntaxTree createASTWithEmptyMain(AbstractSyntaxTree... nodes) {
+        AbstractSyntaxTree source = new AbstractSyntaxTree("PROGRAM", List.of(nodes));
+        source.appendChildren(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "main"))
+            ))
+        );
+        return source;
+    }
+
     /**
      * Source Code:
      *  int var;
@@ -103,6 +113,116 @@ public class TestSemanticAnalyzer {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(varDeclaration, varDeclaration));
         NameError error = assertThrows(NameError.class, () -> semanticAnalyzer.analyze(AST));
         assertEquals("Symbol 'var' is already defined in this scope", error.getMessage());
+    }
+
+    /**
+     * Source:
+     *  int var;
+     *  fn main() {}
+     */
+    @Test
+    void test_globalVariableDeclaration() {
+        AbstractSyntaxTree AST = createASTWithEmptyMain(new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
+    }
+
+    /**
+     * Source:
+     *  const Array<int> var[1] = {1};
+     *  fn main() {}
+     */
+    @Test
+    void test_globalArrayDeclaration() {
+        Token numToken = new VariableToken(TokenType.NUMBER, "1");
+        AbstractSyntaxTree AST = createASTWithEmptyMain(
+            new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), intTypeToken),
+                new AbstractSyntaxTree(varToken),
+                new AbstractSyntaxTree("ARRAY-INDEX", numToken),
+                new AbstractSyntaxTree("ARRAY-LIT", numToken)
+            ))
+        );
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
+    }
+
+    /**
+     * Source:
+     *  while (true) {}
+     *  fn main() {}
+     */
+    @Test
+    void test_while_outsideOfFunction() {
+        AbstractSyntaxTree AST = createASTWithEmptyMain(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_WHILE), new StaticToken(TokenType.KW_TRUE))
+        );
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Outside of a function body, can only declare variables", error.getMessage());
+    }
+
+    /**
+     * Source:
+     *  for (int i = 0; i < 2; i++) {}
+     *  fn main() {}
+     */
+    @Test
+    void test_for_outsideOfFunction() {
+        Token iterator = new VariableToken(TokenType.ID, "i");
+        AbstractSyntaxTree AST = createASTWithEmptyMain(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FOR), List.of(
+                new AbstractSyntaxTree("VAR-DECL", intTypeToken, iterator, new VariableToken(TokenType.NUMBER, "0")),
+                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "<"), iterator, new VariableToken(TokenType.NUMBER, "2")),
+                new AbstractSyntaxTree("UNARY-OP", iterator, new VariableToken(TokenType.OP, "++"))
+            ))
+        );
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Outside of a function body, can only declare variables", error.getMessage());
+    }
+
+    /**
+     * Source:
+     *  if (4 < 4)
+     *      4;
+     *  fn main() {}
+     */
+    @Test
+    void test_conditional_outsideOfFunction() {
+        Token num = new VariableToken(TokenType.NUMBER, "4");
+        AbstractSyntaxTree AST = createASTWithEmptyMain(
+            new AbstractSyntaxTree("COND", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_IF), List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.OP, "<"), num, num),
+                    new AbstractSyntaxTree("BLOCK-BODY", num)
+                ))
+            ))
+        );
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Outside of a function body, can only declare variables", error.getMessage());
+    }
+
+    /**
+     * Source:
+     *  4 < 4
+     *  fn main() {}
+     */
+    @Test
+    void test_expression_outsideOfFunction() {
+        Token num = new VariableToken(TokenType.NUMBER, "4");
+        AbstractSyntaxTree AST = createASTWithEmptyMain(new AbstractSyntaxTree(new VariableToken(TokenType.OP, "<"), num, num));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Outside of a function body, can only declare variables", error.getMessage());
+    }
+
+    /**
+     * Source:
+     *  return 0;
+     *  fn main() {}
+     */
+    @Test
+    void test_return_outsideOfFunction() {
+        AbstractSyntaxTree AST = createASTWithEmptyMain(new AbstractSyntaxTree("CONTROL-FLOW", new StaticToken(TokenType.KW_RET), new VariableToken(TokenType.NUMBER, "0")));
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Cannot return outside of a function", error.getMessage());
     }
 
     @ParameterizedTest

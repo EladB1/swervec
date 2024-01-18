@@ -63,7 +63,7 @@ public class SemanticAnalyzer {
     public void analyze(AbstractSyntaxTree AST, EntityType returnType, boolean inLoop, boolean translatingPrototype) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
             if (!(inFunc || inPrototype || translatingPrototype)) {
-                if (subTree.matchesLabel("CONTROL-FLOW") &&  isReturn(subTree))
+                if (subTree.matchesLabel("CONTROL-FLOW") && isReturn(subTree))
                     throw new IllegalStatementError("Cannot return outside of a function", subTree.getLineNumber());
                 else if (!(
                     subTree.matchesLabel("VAR-DECL") ||
@@ -71,7 +71,7 @@ public class SemanticAnalyzer {
                     subTree.matchesStaticToken(TokenType.KW_FN) ||
                     subTree.matchesStaticToken(TokenType.KW_PROTO)
                 ))
-                    throw new IllegalStatementError("Can only declare variables outside of a function definition", subTree.getLineNumber());
+                    throw new IllegalStatementError("Outside of a function body, can only declare variables", subTree.getLineNumber());
 
             }
             if (subTree.matchesLabel("VAR-DECL")) {
