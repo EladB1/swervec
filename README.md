@@ -412,8 +412,8 @@ fn main(int argc, Array<string> argv) {}
 
 > You don't have to use the parameter names, but those names are common practice in C, which is an inspiration for this language.
 
-The only code allowed outside of a function are variable declarations (including arrays).
-Any variables declared outside of a function will be global; while any variables inside a function are local to the function.
+The only code allowed outside a function are variable declarations (including arrays).
+Any variables declared outside a function will be global; while any variables inside a function are local to the function.
 
 ### Built-ins
 
@@ -466,8 +466,8 @@ There are built-in variables, functions, and prototypes in order to make develop
 | search       | string, int             | int             | Find index of start of substring                      |
 | reverse      | string                  | string          | reverse string                                        |
 | split        | string                  | Array\<string\> | Split string character by character                   |
-| split        | string, string          | Array\<string\> | Split string by delimeter                             |
-| join         | Array\<string\>, string | string          | Combine strings into one string with delimeter        |
+| split        | string, string          | Array\<string\> | Split string by delimiter                             |
+| join         | Array\<string\>, string | string          | Combine strings into one string with delimiter        |
 | at           | string, int             | string          | index string                                          |
 | print        | string                  | none            | print to the screen                                   |
 | print        | int                     | none            | print to the screen                                   |
@@ -476,15 +476,15 @@ There are built-in variables, functions, and prototypes in order to make develop
 
 #### Prototypes
 
-| name     | param types             | return type | description                                               |
-|----------|-------------------------|-------------|-----------------------------------------------------------|
+| name     | param types               | return type | description                                               |
+|----------|---------------------------|-------------|-----------------------------------------------------------|
 | length   | Array\<generic\>          | int         | Return length of array                                    |
 | toString | Array\<generic\>          | string      | create string from Array                                  |
 | contains | Array\<generic\>, generic | boolean     | Check if the array contains an element                    |
 | remove   | Array\<generic\>, int     | none        | Remove element at index from array                        |
 | pop      | Array\<generic\>          | generic     | remove and return first element from array                |
-| append   | Array\<generic\>, generic | none        | Add an elment to the end of an array                      |
-| prepend  | Array\<generic\>, generic | none        | Add an elment to the beginning of an array                |
+| append   | Array\<generic\>, generic | none        | Add an element to the end of an array                     |
+| prepend  | Array\<generic\>, generic | none        | Add an element to the beginning of an array               |
 | sort     | Array\<generic\>          | none        | In place sort an array                                    |
 | indexOf  | Array\<generic\>, generic | int         | Get the index of an array element; return -1 if not found |
 | reverse  | Array\<generic\>          | none        | In place reversing of array                               |
