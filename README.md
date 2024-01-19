@@ -387,6 +387,34 @@ Prototypes can also be directly or indirectly (they call functions that call the
 > Prototypes can slow compilation due to this process and are still less type safe than normal functions
 > so use them sparingly and only when the types truly don't matter
 
+### Program Structure
+
+All programs must have an entry point into the execution of the program.
+That's why the compiler requires you to define a main function.
+
+The main function can take one of a few forms:
+1. no params, no return
+2. no params, return int
+3. `int` param and `Array<string>` param, no return
+4. `int` param and `Array<string>` param, int return
+
+The return from the main function is treated as the program's return code. If your main doesn't return, it will automatically have a return code of 0 (successful execution).
+
+The parameters specified in main function forms 3 and 4 are used to deal with command line arguments.
+
+Typically, they'll look like this:
+
+```
+fn main(int argc, Array<string> argv) {}
+```
+
+`argv` is an array of the command line arguments (separated by space) and `argc` is the length of `argv`.
+
+> You don't have to use the parameter names, but those names are common practice in C, which is an inspiration for this language.
+
+The only code allowed outside a function are variable declarations (including arrays).
+Any variables declared outside a function will be global; while any variables inside a function are local to the function.
+
 ### Built-ins
 
 There are built-in variables, functions, and prototypes in order to make development easier. These names are reserved so re-defining them is an error.
@@ -399,8 +427,6 @@ There are built-in variables, functions, and prototypes in order to make develop
 | INT_MAX   | int             | maximum value of an integer                          |
 | FLOAT_MIN | float           | minimum value of a float                             |
 | FLOAT_MAX | float           | maximum value of a float                             |
-| argv      | Array\<string\> | array of strings representing command line arguments |
-| argc      | int             | length of `argv`                                     |
 
 #### Functions
 
@@ -440,8 +466,8 @@ There are built-in variables, functions, and prototypes in order to make develop
 | search       | string, int             | int             | Find index of start of substring                      |
 | reverse      | string                  | string          | reverse string                                        |
 | split        | string                  | Array\<string\> | Split string character by character                   |
-| split        | string, string          | Array\<string\> | Split string by delimeter                             |
-| join         | Array\<string\>, string | string          | Combine strings into one string with delimeter        |
+| split        | string, string          | Array\<string\> | Split string by delimiter                             |
+| join         | Array\<string\>, string | string          | Combine strings into one string with delimiter        |
 | at           | string, int             | string          | index string                                          |
 | print        | string                  | none            | print to the screen                                   |
 | print        | int                     | none            | print to the screen                                   |
@@ -450,15 +476,15 @@ There are built-in variables, functions, and prototypes in order to make develop
 
 #### Prototypes
 
-| name     | param types             | return type | description                                               |
-|----------|-------------------------|-------------|-----------------------------------------------------------|
+| name     | param types               | return type | description                                               |
+|----------|---------------------------|-------------|-----------------------------------------------------------|
 | length   | Array\<generic\>          | int         | Return length of array                                    |
 | toString | Array\<generic\>          | string      | create string from Array                                  |
 | contains | Array\<generic\>, generic | boolean     | Check if the array contains an element                    |
 | remove   | Array\<generic\>, int     | none        | Remove element at index from array                        |
 | pop      | Array\<generic\>          | generic     | remove and return first element from array                |
-| append   | Array\<generic\>, generic | none        | Add an elment to the end of an array                      |
-| prepend  | Array\<generic\>, generic | none        | Add an elment to the beginning of an array                |
+| append   | Array\<generic\>, generic | none        | Add an element to the end of an array                     |
+| prepend  | Array\<generic\>, generic | none        | Add an element to the beginning of an array               |
 | sort     | Array\<generic\>          | none        | In place sort an array                                    |
 | indexOf  | Array\<generic\>, generic | int         | Get the index of an array element; return -1 if not found |
 | reverse  | Array\<generic\>          | none        | In place reversing of array                               |

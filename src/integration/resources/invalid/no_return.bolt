@@ -7,3 +7,5 @@ fn test(int x, int y): int {
     else
         return z;
 }
+
+fn main() {}

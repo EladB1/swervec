@@ -22,7 +22,7 @@ valid prototype cases:
 public class PrototypeSymbol implements ProcedureSymbol {
     @NonNull
     private String name;
-    private EntityType returnType = null; // need to handle complex return values like Array<Array<int>>
+    private EntityType returnType = new EntityType(NodeType.NONE);
     private EntityType[] paramTypes = {};
     private String[] paramNames = {};
     private Boolean builtIn = false;

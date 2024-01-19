@@ -49,10 +49,31 @@ public class SemanticAnalyzer {
 
     public void analyze(AbstractSyntaxTree AST) {
         analyze(AST, new EntityType(NodeType.NONE), false, false);
+        FunctionSymbol mainNoParams = symbolTable.lookup("main", new EntityType[] {});
+        FunctionSymbol mainWithParams = symbolTable.lookup("main", new EntityType[]{new EntityType(NodeType.INT), new EntityType(NodeType.ARRAY, NodeType.STRING)});
+        if (mainNoParams == null && mainWithParams == null)
+            throw new ReferenceError("Could not find entry point function 'main()' or 'main(int, Array<string>)'");
+        else if (mainNoParams != null && mainWithParams != null)
+            throw new ReferenceError("Multiple entry point functions 'main' found. Could not resolve proper entry point.");
+        FunctionSymbol main = mainNoParams != null ? mainNoParams : mainWithParams;
+        if (!(main.getReturnType().isType(NodeType.NONE) || main.getReturnType().isType(NodeType.INT)))
+            throw new TypeError("Entry point function 'main' must return INT or not return at all");
     }
 
     public void analyze(AbstractSyntaxTree AST, EntityType returnType, boolean inLoop, boolean translatingPrototype) {
         for (AbstractSyntaxTree subTree : AST.getChildren()) {
+            if (!(inFunc || inPrototype || translatingPrototype)) {
+                if (subTree.matchesLabel("CONTROL-FLOW") && isReturn(subTree))
+                    throw new IllegalStatementError("Cannot return outside of a function", subTree.getLineNumber());
+                else if (!(
+                    subTree.matchesLabel("VAR-DECL") ||
+                    subTree.matchesLabel("ARRAY-DECL") ||
+                    subTree.matchesStaticToken(TokenType.KW_FN) ||
+                    subTree.matchesStaticToken(TokenType.KW_PROTO)
+                ))
+                    throw new IllegalStatementError("Outside of a function body, can only declare variables", subTree.getLineNumber());
+
+            }
             if (subTree.matchesLabel("VAR-DECL")) {
                 handleVariableDeclaration(subTree, translatingPrototype);
             }
@@ -61,8 +82,6 @@ public class SemanticAnalyzer {
             }
             // break / continue / return
             else if (subTree.matchesLabel("CONTROL-FLOW")) {
-                if (!(inFunc || inPrototype || translatingPrototype) && isReturn(subTree))
-                    throw new IllegalStatementError("Cannot return outside of a function", subTree.getLineNumber());
                 if (!inLoop && !isReturn(subTree)) {
                     String controlType = subTree.getChildren().get(0).matchesStaticToken(TokenType.KW_BRK) ? "break" : "continue";
                     throw new IllegalStatementError("Cannot use " + controlType  + " outside of a loop", subTree.getLineNumber());
@@ -703,7 +722,6 @@ public class SemanticAnalyzer {
                 // check if there is a matching prototype
                 PrototypeSymbol prototype = symbolTable.lookupPrototype(name, types);
                 if (prototype == null) {
-                    System.out.println(Arrays.toString(types));
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
                 }
                 if (translatedCalls.contains(prototype.formSignature()) && prototype.returnsGeneric())
@@ -890,7 +908,7 @@ public class SemanticAnalyzer {
         if (!prototypeSymbol.isBuiltIn() || (prototypeSymbol.isBuiltIn() && prototypeSymbol.getFnBodyNode() != null))
             analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), false, true);
         fnDefinition.setFnBodyNode(prototypeSymbol.getFnBodyNode());
-        if (prototypeSymbol.getReturnType() != null && prototypeSymbol.returnsGeneric()) {
+        if (prototypeSymbol.returnsGeneric()) {
             fnDefinition.setReturnType(estimateReturnType(prototypeSymbol, calledParams));
         }
         else {

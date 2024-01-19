@@ -4,6 +4,8 @@ prototype first(Array<generic> array): generic {
     return pop(array);
 }
 
-Array<float> floats[3] = {-9.8, 3.14, 6.67 * 10 ** -11};
-float f = first(floats);
-string s = first({"hello", "world"});
+fn main() {
+    Array<float> floats[3] = {-9.8, 3.14, 6.67 * 10 ** -11};
+    float f = first(floats);
+    string s = first({"hello", "world"});
+}
