@@ -56,7 +56,7 @@ public class SemanticAnalyzer {
         else if (mainNoParams != null && mainWithParams != null)
             throw new ReferenceError("Multiple entry point functions 'main' found. Could not resolve proper entry point.");
         FunctionSymbol main = mainNoParams != null ? mainNoParams : mainWithParams;
-        if (!(main.getReturnType() == null || main.getReturnType().isType(NodeType.NONE) || main.getReturnType().isType(NodeType.INT)))
+        if (!(main.getReturnType().isType(NodeType.NONE) || main.getReturnType().isType(NodeType.INT)))
             throw new TypeError("Entry point function 'main' must return INT or not return at all");
     }
 
@@ -722,7 +722,6 @@ public class SemanticAnalyzer {
                 // check if there is a matching prototype
                 PrototypeSymbol prototype = symbolTable.lookupPrototype(name, types);
                 if (prototype == null) {
-                    System.out.println(Arrays.toString(types));
                     throw new ReferenceError("Could not find function definition for " + name + "(" + Arrays.toString(types) + ")", children.get(0).getLineNumber());
                 }
                 if (translatedCalls.contains(prototype.formSignature()) && prototype.returnsGeneric())
@@ -909,7 +908,7 @@ public class SemanticAnalyzer {
         if (!prototypeSymbol.isBuiltIn() || (prototypeSymbol.isBuiltIn() && prototypeSymbol.getFnBodyNode() != null))
             analyze(prototypeSymbol.getFnBodyNode(), prototypeSymbol.getReturnType(), false, true);
         fnDefinition.setFnBodyNode(prototypeSymbol.getFnBodyNode());
-        if (prototypeSymbol.getReturnType() != null && prototypeSymbol.returnsGeneric()) {
+        if (prototypeSymbol.returnsGeneric()) {
             fnDefinition.setReturnType(estimateReturnType(prototypeSymbol, calledParams));
         }
         else {

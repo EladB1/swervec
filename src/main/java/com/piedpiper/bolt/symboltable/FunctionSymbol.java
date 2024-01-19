@@ -25,7 +25,7 @@ valid function cases:
 public class FunctionSymbol implements ProcedureSymbol {
     @NonNull
     private String name;
-    private EntityType returnType = null; // need to handle complex return values like Array<Array<int>>
+    private EntityType returnType = new EntityType(NodeType.NONE);
     private EntityType[] paramTypes = {};
     private Boolean builtIn = false;
     private AbstractSyntaxTree fnBodyNode = null;

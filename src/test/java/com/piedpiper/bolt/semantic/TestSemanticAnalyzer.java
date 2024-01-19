@@ -116,6 +116,91 @@ public class TestSemanticAnalyzer {
     }
 
     /**
+     * Source Code:
+     *  int var;
+     */
+    @Test
+    void test_missingMain() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(new AbstractSyntaxTree("VAR-DECL", intTypeToken, varToken)));
+        ReferenceError error = assertThrows(ReferenceError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Could not find entry point function 'main()' or 'main(int, Array<string>)'", error.getMessage());
+    }
+
+    /**
+     * Source Code:
+     *  fn main() {}
+     *  fn main(int argc, Array<string> argv) {}
+     */
+    @Test
+    void test_multipleMains() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "main"))
+            )),
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "main")),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", new StaticToken(TokenType.KW_INT), new VariableToken(TokenType.ID, "argc")),
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_STR)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "argv"))
+                    ))
+                ))
+            ))
+        ));
+        ReferenceError error = assertThrows(ReferenceError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Multiple entry point functions 'main' found. Could not resolve proper entry point.", error.getMessage());
+    }
+
+    /**
+     * Source Code:
+     *  fn main(int argc, Array<string> argv):int {
+     *      return 0;
+     *  }
+     */
+    @Test
+    void test_main_full() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "main")),
+                new AbstractSyntaxTree("FUNC-PARAMS", List.of(
+                    new AbstractSyntaxTree("FUNC-PARAM", new StaticToken(TokenType.KW_INT), new VariableToken(TokenType.ID, "argc")),
+                    new AbstractSyntaxTree("FUNC-PARAM", List.of(
+                        new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_STR)),
+                        new AbstractSyntaxTree(new VariableToken(TokenType.ID, "argv"))
+                    ))
+                )),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", new StaticToken(TokenType.KW_RET), new VariableToken(TokenType.NUMBER, "0"))
+                ))
+            ))
+        ));
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(AST));
+    }
+
+    /**
+     * Source Code:
+     *  fn main(): boolean {
+     *      return true;
+     *  }
+     */
+    @Test
+    void test_wrongReturnTypeMain() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "main")),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_BOOL)),
+                new AbstractSyntaxTree("BLOCK-BODY", List.of(
+                    new AbstractSyntaxTree("CONTROL-FLOW", new StaticToken(TokenType.KW_RET), new StaticToken(TokenType.KW_TRUE))
+                ))
+            ))
+        ));
+        TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.analyze(AST));
+        assertEquals("Entry point function 'main' must return INT or not return at all", error.getMessage());
+    }
+
+    /**
      * Source:
      *  int var;
      *  fn main() {}

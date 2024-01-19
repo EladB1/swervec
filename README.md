@@ -387,6 +387,31 @@ Prototypes can also be directly or indirectly (they call functions that call the
 > Prototypes can slow compilation due to this process and are still less type safe than normal functions
 > so use them sparingly and only when the types truly don't matter
 
+### Program Structure
+
+All programs must have an entry point into the execution of the program.
+That's why the compiler requires you to define a main function.
+
+The main function can take one of a few forms:
+1. no params, no return
+2. no params, return int
+3. `int` param and `Array<string>` param, no return
+4. `int` param and `Array<string>` param, int return
+
+The return from the main function is treated as the program's return code. If your main doesn't return, it will automatically have a return code of 0 (successful execution).
+
+The parameters specified in main function forms 3 and 4 are used to deal with command line arguments.
+
+Typically, they'll look like this:
+
+```
+fn main(int argc, Array<string> argv) {}
+```
+
+`argv` is an array of the command line arguments (separated by space) and `argc` is the length of `argv`.
+
+> You don't have to use the parameter names, but those names are common practice in C, which is an inspiration for this language.
+
 ### Built-ins
 
 There are built-in variables, functions, and prototypes in order to make development easier. These names are reserved so re-defining them is an error.
