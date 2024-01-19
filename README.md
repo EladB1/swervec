@@ -412,6 +412,9 @@ fn main(int argc, Array<string> argv) {}
 
 > You don't have to use the parameter names, but those names are common practice in C, which is an inspiration for this language.
 
+The only code allowed outside of a function are variable declarations (including arrays).
+Any variables declared outside of a function will be global; while any variables inside a function are local to the function.
+
 ### Built-ins
 
 There are built-in variables, functions, and prototypes in order to make development easier. These names are reserved so re-defining them is an error.
