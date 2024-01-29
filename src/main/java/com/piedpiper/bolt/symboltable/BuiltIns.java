@@ -13,7 +13,7 @@ import static java.util.Map.entry;
 
 public class BuiltIns {
     private static final EntityType intType = new EntityType(NodeType.INT);
-    private static final EntityType floatType = new EntityType(NodeType.FLOAT);
+    private static final EntityType doubleType = new EntityType(NodeType.DOUBLE);
     private static final EntityType booleanType = new EntityType(NodeType.BOOLEAN);
     private static final EntityType stringType = new EntityType(NodeType.STRING);
     private static final EntityType stringArrayType = new EntityType(NodeType.ARRAY, NodeType.STRING);
@@ -22,8 +22,8 @@ public class BuiltIns {
     public static final Map<String, List<Symbol>> Variables = Map.ofEntries(
         entry("INT MIN", List.of(new Symbol("INT_MIN", intType, new VariableToken(TokenType.NUMBER, String.valueOf(Integer.MIN_VALUE))))),
         entry("INT_MAX", List.of(new Symbol("INT_MAX", intType, new VariableToken(TokenType.NUMBER, String.valueOf(Integer.MAX_VALUE))))),
-        entry("FLOAT_MIN", List.of(new Symbol("FLOAT_MIN", floatType, new VariableToken(TokenType.NUMBER, String.valueOf(Float.MIN_VALUE))))),
-        entry("FLOAT_MAX", List.of(new Symbol("FLOAT_MAX", floatType, new VariableToken(TokenType.NUMBER, String.valueOf(Float.MAX_VALUE)))))
+        entry("DOUBLE_MIN", List.of(new Symbol("DOUBLE_MIN", doubleType, new VariableToken(TokenType.NUMBER, String.valueOf(Double.MIN_VALUE))))),
+        entry("DOUBLE_MAX", List.of(new Symbol("DOUBLE_MAX", doubleType, new VariableToken(TokenType.NUMBER, String.valueOf(Double.MAX_VALUE)))))
     );
 
     public static final Map<String, List<FunctionSymbol>> Functions = Map.ofEntries(
@@ -33,28 +33,28 @@ public class BuiltIns {
         )),
         entry("toString", List.of(
             new FunctionSymbol("toString", stringType, new EntityType[]{intType}, true),
-            new FunctionSymbol("toString", stringType, new EntityType[]{floatType}, true),
+            new FunctionSymbol("toString", stringType, new EntityType[]{doubleType}, true),
             new FunctionSymbol("toString", stringType, new EntityType[]{booleanType}, true)
         )),
         entry("toInt", List.of(
-            new FunctionSymbol("toInt", intType, new EntityType[]{floatType}, true),
+            new FunctionSymbol("toInt", intType, new EntityType[]{doubleType}, true),
             new FunctionSymbol("toInt", intType, new EntityType[]{stringType}, true)
         )),
-        entry("toFloat", List.of(
-            new FunctionSymbol("toFloat", floatType, new EntityType[]{intType}, true),
-            new FunctionSymbol("toFloat", floatType, new EntityType[]{stringType}, true)
+        entry("toDouble", List.of(
+            new FunctionSymbol("toDouble", doubleType, new EntityType[]{intType}, true),
+            new FunctionSymbol("toDouble", doubleType, new EntityType[]{stringType}, true)
         )),
         entry("max", List.of(
             new FunctionSymbol("max", intType, new EntityType[]{intType, intType}, true),
-            new FunctionSymbol("max", floatType, new EntityType[]{floatType, floatType}, true),
-            new FunctionSymbol("max", floatType, new EntityType[]{floatType, intType}, true),
-            new FunctionSymbol("max", floatType, new EntityType[]{intType, floatType}, true)
+            new FunctionSymbol("max", doubleType, new EntityType[]{doubleType, doubleType}, true),
+            new FunctionSymbol("max", doubleType, new EntityType[]{doubleType, intType}, true),
+            new FunctionSymbol("max", doubleType, new EntityType[]{intType, doubleType}, true)
         )),
         entry("min", List.of(
             new FunctionSymbol("min", intType, new EntityType[]{intType, intType}, true),
-            new FunctionSymbol("min", floatType, new EntityType[]{floatType, floatType}, true),
-            new FunctionSymbol("min", floatType, new EntityType[]{floatType, intType}, true),
-            new FunctionSymbol("min", floatType, new EntityType[]{intType, floatType}, true)
+            new FunctionSymbol("min", doubleType, new EntityType[]{doubleType, doubleType}, true),
+            new FunctionSymbol("min", doubleType, new EntityType[]{doubleType, intType}, true),
+            new FunctionSymbol("min", doubleType, new EntityType[]{intType, doubleType}, true)
             )),
         entry("contains", List.of(
             new FunctionSymbol("contains", booleanType, new EntityType[]{stringType, stringType}, true)
@@ -75,7 +75,7 @@ public class BuiltIns {
         entry("appendToFile", List.of(
             new FunctionSymbol("appendFile", new EntityType[]{stringType, stringType}, true)
         )),
-        entry("sleep", List.of(new FunctionSymbol("sleep", new EntityType[]{floatType}, true))),
+        entry("sleep", List.of(new FunctionSymbol("sleep", new EntityType[]{doubleType}, true))),
         entry("slice", List.of(
             new FunctionSymbol("slice", stringType, new EntityType[]{stringType, intType}, true),
             new FunctionSymbol("slice", stringType, new EntityType[]{stringType, intType, intType}, true)
@@ -100,7 +100,7 @@ public class BuiltIns {
         entry("print", List.of(
             new FunctionSymbol("print", new EntityType[]{stringType}, true),
             new FunctionSymbol("print", new EntityType[]{intType}, true),
-            new FunctionSymbol("print", new EntityType[]{floatType}, true),
+            new FunctionSymbol("print", new EntityType[]{doubleType}, true),
             new FunctionSymbol("print", new EntityType[]{booleanType}, true)
         ))
     );

@@ -44,7 +44,7 @@ public class Parser {
      * ARRAY-DECL ::= ARRAY-TYPE ID ARRAY-INDEX ( "=" EXPR )? / IMMUTABLE-ARRAY-DECL
      * VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
      * VAR-ASSIGN ::= ( ID / ARRAY-ACCESS )  ( "+" / "-" / "*" / "/" )? = EXPR
-     * TYPE ::= "int" / "string" / "float" / "boolean" / "generic" / ARRAY-TYPE
+     * TYPE ::= "int" / "string" / "double" / "boolean" / "generic" / ARRAY-TYPE
      * CONTROL-FLOW ::= "return" ( EXPR )? / "continue" / "break"
     */
     private final List<Token> tokens;
@@ -719,7 +719,7 @@ public class Parser {
             throw new SyntaxError("Unexpected character '" + current.getValue() + "' in variable assignment", current.getLineNumber());
     }
 
-    // TYPE ::= "int" / "string" / "float" / "boolean" / ARRAY-TYPE
+    // TYPE ::= "int" / "string" / "double" / "boolean" / ARRAY-TYPE
     private AbstractSyntaxTree parseType() {
         if (current.getName() == TokenType.KW_ARR)
             return parseArrayType();
@@ -819,7 +819,7 @@ public class Parser {
     private boolean isPrimitiveType(Token token) {
         return List.of(
             TokenType.KW_INT,
-            TokenType.KW_FLOAT,
+            TokenType.KW_DOUBLE,
             TokenType.KW_STR,
             TokenType.KW_BOOL,
             TokenType.KW_GEN

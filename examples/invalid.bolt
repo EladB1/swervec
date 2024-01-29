@@ -1,4 +1,4 @@
-fn multiply(int x, float y): float {
+fn multiply(int x, double y): double {
     return x * y;
 }
 
@@ -11,8 +11,8 @@ string"/
 
 // main is void so no need to annotate it with the return type
 fn main() {
-    const float pi = 3.14;
-    float y;
+    const double pi = 3.14;
+    double y;
     for (int x : 0..5) { // 0..5 is seen as an invalid number since .. operator not in language
         y = multiply(x, pi);
     }

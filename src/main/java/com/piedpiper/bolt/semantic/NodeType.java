@@ -4,7 +4,7 @@ public enum NodeType {
     NONE,
     NULL,
     INT,
-    FLOAT,
+    DOUBLE,
     BOOLEAN,
     STRING,
     ARRAY,

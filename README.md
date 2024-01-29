@@ -69,7 +69,7 @@ Statements are:
  - `prototype`
  - `generic`
  - `int`
- - `float`
+ - `double`
  - `boolean`
  - `string`
  - `Array`
@@ -118,7 +118,7 @@ Variable types and function return types must be explicitly declared.
 
 Basic types include
   - int
-  - float
+  - double
   - string
   - boolean
 
@@ -128,7 +128,7 @@ For example, `Array<Array<int>>` is used to store an array of arrays of ints.
 Typecasting is only allowed via builtin functions
   - `toString()`
   - `toInt()`
-  - `toFloat()`
+  - `toDouble()`
 
 #### Operations on types
 
@@ -137,23 +137,23 @@ Binary operators
 
 - Addition
   - int, int => int
-  - float, float => float
-  - int, float => float
-  - float, int => float
+  - double, double => double
+  - int, double => double
+  - double, int => double
   - string, string => string
   - Array, Array => Array (must have matching types)
 - Multiplication
   - int, int => int
-  - float, float => float
-  - int, float => float
-  - float, int => float
+  - double, double => double
+  - int, double => double
+  - double, int => double
   - string, int => string
   - int, string => string
 - Subtraction / Division / Modulus / Exponent
   - int, int => int
-  - float, float => float
-  - int, float => float
-  - float, int => float
+  - double, double => double
+  - int, double => double
+  - double, int => double
 - Bitwise (`^` XOR, `&` AND)
   - int, int => int
   - boolean, boolean => int
@@ -161,15 +161,15 @@ Binary operators
   - boolean, int => int
 - Comparison (`<`, `<=`, `>`, `>=`)
   - int, int => boolean
-  - float, float => boolean
-  - int, float => boolean
-  - float, int => boolean
+  - double, double => boolean
+  - int, double => boolean
+  - double, int => boolean
 - Equality (`==`, `!=`)
   - two operands with same type => boolean
   - anything, null => boolean
   - null, anything => boolean
-  - int, float => boolean
-  - float, int => boolean
+  - int, double => boolean
+  - double, int => boolean
 - Logical operators (`&&`, `||`)
   - boolean, boolean => boolean
 
@@ -179,10 +179,10 @@ Unary operators
     - boolean => boolean
   - `++`, `--` (either side)
     - int => int
-    - float => float
+    - double => double
   - `-` (minus)
     - int => int
-    - float => float
+    - double => double
 
 Other type requirements
 ---
@@ -225,7 +225,7 @@ variables declarations must have a type and can optionally be `const`
 
 Examples:
  - `int myVar = 10;`
- - `const float PI = 3.14;`
+ - `const double PI = 3.14;`
 
 A valid variable name can contain uppercase letters, lowercase letters, numbers, and underscores, but must start with an uppercase or lowercase letter.
 
@@ -314,7 +314,7 @@ Function names can be reused only with different parameters.
         // ...
       }
 
-      fn toString(float value): string {
+      fn toString(double value): string {
         // ...
       }
     ```
@@ -425,8 +425,8 @@ There are built-in variables, functions, and prototypes in order to make develop
 |-----------|-----------------|------------------------------------------------------|
 | INT_MIN   | int             | minimum value of an integer                          |
 | INT_MAX   | int             | maximum value of an integer                          |
-| FLOAT_MIN | float           | minimum value of a float                             |
-| FLOAT_MAX | float           | maximum value of a float                             |
+| DOUBLE_MIN | double           | minimum value of a double                             |
+| DOUBLE_MAX | double           | maximum value of a double                             |
 
 #### Functions
 
@@ -434,20 +434,20 @@ There are built-in variables, functions, and prototypes in order to make develop
 |--------------|-------------------------|-----------------|-------------------------------------------------------|
 | length       | string                  | int             | get length of string                                  |
 | toString     | int                     | string          | return string version of int                          |
-| toString     | float                   | string          | return string version of float                        |
+| toString     | double                   | string          | return string version of double                        |
 | toString     | boolean                 | string          | return string version of boolean                      |
-| toInt        | float                   | int             | return int from float (rounds down)                   |
+| toInt        | double                   | int             | return int from double (rounds down)                   |
 | toInt        | string                  | int             | return int from string                                |
-| toFloat      | int                     | float           | return float version of int                           |
-| toFloat      | string                  | float           | return float from string                              |
+| toDouble      | int                     | double           | return double version of int                           |
+| toDouble      | string                  | double           | return double from string                              |
 | max          | int, int                | int             | compare two values and return the greater one         |
-| max          | float, float            | float           | compare two values and return the greater one         |
-| max          | int, float              | float           | compare two values and return the greater one         |
-| max          | float, int              | float           | compare two values and return the greater one         |
+| max          | double, double            | double           | compare two values and return the greater one         |
+| max          | int, double              | double           | compare two values and return the greater one         |
+| max          | double, int              | double           | compare two values and return the greater one         |
 | min          | int, int                | int             | compare two values and return the lesser one          |
-| min          | float, float            | float           | compare two values and return the lesser one          |
-| min          | int, float              | float           | compare two values and return the lesser one          |
-| min          | float, int              | float           | compare two values and return the lesser one          |
+| min          | double, double            | double           | compare two values and return the lesser one          |
+| min          | int, double              | double           | compare two values and return the lesser one          |
+| min          | double, int              | double           | compare two values and return the lesser one          |
 | contains     | string, string          | boolean         | check if string contains substring                    |
 | startsWith   | string, string          | boolean         | check if string starts with substring                 |
 | endsWith     | string, string          | boolean         | check if string ends with substring                   |
@@ -457,7 +457,7 @@ There are built-in variables, functions, and prototypes in order to make develop
 | readFile     | string                  | Array\<string\> | Get contents of file line by line                     |
 | writeFile    | string, string          | none            | Write to the file                                     |
 | appendToFile | string, string          | none            | Add to the end of the file                            |
-| sleep        | float                   | none            | pause execution for specified amount of time          |
+| sleep        | double                   | none            | pause execution for specified amount of time          |
 | slice        | string, int             | string          | Create string from the index to the end of the string |
 | slice        | string, int, int        | string          | Create string from start to end index of string       |
 | remove       | string, string          | string          | Remove first instance of substring                    |
@@ -471,7 +471,7 @@ There are built-in variables, functions, and prototypes in order to make develop
 | at           | string, int             | string          | index string                                          |
 | print        | string                  | none            | print to the screen                                   |
 | print        | int                     | none            | print to the screen                                   |
-| print        | float                   | none            | print to the screen                                   |
+| print        | double                   | none            | print to the screen                                   |
 | print        | boolean                 | none            | print to the screen                                   |
 
 #### Prototypes

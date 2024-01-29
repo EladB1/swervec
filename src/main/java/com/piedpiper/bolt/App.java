@@ -26,7 +26,7 @@ public class App {
             if (Files.exists(filePath)) {
   
                     List<String> lines = Files.readAllLines(filePath);
-                    if (lines.size() == 0)
+                    if (lines.isEmpty())
                         throw new CompilerError("Cannot compile empty file.");
                     Lexer lexer = new Lexer();
                     List<Token> tokens = lexer.lex(lines);

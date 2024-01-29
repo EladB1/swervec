@@ -1319,7 +1319,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_CONST),
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.OP, ">"),
             new VariableToken(TokenType.ID, "arr"),
             new VariableToken(TokenType.OP, "="),
@@ -1346,7 +1346,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_CONST),
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.OP, ">"),
             new VariableToken(TokenType.ID, "arr"),
             leftSQBToken,
@@ -1375,7 +1375,7 @@ public class TestParser {
             new StaticToken(TokenType.KW_CONST),
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.OP, ">"),
             new VariableToken(TokenType.ID, "arr")
         );
@@ -1414,11 +1414,11 @@ public class TestParser {
 
     @Test
     void test_parseArrayDeclaration_regular() {
-        // Array<float> magnitudes = {0.00035};
+        // Array<double> magnitudes = {0.00035};
         List<Token> tokens = List.of(
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.OP, ">"),
             new VariableToken(TokenType.ID, "magnitudes"),
             leftSQBToken,
@@ -1446,11 +1446,11 @@ public class TestParser {
 
     @Test
     void test_parseArrayDeclaration_noSizeError() {
-        // Array<float> magnitudes = {0.00035};
+        // Array<double> magnitudes = {0.00035};
         List<Token> tokens = List.of(
             new StaticToken(TokenType.KW_ARR),
             new VariableToken(TokenType.OP, "<"),
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.OP, ">"),
             new VariableToken(TokenType.ID, "magnitudes"),
             new VariableToken(TokenType.OP, "="),
@@ -1571,9 +1571,9 @@ public class TestParser {
 
     @Test
     void test_parseVariableDeclaration_wrongOperator() {
-        // float count *= 1;
+        // double count *= 1;
         List<Token> tokens = List.of(
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.ID, "count"),
             new VariableToken(TokenType.OP, "*="),
             new VariableToken(TokenType.NUMBER, "1"),

@@ -397,13 +397,13 @@ public class TestSemanticAnalyzer {
 
     private static Stream<Arguments> multiplicationOperatorProvider() {
         AbstractSyntaxTree intNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"));
-        AbstractSyntaxTree floatNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2.78"));
+        AbstractSyntaxTree doubleNode = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2.78"));
         AbstractSyntaxTree stringNode = new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"a\""));
         return Stream.of(
             Arguments.of(intNode, intNode, NodeType.INT),
-            Arguments.of(floatNode, floatNode, NodeType.FLOAT),
-            Arguments.of(intNode, floatNode, NodeType.FLOAT),
-            Arguments.of(floatNode, intNode, NodeType.FLOAT),
+            Arguments.of(doubleNode, doubleNode, NodeType.DOUBLE),
+            Arguments.of(intNode, doubleNode, NodeType.DOUBLE),
+            Arguments.of(doubleNode, intNode, NodeType.DOUBLE),
             Arguments.of(stringNode, intNode, NodeType.STRING),
             Arguments.of(intNode, stringNode, NodeType.STRING)
         );
@@ -426,7 +426,7 @@ public class TestSemanticAnalyzer {
             new AbstractSyntaxTree(new VariableToken(TokenType.STRING, "\"a\""))
         ));
         TypeError error = assertThrows(TypeError.class, () -> semanticAnalyzer.evaluateType(AST));
-        assertEquals("Cannot multiply FLOAT with STRING", error.getMessage());
+        assertEquals("Cannot multiply DOUBLE with STRING", error.getMessage());
     }
 
     /**
@@ -484,7 +484,7 @@ public class TestSemanticAnalyzer {
             )),
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3.14"))
         ));
-        assertEquals(new EntityType(NodeType.ARRAY, NodeType.FLOAT), semanticAnalyzer.estimateArrayTypes(AST));
+        assertEquals(new EntityType(NodeType.ARRAY, NodeType.DOUBLE), semanticAnalyzer.estimateArrayTypes(AST));
     }
 
     @Test
@@ -718,7 +718,7 @@ public class TestSemanticAnalyzer {
 
     /**
      * Source code:
-     *  const Array<float> f = {9.8, 3.14};
+     *  const Array<double> f = {9.8, 3.14};
      *  f[0];
      */
     @Test
@@ -726,7 +726,7 @@ public class TestSemanticAnalyzer {
         Token name = new VariableToken(TokenType.ID, "f");
         AbstractSyntaxTree source = createASTOfMainBody(new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
-                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_DOUBLE)),
                 new AbstractSyntaxTree(name),
                 new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
             )),
@@ -740,7 +740,7 @@ public class TestSemanticAnalyzer {
     /**
      * Source code:
      * int i = 0;
-     *  const Array<float> f = {9.8, 3.14};
+     *  const Array<double> f = {9.8, 3.14};
      *  f[i];
      */
     @Test
@@ -750,7 +750,7 @@ public class TestSemanticAnalyzer {
         AbstractSyntaxTree source = createASTOfMainBody(new AbstractSyntaxTree("VAR-DECL", new StaticToken(TokenType.KW_INT), name, new VariableToken(TokenType.NUMBER, "0")),
             new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
-                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_DOUBLE)),
                 new AbstractSyntaxTree(arrayName),
                 new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
             )),
@@ -763,7 +763,7 @@ public class TestSemanticAnalyzer {
 
     /**
      * Source code:
-     *  const Array<float> f = {9.8, 3.14};
+     *  const Array<double> f = {9.8, 3.14};
      *  f["0"];
      */
     @Test
@@ -771,7 +771,7 @@ public class TestSemanticAnalyzer {
         Token name = new VariableToken(TokenType.ID, "f");
         AbstractSyntaxTree source = createASTOfMainBody(new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
-                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_DOUBLE)),
                 new AbstractSyntaxTree(name),
                 new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
             )),
@@ -785,20 +785,20 @@ public class TestSemanticAnalyzer {
 
     /**
      * Source code:
-     *  const Array<float> f = {9.8, 3.14};
-     *  float g = f[0];
+     *  const Array<double> f = {9.8, 3.14};
+     *  double g = f[0];
      */
     @Test
     void test_arrayIndex_returnsSubType() {
         Token name = new VariableToken(TokenType.ID, "f");
         AbstractSyntaxTree source = createASTOfMainBody(new AbstractSyntaxTree("ARRAY-DECL", List.of(
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
-                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_DOUBLE)),
                 new AbstractSyntaxTree(name),
                 new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "9.8"), new VariableToken(TokenType.NUMBER, "3.14"))
             )),
             new AbstractSyntaxTree("VAR-DECL", List.of(
-                new AbstractSyntaxTree(new StaticToken(TokenType.KW_FLOAT)),
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_DOUBLE)),
                 new AbstractSyntaxTree(new VariableToken(TokenType.ID, "g")),
                 new AbstractSyntaxTree(name, List.of(
                     new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "0"))

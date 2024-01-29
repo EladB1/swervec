@@ -5,7 +5,7 @@ prototype first(Array<generic> array): generic {
 }
 
 fn main() {
-    Array<float> floats[3] = {-9.8, 3.14, 6.67 * 10 ** -11};
-    float f = first(floats);
+    Array<double> doubles[3] = {-9.8, 3.14, 6.67 * 10 ** -11};
+    double f = first(doubles);
     string s = first({"hello", "world"});
 }

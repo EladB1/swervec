@@ -241,7 +241,7 @@ public class SemanticAnalyzer {
         int length = loopDetails.size();
         AbstractSyntaxTree body = null;
         switch (length) {
-            case 3: // for (float element : array) {}
+            case 3: // for (double element : array) {}
                 if (!loopDetails.get(0).matchesLabel("VAR-DECL"))
                     throw new IllegalStatementError("Variable declaration must be at start of for (each) loop", lineNum);
                 if (loopDetails.get(0).countChildren() != 2)
@@ -586,9 +586,9 @@ public class SemanticAnalyzer {
                 currentType = evaluateType(children.get(i));
                 if (type.isType(NodeType.NULL) && !currentType.isType(NodeType.NULL))
                     type = currentType;
-                else if (currentType.isType(NodeType.FLOAT) && type.isType(NodeType.INT))
+                else if (currentType.isType(NodeType.DOUBLE) && type.isType(NodeType.INT))
                     type = currentType;
-                else if (!((currentType.isType(NodeType.INT) && type.isType(NodeType.FLOAT))) && !currentType.isType(NodeType.NULL) && !type.equals(currentType))
+                else if (!((currentType.isType(NodeType.INT) && type.isType(NodeType.DOUBLE))) && !currentType.isType(NodeType.NULL) && !type.equals(currentType))
                     throw new TypeError("Cannot mix " + type + " elements with " + currentType + " elements in array literal", node.getLineNumber());
             }
             return currentType.isType(NodeType.NULL) ? new EntityType(NodeType.ARRAY) : new EntityType(NodeType.ARRAY, type);
@@ -674,8 +674,8 @@ public class SemanticAnalyzer {
         }
         if (node.isIntegerLiteral())
             return new EntityType(NodeType.INT);
-        if (node.isFloatLiteral())
-            return new EntityType(NodeType.FLOAT);
+        if (node.isDoubleLiteral())
+            return new EntityType(NodeType.DOUBLE);
         if (node.isStringLiteral())
             return new EntityType(NodeType.STRING);
         if (node.isBooleanLiteral())
@@ -741,7 +741,7 @@ public class SemanticAnalyzer {
         String comparisonOperator = rootNode.getValue();
         EntityType leftType = evaluateType(rootNode.getChildren().get(0));
         EntityType rightType = evaluateType(rootNode.getChildren().get(1));
-        Set<EntityType> acceptedTypes = Set.of(new EntityType(NodeType.INT), new EntityType(NodeType.FLOAT));
+        Set<EntityType> acceptedTypes = Set.of(new EntityType(NodeType.INT), new EntityType(NodeType.DOUBLE));
         if (!(acceptedTypes.contains(leftType) && acceptedTypes.contains(rightType)))
             throw new TypeError("Cannot compare " + leftType + " with " + rightType + " using " + comparisonOperator, rootNode.getLineNumber());
         return new EntityType(NodeType.BOOLEAN);
@@ -763,14 +763,14 @@ public class SemanticAnalyzer {
         if (leftType.isType(NodeType.INT)) {
             if (rightType.isType(NodeType.INT))
                 return new EntityType(NodeType.INT);
-            if (rightType.isType(NodeType.FLOAT))
-                return new EntityType(NodeType.FLOAT);
+            if (rightType.isType(NodeType.DOUBLE))
+                return new EntityType(NodeType.DOUBLE);
             if (rightType.isType(NodeType.STRING))
                 return new EntityType(NodeType.STRING);
         }
-        else if (leftType.isType(NodeType.FLOAT)) {
-            if (rightType.isType(NodeType.FLOAT) || rightType.isType(NodeType.INT))
-                return new EntityType(NodeType.FLOAT);
+        else if (leftType.isType(NodeType.DOUBLE)) {
+            if (rightType.isType(NodeType.DOUBLE) || rightType.isType(NodeType.INT))
+                return new EntityType(NodeType.DOUBLE);
         }
         else if (leftType.isType(NodeType.STRING)) {
             if (rightType.isType(NodeType.INT))
@@ -788,12 +788,12 @@ public class SemanticAnalyzer {
         if (leftType.isType(NodeType.INT)) {
             if (rightType.isType(NodeType.INT))
                 return new EntityType(NodeType.INT);
-            if (rightType.isType(NodeType.FLOAT))
-                return new EntityType(NodeType.FLOAT);
+            if (rightType.isType(NodeType.DOUBLE))
+                return new EntityType(NodeType.DOUBLE);
         }
-        else if (leftType.isType(NodeType.FLOAT)) {
-            if (rightType.isType(NodeType.FLOAT) || rightType.isType(NodeType.INT))
-                return new EntityType(NodeType.FLOAT);
+        else if (leftType.isType(NodeType.DOUBLE)) {
+            if (rightType.isType(NodeType.DOUBLE) || rightType.isType(NodeType.INT))
+                return new EntityType(NodeType.DOUBLE);
         }
         throw new TypeError("Arithmetic expression (" + operator + ") with " + leftType + " and " + rightType + " is not valid", rootNode.getLineNumber());
     }
@@ -804,12 +804,12 @@ public class SemanticAnalyzer {
         if (leftType.isType(NodeType.INT)) {
             if (rightType.isType(NodeType.INT))
                 return new EntityType(NodeType.INT);
-            if (rightType.isType(NodeType.FLOAT))
-                return new EntityType(NodeType.FLOAT);
+            if (rightType.isType(NodeType.DOUBLE))
+                return new EntityType(NodeType.DOUBLE);
         }
-        else if (leftType.isType(NodeType.FLOAT)) {
-            if (rightType.isType(NodeType.FLOAT) || rightType.isType(NodeType.INT))
-                return new EntityType(NodeType.FLOAT);
+        else if (leftType.isType(NodeType.DOUBLE)) {
+            if (rightType.isType(NodeType.DOUBLE) || rightType.isType(NodeType.INT))
+                return new EntityType(NodeType.DOUBLE);
         }
         else if (leftType.isType(NodeType.STRING) && rightType.isType(NodeType.STRING))
             return new EntityType(NodeType.STRING);
@@ -831,8 +831,8 @@ public class SemanticAnalyzer {
             leftType.equals(rightType)
             || (leftType.isType(NodeType.NULL) || rightType.isType(NodeType.NULL))
             || (
-                (leftType.isType(NodeType.INT) && rightType.isType(NodeType.FLOAT))
-                || (leftType.isType(NodeType.FLOAT) && rightType.isType(NodeType.INT))
+                (leftType.isType(NodeType.INT) && rightType.isType(NodeType.DOUBLE))
+                || (leftType.isType(NodeType.DOUBLE) && rightType.isType(NodeType.INT))
             )
             || (leftType.startsWith(NodeType.ARRAY) && rightType.startsWith(NodeType.ARRAY))
         )
@@ -847,14 +847,14 @@ public class SemanticAnalyzer {
         EntityType rightType = evaluateType(right);
         if (left.matchesValue("!") && rightType.isType(NodeType.BOOLEAN))
             return new EntityType(NodeType.BOOLEAN);
-        if (left.matchesValue("-") && (rightType.isType(NodeType.INT) || rightType.isType(NodeType.FLOAT)))
+        if (left.matchesValue("-") && (rightType.isType(NodeType.INT) || rightType.isType(NodeType.DOUBLE)))
             return rightType;
         if (left.matchesValue("++") || left.matchesValue("--")) {
             if (right.getName() != TokenType.ID)
                 throw new IllegalStatementError("Can only increment/decrement non-variables using operator " + left.getValue(), left.getLineNumber());
             if (symbolTable.lookup(right.getValue()).getValueNodes() == null)
                 throw new IllegalStatementError("Can only increment/decrement initialized variables using operator " + left.getValue(), left.getLineNumber());
-            if (rightType.isType(NodeType.INT) || rightType.isType(NodeType.FLOAT)) {
+            if (rightType.isType(NodeType.INT) || rightType.isType(NodeType.DOUBLE)) {
                 if (right.getName() != TokenType.ID)
                     throw new ReferenceError("Cannot perform prefix expression(" + left.getValue() + ") on " + right.getName(), left.getLineNumber());
                 return rightType;
@@ -865,7 +865,7 @@ public class SemanticAnalyzer {
                 throw new IllegalStatementError("Can only increment/decrement non-variables using operator " + right.getValue(), right.getLineNumber());
             if (symbolTable.lookup(left.getValue()).getValueNodes() == null)
                 throw new IllegalStatementError("Can only increment/decrement initialized variables using operator " + right.getValue(), right.getLineNumber());
-            if (leftType.isType(NodeType.INT) || leftType.isType(NodeType.FLOAT)) {
+            if (leftType.isType(NodeType.INT) || leftType.isType(NodeType.DOUBLE)) {
                 if (left.getName() != TokenType.ID)
                     throw new ReferenceError("Cannot perform postfix expression(" + right.getValue() + ") on " + left.getName());
                 return leftType;

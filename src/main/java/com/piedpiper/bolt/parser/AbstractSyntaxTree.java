@@ -120,7 +120,7 @@ public class AbstractSyntaxTree {
         return this.value.equals(value);
     }
 
-    public boolean isFloatLiteral() {
+    public boolean isDoubleLiteral() {
         return name == TokenType.NUMBER;
     }
 
@@ -144,7 +144,7 @@ public class AbstractSyntaxTree {
         final List<TokenType> typeTokens = List.of(
             TokenType.KW_BOOL,
             TokenType.KW_INT,
-            TokenType.KW_FLOAT,
+            TokenType.KW_DOUBLE,
             TokenType.KW_STR,
             TokenType.KW_ARR,
             TokenType.KW_GEN

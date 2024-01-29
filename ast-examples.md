@@ -104,14 +104,14 @@
 
 **Code**:
 
-`const float x = y ** 2`
+`const double x = y ** 2`
 
 **AST**:
 
 ```
          var-decl
       /    |    \   \
-    const  float  x  **
+    const  double  x  **
                      / \
                     y   2
 ```
@@ -364,16 +364,16 @@ prototype test(generic i, Array<generic> j): generic {}
 
 **Code**:
 
-`for (float flt : floats) {print(-1 * flt)}`
+`for (double flt : doubles) {print(-1 * flt)}`
 
 **AST**:
 
 ```
                  for
             /    |      \
-    var-decl     floats   body
+    var-decl     doubles   body
     /     |                |
-   float  flt             call
+   double  flt             call
                           /   \
                      print   params
                               |

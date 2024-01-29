@@ -15,7 +15,7 @@ public class Lexer {
     private final Map<String, Token> reservedWords = Map.ofEntries(
         entry("const", new StaticToken(TokenType.KW_CONST)),
         entry("int", new StaticToken(TokenType.KW_INT)),
-        entry("float", new StaticToken(TokenType.KW_FLOAT)),
+        entry("double", new StaticToken(TokenType.KW_DOUBLE)),
         entry("string", new StaticToken(TokenType.KW_STR)),
         entry("boolean", new StaticToken(TokenType.KW_BOOL)),
         entry("prototype", new StaticToken(TokenType.KW_PROTO)),

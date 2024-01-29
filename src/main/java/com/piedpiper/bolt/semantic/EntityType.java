@@ -14,7 +14,7 @@ import com.piedpiper.bolt.parser.AbstractSyntaxTree;
 import lombok.Data;
 
 /**
- * Container class to make type system uniform across simple types (int, float, etc.) and complex types (arrays)
+ * Container class to make type system uniform across simple types (int, double, etc.) and complex types (arrays)
  */
 @Data
 public class EntityType {
@@ -22,7 +22,7 @@ public class EntityType {
         entry(TokenType.KW_GEN, NodeType.GENERIC),
         entry(TokenType.KW_BOOL, NodeType.BOOLEAN),
         entry(TokenType.KW_INT, NodeType.INT),
-        entry(TokenType.KW_FLOAT, NodeType.FLOAT),
+        entry(TokenType.KW_DOUBLE, NodeType.DOUBLE),
         entry(TokenType.KW_STR, NodeType.STRING),
         entry(TokenType.KW_ARR, NodeType.ARRAY),
         entry(TokenType.KW_NULL, NodeType.NULL)

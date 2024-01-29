@@ -17,7 +17,7 @@ public enum TokenType {
     COMMA,
     KW_CONST,
     KW_INT,
-    KW_FLOAT,
+    KW_DOUBLE,
     KW_STR,
     KW_BOOL,
     KW_PROTO,

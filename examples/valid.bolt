@@ -1,13 +1,13 @@
 string str = "someValue";
 int someInteger = 10 + 2 + 3;
-const float PI = 3.14;
+const double PI = 3.14;
 string to_do = /"
     - write some code 
     - test code
 "/;
 const Array<string> langs[4] = {"C", "Java", "Python", "Typescript"}; //
 Array<int> primes[10] = {2, 19};
-Array<Array<float>> floats[2][4] = {{0, 1.0, 2.1, 3.2, 4}, {3.14, 9.8}};
+Array<Array<double>> doubles[2][4] = {{0, 1.0, 2.1, 3.2, 4}, {3.14, 9.8}};
 
 fn concat(string first, string second) : string {
     return first + second;
@@ -28,7 +28,7 @@ fn strtok(Array<string> strings): string {
 }
 
 fn main() {
-    float y = someInteger * PI + 1;
+    double y = someInteger * PI + 1;
     y *= primes[1];
     const int x = (2 + 4) / 3;
     Array<int> z[1] = {5};

@@ -51,7 +51,7 @@ public class TestLexer {
     }
 
     @Test
-    void analyzeLine_shouldRecognizeFloat() {
+    void analyzeLine_shouldRecognizeDouble() {
         Token token = new VariableToken(TokenType.NUMBER, "1.0");
         assertOneToken("1.0", token);
     }
@@ -70,7 +70,7 @@ public class TestLexer {
 
     @ParameterizedTest
     @MethodSource("provideInvalidNumberParameters")
-    void analyzeLine_shouldNotThrowErrorOnBrokenFloat(String input, String badNumberFragment) {
+    void analyzeLine_shouldNotThrowErrorOnBrokenDouble(String input, String badNumberFragment) {
         SyntaxError error = assertThrows(SyntaxError.class, () -> lexer.analyzeLine(input));
         String expectedExceptionMessage = String.format("Found invalid number '%s'", badNumberFragment);
         assertEquals(expectedExceptionMessage, error.getMessage());
@@ -150,18 +150,18 @@ public class TestLexer {
     void analyzeLine_shouldRecognizeExpression() {
         List<Token> expectedTokens = List.of(
             new StaticToken(TokenType.KW_CONST),
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.ID, "PI"),
             new VariableToken(TokenType.OP, "="),
             new VariableToken(TokenType.NUMBER, "3.14")
         );
-        assertManyTokens("const float PI = 3.14", expectedTokens);
+        assertManyTokens("const double PI = 3.14", expectedTokens);
     }
 
     @Test
     void analyzeLine_shouldRecognizeComplexExpression() {
         List<Token> expectedTokens = List.of(
-            new StaticToken(TokenType.KW_FLOAT),
+            new StaticToken(TokenType.KW_DOUBLE),
             new VariableToken(TokenType.ID, "y"),
             new VariableToken(TokenType.OP, "="),
             new VariableToken(TokenType.ID, "someInteger"),
@@ -170,7 +170,7 @@ public class TestLexer {
             new VariableToken(TokenType.OP, "+"),
             new VariableToken(TokenType.NUMBER, "1")
         );
-        assertManyTokens("float y = someInteger * PI + 1", expectedTokens);
+        assertManyTokens("double y = someInteger * PI + 1", expectedTokens);
     }
 
     @Test
