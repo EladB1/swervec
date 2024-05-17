@@ -225,11 +225,11 @@ public class TestSymbolTable {
     @Test
     void test_lookup_builtin_prototype() {
         EntityType[] paramTypes = new EntityType[] {new EntityType(NodeType.ARRAY, NodeType.STRING)};
-        PrototypeSymbol popFn = table.lookupPrototype("pop", paramTypes);
-        assertNotNull(popFn);
-        assertTrue(popFn.isBuiltIn());
-        assertTrue(popFn.hasGenericParam());
-        assertTrue(popFn.hasCompatibleParams(paramTypes));
+        PrototypeSymbol prototype = table.lookupPrototype("getType", paramTypes);
+        assertNotNull(prototype);
+        assertTrue(prototype.isBuiltIn());
+        assertTrue(prototype.hasGenericParam());
+        assertTrue(prototype.hasCompatibleParams(paramTypes));
     }
 
     @Test

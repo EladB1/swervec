@@ -463,7 +463,6 @@ There are built-in variables, functions, and prototypes in order to make develop
 | sleep        | int                     | none            | pause execution for specified amount of time (seconds)          |
 | exit         | none                    | none            | stop the program with exit code 0                               |
 | exit         | int                     | none            | stop the program with supplied exit code                        |
-| removeAll    | string, string          | string          | Remove every instance of substring                              |
 | fileExists   | string                  | boolean         | check if the file exists                                        |
 | readFile     | string                  | Array\<string\> | Get contents of file line by line                               |
 | writeFile    | string, string          | none            | Write to the file                                               |
@@ -483,7 +482,6 @@ There are built-in variables, functions, and prototypes in order to make develop
 | getType     | generic                        | string           | Get the type of the variable or constant                  |
 | length      | Array\<generic\>               | int              | Return length of array                                    |
 | capacity    | Array\<generic\>               | int              | Get the total size of the array                           |
-| toString    | Array\<generic\>               | string           | create string from Array                                  |
 | slice       | Array\<generic\>, int          | Array\<generic\> | Create an array from the index to the end of the array    |
 | slice       | Array\<generic\>, int, int     | Array\<generic\> | Create array from start to end index of array             |
 | contains    | Array\<generic\>, generic      | boolean          | Check if the array contains an element                    |

@@ -1,7 +1,9 @@
 prototype first(Array<generic> array): generic {
     if (length(array) == 0)
         return null;
-    return pop(array);
+    generic frst = array[0];
+    removeIndex(array, 0);
+    return frst;
 }
 
 fn main() {

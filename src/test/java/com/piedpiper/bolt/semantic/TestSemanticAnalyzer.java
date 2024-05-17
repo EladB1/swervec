@@ -1047,7 +1047,7 @@ public class TestSemanticAnalyzer {
     /**
      * Source Code:
      *  Array<int> nums[2] = {2, 4}; 
-     *  pop(nums);
+     *  indexOf(nums, 2);
      */
     @Test
     void test_builtInPrototype_return_fn_call() {
@@ -1058,8 +1058,8 @@ public class TestSemanticAnalyzer {
                 new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.NUMBER, "4"))
             )),
             new AbstractSyntaxTree("FUNC-CALL", List.of(
-                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "pop")),
-                new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "nums"))
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "indexOf")),
+                new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "nums"), new VariableToken(TokenType.NUMBER, "2"))
             ))
         );
         System.out.println(fnCall);
@@ -1069,7 +1069,7 @@ public class TestSemanticAnalyzer {
     /**
      * Source Code:
      *  Array<int> nums[2] = {2, 4}; 
-     *  int num = pop(nums);
+     *  int num = indexOf(nums, 2);
      */
     @Test
     void test_generic_return_prototype_call_assignment() {
@@ -1083,8 +1083,8 @@ public class TestSemanticAnalyzer {
                 new AbstractSyntaxTree(new StaticToken(TokenType.KW_INT)),
                 new AbstractSyntaxTree(new VariableToken(TokenType.ID, "num")),
                 new AbstractSyntaxTree("FUNC-CALL", List.of(
-                    new AbstractSyntaxTree(new VariableToken(TokenType.ID, "pop")),
-                    new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "nums"))
+                    new AbstractSyntaxTree(new VariableToken(TokenType.ID, "indexOf")),
+                    new AbstractSyntaxTree("FUNC-PARAMS", new VariableToken(TokenType.ID, "nums"), new VariableToken(TokenType.NUMBER, "2"))
                 ))
             ))
         );

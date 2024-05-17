@@ -27,24 +27,9 @@ public class SemanticAnalyzer {
     private boolean inPrototype = false;
     // NOTE: inLoop and translatingPrototype flags cannot be part of class state because loops and translations can be nested
 
-    public SemanticAnalyzer() {
-        handleBuiltInPrototype("pop", new EntityType[]{new EntityType(NodeType.ARRAY, NodeType.GENERIC)});
-    }
-
     private void resetState() {
         inFunc = false;
         inPrototype = false;
-    }
-    private void handleBuiltInPrototype(String name, EntityType[] paramTypes) {
-        PrototypeSymbol prototype = symbolTable.lookupPrototype(name, paramTypes);
-        int scope = symbolTable.enterScope();
-        for (int i = 0; i < paramTypes.length; i++) {
-            symbolTable.insert(new Symbol(prototype.getParamNames()[i], paramTypes[i], scope));
-        }
-        inPrototype = true;
-        analyze(prototype.getFnBodyNode(), prototype.getReturnType(), false, false);
-        symbolTable.leaveScope();
-        resetState();
     }
 
     public void analyze(AbstractSyntaxTree AST) {
