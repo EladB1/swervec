@@ -1,9 +1,9 @@
-# boltc: The Bolt compiler
+# swervec: The Swerve compiler
 
 > Since this project is a work in progress, a lot of the stuff in here is subject to change and can become outdated
 
 ## About this project
-This is a simple compiler for a made up programming language, __Bolt__.
+This is a simple compiler for a made up programming language, __Swerve__.
 
 The compiler phases are planned to be:
 
@@ -113,7 +113,7 @@ Inline comments can be made with `//` which will cause the compiler to ignore th
 Multiline comments can be made as starting with `/*` and ending with `*/`. Unterminated multiline comments are a syntax error.
 
 ### Type System
-Bolt is intended to be a statically, strongly typed language.
+Swerve is intended to be a statically, strongly typed language.
 Variable types and function return types must be explicitly declared. 
 
 Basic types include
@@ -254,7 +254,7 @@ Examples:
  - `string JSON = "{\"key\": \"value\"}"; // valid string`
  - `JSON = "{"key": "value"}"; // invalid string`
 
-Another way to declare strings is to use multiline strings. The multiline strings in Bolt were inspired by the syntax of multiline comments, so they operate in a similar way. You can start multiline string with `/"` and terminate them with `"/`. Multiline strings allow you to nest quotes without escaping them, and they preserve any whitespace characters such as tabs and newlines. Unterminated multiline strings are a syntax error!
+Another way to declare strings is to use multiline strings. The multiline strings in Swerve were inspired by the syntax of multiline comments, so they operate in a similar way. You can start multiline string with `/"` and terminate them with `"/`. Multiline strings allow you to nest quotes without escaping them, and they preserve any whitespace characters such as tabs and newlines. Unterminated multiline strings are a syntax error!
 
 Examples:
 - ```

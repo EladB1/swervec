@@ -33,7 +33,7 @@ dependencies {
 
 application {
     // Define the main class for the application.
-    mainClass = 'com.piedpiper.bolt.App'
+    mainClass = 'com.piedpiper.swerve.App'
 }
 
 tasks.named('test') {
@@ -44,7 +44,7 @@ tasks.named('test') {
 
 sourceSets {
     integration {
-        java.srcDir file(".src/integration/java/com/piedpiper/bolt/")
+        java.srcDir file(".src/integration/java/com/piedpiper/swerve/")
         compileClasspath += sourceSets.main.output
         runtimeClasspath += output + compileClasspath
     }
@@ -69,11 +69,11 @@ check.dependsOn integration
 
 tasks.named('jar') {
     manifest {
-        attributes['Main-Class'] = 'com.piedpiper.bolt.App'
+        attributes['Main-Class'] = 'com.piedpiper.swerve.App'
     }
 }
 
 startScripts {
     // create an executable script in distribution
-    applicationName = 'boltc'
+    applicationName = 'swrvc'
 }
