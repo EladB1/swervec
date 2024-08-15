@@ -65,8 +65,8 @@ plus_one       params       int         body
             /       \
           main      body
                       |
-                      for
-        /     |    \          \
+                    for
+        /     /        \     \
       =       <       call      body
     /  \    /  \      /    \       \
    i   min i  max plus_one params   call
@@ -86,7 +86,7 @@ plus_one       params       int         body
         RET
     
     _entry:
-        LOAD_CONST 10
+        LOAD_CONST 9
         GSTORE
         LOAD_CONST 1
         GLOAD_0
@@ -120,6 +120,102 @@ plus_one       params       int         body
 
 > This section is being used to organize thoughts and will be cleaned up once a concrete approach is decided on
 
+requirements/conventions:
+
+ - functions retain their return types
+ - variables retain information like type and const
+ - global variables get an explicit `global` added to them
+ - global variable declarations and the main body are both added into the entry point function `_entry`
+ - `return 0` is automatically added to `_entry` if `main()` does not have a return
+ - loops are "unrolled" to be in the simplest, most straightforward form
+ - Remove as much *syntactic sugar* as possible without losing critical information about the program
+ - overloaded functions in the source/AST have their names changed to more easily differentiate them
+ - uninitialized variables are set to some default value in IR (i.e. `null` or 0)
 
 
+1.
+```
+int plus_one(int num-0) {
+    return 1 num-0 ADD
+}
 
+int _entry() {
+    // global vars
+    global const int max-0 = 9
+    global const int min-0 = (1 max-0 ADD) -1 MUL
+    // main
+    int i-0 = min-0
+    jump .loop
+    .loop {
+        jumpf (max-0 i-0 LE) .end
+        println(i-0)
+        i-0 = plus_one(i-0)
+        jump .loop
+    }
+    .end {
+        return 0
+    }
+    
+}
+```
+
+2. SSA form
+
+- example:
+
+```
+fn plus_one(int num-0) -> int {
+    num-1 = num-0 + 1
+    return num-1
+}
+
+fn entry() -> int {
+    max-1 = 9
+    min-1 = -1 * (max-1 + 1)
+    i-1 = min-1
+
+    goto .loop
+
+    .loop:
+        t1 = (i-1 <= max-1)
+        if (!t1) goto .end
+
+        call println(i-1)
+        i-2 = call plus_one(i-1)
+
+        goto .loop
+
+    .end:
+        return 0
+}
+```
+
+3. Three Address Code (TAC) form
+
+- example:
+
+```
+fn plus_one(int num-0) -> int {
+    t0 = num-0 + 1
+    return t0
+}
+
+fn entry() -> int {
+    global const int max-0 = 9
+    global const int min-0 = -1 * (max-0 + 1)
+
+    int i-0 = min-0
+    goto .loop
+
+    .loop:
+        t1 = (i-0 <= max-0)
+        if (!t1) goto .end
+        call println(i-0)
+        t2 = call plus_one(i-0)
+        i-0 = t2
+        goto .loop
+
+    .end:
+        return 0
+}
+```
