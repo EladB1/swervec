@@ -164,24 +164,24 @@ int _entry() {
 - example:
 
 ```
-fn plus_one(int num-0) -> int {
-    num-1 = num-0 + 1
+int plus_one(int num-0) {
+    int num-1 = num-0 + 1
     return num-1
 }
 
-fn entry() -> int {
-    max-1 = 9
-    min-1 = -1 * (max-1 + 1)
-    i-1 = min-1
+int _entry() {
+    const int max-1 = 9
+    const int min-1 = -1 * (max-1 + 1)
+    int i-1 = min-1
 
     goto .loop
 
     .loop:
-        t1 = (i-1 <= max-1)
+        boolean t1 = (i-1 <= max-1)
         if (!t1) goto .end
 
         call println(i-1)
-        i-2 = call plus_one(i-1)
+        int i-2 = call plus_one(i-1)
 
         goto .loop
 
@@ -195,14 +195,15 @@ fn entry() -> int {
 - example:
 
 ```
-fn plus_one(int num-0) -> int {
+int plus_one(int num-0) {
     t0 = num-0 + 1
     return t0
 }
 
-fn entry() -> int {
+int _entry() {
     global const int max-0 = 9
-    global const int min-0 = -1 * (max-0 + 1)
+    t0 = max-0 + 1
+    global const int min-0 = -1 * t0
 
     int i-0 = min-0
     goto .loop
@@ -218,4 +219,131 @@ fn entry() -> int {
     .end:
         return 0
 }
+```
+
+## Initial approach
+
+Going to try to use SSA form to represent programs
+
+Example:
+
+```rust
+const double PI = 3.14;
+int globVal = 3;
+
+fn doMath(int num): int {
+    int result = num + 1;
+    result *= globVal;
+    if (result % 2 == 0)
+        result++;
+    return result;
+}
+
+fn main() {
+    float y = PI * PI;
+    y *= doMath(toInt(PI));
+    println(y);
+    y /= 2;
+    println(y);
+}
+```
+
+SSA IR (represented as ProgramIR containing functionIRs containing BlockIRs)
+
+```json
+ProgramIR: {
+    Functions: [
+        {name: 'doMath', blocks: [
+            {'default': [
+                {operation: 'ADD', destination: 'result-0', operands: ['num', '1']},
+                {operation: 'MUL', destination: 'result-1', operands: ['result-0', 'globVal']},
+                {operation: 'REM', destination: 't0', operands: ['result-1', '2']},
+                {operation: 'EQ', destination: 't1', operands: ['t0, 0']},
+                {operation: 'GOTO', destination: '.if-0', operands: ['t1', 'true']},
+                {operation: 'GOTO', destination: '.end-if-0', operands: []}
+            ]},
+            {'.if-0': [
+                {operation: 'ADD', destination: 'result-2', operands: ['result-1', '1']},
+                {operation: 'GOTO', destination: '.end-if-0', operands: []}
+            ]},
+            {'.end-if-0': [
+                {operation: 'PHI', destination: 'result-3', operation: ['result-1', 'result-2']},
+                {operation: 'RETURN', destination: null, operation: ['result-3']}
+            ]}
+        ]},
+        {name: '_entry', blocks: [
+            {'globals': [
+                {operation: 'STORE', destination: 'PI', operands: ['3.14']},
+                {operation: 'STORE', destination: 'globVar', operands: ['3']}
+            ]},
+            {'default': [
+                {operation: 'MUL', destination: 'y-0', operation: ['PI', 'PI']},
+                {operation: 'CALL', destination: 't2', operation: ['toInt', 'PI']},
+                {operation: 'CALL', destination: 't3', operation: ['doMath', 't2']},
+                {operation: 'MUL', destination: 'y-1', operation: ['y-0', 't3']},
+                {operation: 'CALL', destination: null, operation: ['println', 'y-1']},
+                {operation: 'DIV', destination: 'y-2', operation: ['y-1', '2']},
+                {operation: 'CALL', destination: null, operation: ['println', 'y-2']},
+                {operation: 'RETURN', destination: null, operation: ['0']}
+            ]}
+        ]}
+    ]
+}
+```
+
+Target bytecode
+
+```
+doMath:
+    LOAD_CONST 1
+    LOAD 0
+    ADD
+    STORE
+    GLOAD 1
+    LOAD 1
+    MUL
+    STORE 1
+    LOAD_CONST 0
+    LOAD_CONST 2
+    LOAD 1
+    REM
+    EQ
+    JMPT .if-0
+    JMP .end
+    .if-0:
+        LOAD_CONST 1
+        LOAD 1
+        ADD
+        STORE 1
+        JMP .end-if-0
+    .end-if-0:
+        LOAD 1
+        RET
+
+_entry:
+    LOAD_CONST 3.14
+    GLOAD
+    LOAD_CONST 3
+    GLOAD
+    GLOAD 0
+    GLOAD 0
+    MUL
+    STORE
+    GLOAD 0
+    CALL _toInt_d 1
+    CALL doMath
+    LOAD 0
+    MUL
+    STORE 0
+    LOAD 0
+    CALL println 1
+    LOAD_CONST 2
+    LOAD 0
+    DIV
+    STORE 0
+    LOAD 0
+    CALL println 1
+    LOAD_CONST 0
+    RET
+    HALT
 ```
