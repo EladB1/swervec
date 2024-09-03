@@ -12,7 +12,7 @@
 
 The source code is parsed into an Abstract Syntax Tree (AST) then to one or more Intermediate Representations (IRs) then eventually to the compiler target, which is VM bytecode
 
-The current representations, without any IR, are written in the sub-sections below
+The current representations, without any IR, are written in the subsections below
 
 **Source code**:
 
@@ -223,7 +223,7 @@ int _entry() {
 
 ## Initial approach
 
-Going to try to use SSA form to represent programs
+Control Flow Graph (CFG) in SSA form
 
 Example:
 
@@ -248,46 +248,92 @@ fn main() {
 }
 ```
 
-SSA IR (represented as ProgramIR containing functionIRs containing BlockIRs)
+SSA IR (represented as CFG)
 
 ```json
-ProgramIR: {
-    Functions: [
-        {name: 'doMath', blocks: [
-            {'default': [
-                {operation: 'ADD', destination: 'result-0', operands: ['num', '1']},
-                {operation: 'MUL', destination: 'result-1', operands: ['result-0', 'globVal']},
-                {operation: 'REM', destination: 't0', operands: ['result-1', '2']},
-                {operation: 'EQ', destination: 't1', operands: ['t0, 0']},
-                {operation: 'GOTO', destination: '.if-0', operands: ['t1', 'true']},
-                {operation: 'GOTO', destination: '.end-if-0', operands: []}
+{
+    "ProgramIR": {
+        "Functions": [
+            {"name": "doMath", "blocks": [
+                {
+                    "label": "default",
+                    "instructions": [
+                        {"operation": "PARAM", "destination": "num-1", "operands": ["num"]},
+                        {"operation": "ADD", "destination": "t0", "operands": ["num-1", "1"]},
+                        {"operation": "MUL", "destination": "t1", "operands": ["t0", "globVal-1"]}
+                    ],
+                    "parents": [],
+                    "children": [".if-0", ".join-0"]
+                },
+                {
+                    "label": ".if-0",
+                    "instructions": [
+                        {"operation": "REM", "destination": "t2", "operands": ["t1", "2"]},
+                        {"operation": "EQ", "destination": "t3", "operands": ["t2, 0"]}
+                    ],
+                    "parents": ["default"],
+                    "children": [".then-0"]
+                },
+                {
+                    "label": ".then-0",
+                    "instructions": [
+                        {"operation": "ADD", "destination": "t4", "operands": ["t1", "1"]}
+                    ],
+                    "parents": [".if-0", "default"],
+                    "children": [".join-0"]
+                },
+                {
+                    "label": ".join-0",
+                    "instructions": [
+                        {"operation": "PHI", "destination": "t5", "operands": ["t1", "t4"]}
+                    ],
+                    "parents": [".if-0", ".then-0"],
+                    "children": [".return-0"]
+                },
+                {
+                    "label": "return-0",
+                    "instructions": [
+                        {"operation": "RETURN", "destination": null, "operands": ["t5"]}
+                    ],
+                    "parents": [".join-0"],
+                    "children": []
+                }
             ]},
-            {'.if-0': [
-                {operation: 'ADD', destination: 'result-2', operands: ['result-1', '1']},
-                {operation: 'GOTO', destination: '.end-if-0', operands: []}
-            ]},
-            {'.end-if-0': [
-                {operation: 'PHI', destination: 'result-3', operation: ['result-1', 'result-2']},
-                {operation: 'RETURN', destination: null, operation: ['result-3']}
+            {"name": "_entry", "blocks": [
+                {
+                    "label": "globals",
+                    "instructions": [
+                        {"operation": "STORE", "destination": "PI", "operands": ["3.14"]},
+                        {"operation": "STORE", "destination": "globVar-1", "operands": ["3"]}
+                    ],
+                    "parents": [],
+                    "children": ["default"]
+                },
+                {
+                    "label": "default",
+                    "instructions": [
+                        {"operation": "MUL", "destination": "t0", "operands": ["PI", "PI"]},
+                        {"operation": "CALL", "destination": "t1", "operands": ["toInt", "PI"]},
+                        {"operation": "CALL", "destination": "t2", "operands": ["doMath", "t1"]},
+                        {"operation": "MUL", "destination": "t3", "operands": ["t0", "t2"]},
+                        {"operation": "CALL", "destination": null, "operands": ["println", "t3"]},
+                        {"operation": "DIV", "destination": "t4", "operands": ["t3", "2"]},
+                        {"operation": "CALL", "destination": null, "operands": ["println", "t4"]}
+                    ],
+                    "parents": ["globals"],
+                    "children": ["default"]
+                },
+                {
+                    "label": "ret-0",
+                    "instructions": [
+                        {"operation": "RETURN", "destination": null, "operands": ["0"]}
+                    ],
+                    "parents": ["default"],
+                    "children": []
+                }
             ]}
-        ]},
-        {name: '_entry', blocks: [
-            {'globals': [
-                {operation: 'STORE', destination: 'PI', operands: ['3.14']},
-                {operation: 'STORE', destination: 'globVar', operands: ['3']}
-            ]},
-            {'default': [
-                {operation: 'MUL', destination: 'y-0', operation: ['PI', 'PI']},
-                {operation: 'CALL', destination: 't2', operation: ['toInt', 'PI']},
-                {operation: 'CALL', destination: 't3', operation: ['doMath', 't2']},
-                {operation: 'MUL', destination: 'y-1', operation: ['y-0', 't3']},
-                {operation: 'CALL', destination: null, operation: ['println', 'y-1']},
-                {operation: 'DIV', destination: 'y-2', operation: ['y-1', '2']},
-                {operation: 'CALL', destination: null, operation: ['println', 'y-2']},
-                {operation: 'RETURN', destination: null, operation: ['0']}
-            ]}
-        ]}
-    ]
+        ]
+    }
 }
 ```
 

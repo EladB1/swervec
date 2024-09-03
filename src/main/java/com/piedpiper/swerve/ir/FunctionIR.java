@@ -10,9 +10,9 @@ import java.util.List;
 @Data
 public class FunctionIR {
     String name;
-    List<Block> blocks = new ArrayList<>();
+    List<CFGBlock> blocks = new ArrayList<>();
 
-    public void addBlock(Block block) {
-        blocks.add(block);
+    public void addBlock(CFGBlock CFGBlock) {
+        blocks.add(CFGBlock);
     }
 }

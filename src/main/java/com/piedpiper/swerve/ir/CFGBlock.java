@@ -8,11 +8,11 @@ import java.util.List;
 
 @RequiredArgsConstructor
 @Data
-public class Block {
+public class CFGBlock {
     String label;
     List<IRInstruction> instructions = new ArrayList<>();
-    List<Block> parents = new ArrayList<>();
-    List<Block> children = new ArrayList<>();
+    List<CFGBlock> parents = new ArrayList<>();
+    List<CFGBlock> children = new ArrayList<>();
 
     public void addInstruction(IRInstruction instruction) {
         instructions.add(instruction);
