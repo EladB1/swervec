@@ -134,92 +134,92 @@ requirements/conventions:
 
 
 1.
-```
-int plus_one(int num-0) {
-    return 1 num-0 ADD
-}
-
-int _entry() {
-    // global vars
-    global const int max-0 = 9
-    global const int min-0 = (1 max-0 ADD) -1 MUL
-    // main
-    int i-0 = min-0
-    jump .loop
-    .loop {
-        jumpf (max-0 i-0 LE) .end
-        println(i-0)
-        i-0 = plus_one(i-0)
-        jump .loop
-    }
-    .end {
-        return 0
+    ```
+    int plus_one(int num-0) {
+        return 1 num-0 ADD
     }
     
-}
-```
+    int _entry() {
+        // global vars
+        global const int max-0 = 9
+        global const int min-0 = (1 max-0 ADD) -1 MUL
+        // main
+        int i-0 = min-0
+        jump .loop
+        .loop {
+            jumpf (max-0 i-0 LE) .end
+            println(i-0)
+            i-0 = plus_one(i-0)
+            jump .loop
+        }
+        .end {
+            return 0
+        }
+        
+    }
+    ```
 
 2. SSA form
 
-- example:
-
-```
-int plus_one(int num-0) {
-    int num-1 = num-0 + 1
-    return num-1
-}
-
-int _entry() {
-    const int max-1 = 9
-    const int min-1 = -1 * (max-1 + 1)
-    int i-1 = min-1
-
-    goto .loop
-
-    .loop:
-        boolean t1 = (i-1 <= max-1)
-        if (!t1) goto .end
-
-        call println(i-1)
-        int i-2 = call plus_one(i-1)
-
+       - example:
+    
+    ```
+    int plus_one(int num-0) {
+        int num-1 = num-0 + 1
+        return num-1
+    }
+    
+    int _entry() {
+        const int max-1 = 9
+        const int min-1 = -1 * (max-1 + 1)
+        int i-1 = min-1
+    
         goto .loop
-
-    .end:
-        return 0
-}
-```
+    
+        .loop:
+            boolean t1 = (i-1 <= max-1)
+            if (!t1) goto .end
+    
+            call println(i-1)
+            int i-2 = call plus_one(i-1)
+    
+            goto .loop
+    
+        .end:
+            return 0
+    }
+    ```
 
 3. Three Address Code (TAC) form
 
-- example:
-
-```
-int plus_one(int num-0) {
-    t0 = num-0 + 1
-    return t0
-}
-
-int _entry() {
-    global const int max-0 = 9
-    t0 = max-0 + 1
-    global const int min-0 = -1 * t0
-
-    int i-0 = min-0
-    goto .loop
-
-    .loop:
-        t1 = (i-0 <= max-0)
-        if (!t1) goto .end
-        call println(i-0)
-        t2 = call plus_one(i-0)
-        i-0 = t2
+       - example:
+    
+    ```
+    int plus_one(int num-0) {
+        t0 = num-0 + 1
+        return t0
+    }
+    
+    int _entry() {
+        global const int max-0 = 9
+        t0 = max-0 + 1
+        global const int min-0 = -1 * t0
+    
+        int i-0 = min-0
         goto .loop
-
-    .end:
-        return 0
-}
-```
+    
+        .loop:
+            t1 = (i-0 <= max-0)
+            if (!t1) goto .end
+            call println(i-0)
+            t2 = call plus_one(i-0)
+            i-0 = t2
+            goto .loop
+    
+        .end:
+            return 0
+    }
+    ```
 
 ## Initial approach
 
