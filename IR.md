@@ -337,59 +337,89 @@ SSA IR (represented as CFG)
 }
 ```
 
-Target bytecode
+## Source code to IR examples
 
+> default values of uninitialized variables are:</br>
+> &nbsp;int = 0</br>
+> &nbsp;double = 0</br>
+> &nbsp;boolean = false</br>
+> &nbsp;string = empty string</br>
+> &nbsp;array = null</br>
+
+**Source**: `int y;`</br> 
+**IR**: `{"operation": null, "destination": "t0", "operands": ["0"]}`
+
+**Source**: `const int y = 5;`</br>
+**IR**: `{"operation": null, "destination": "y-0", "operands": ["5"]}`
+
+**Source**: `2+2`</br>
+**IR**: `{"operation: "ADD", "destination": "t0", "operands": ["2", "2"]}`
+
+**Source**: `println("Hello, world!");`</br>
+**IR**: `{"operation": "CALL", "destination": null, "operands": ["println", "\"Hello, world!\""]}`
+
+**Source**:
+
+```rust
+    int x = -1;
+    int y;
+    if (x < 0)
+        y = -1;
+    else
+        y = 1;
+    int z = y * 2;
 ```
-doMath:
-    LOAD_CONST 1
-    LOAD 0
-    ADD
-    STORE
-    GLOAD 1
-    LOAD 1
-    MUL
-    STORE 1
-    LOAD_CONST 0
-    LOAD_CONST 2
-    LOAD 1
-    REM
-    EQ
-    JMPT .if-0
-    JMP .end
-    .if-0:
-        LOAD_CONST 1
-        LOAD 1
-        ADD
-        STORE 1
-        JMP .end-if-0
-    .end-if-0:
-        LOAD 1
-        RET
 
-_entry:
-    LOAD_CONST 3.14
-    GLOAD
-    LOAD_CONST 3
-    GLOAD
-    GLOAD 0
-    GLOAD 0
-    MUL
-    STORE
-    GLOAD 0
-    CALL _toInt_d 1
-    CALL doMath
-    LOAD 0
-    MUL
-    STORE 0
-    LOAD 0
-    CALL println 1
-    LOAD_CONST 2
-    LOAD 0
-    DIV
-    STORE 0
-    LOAD 0
-    CALL println 1
-    LOAD_CONST 0
-    RET
-    HALT
+**IR**:
+```
+default:
+    {"operation": null, "destination": "t0", "operands": ["-1"]},
+    {"operation": null, "destination": "t1", "operands": ["0"]},
+    {"operation", "goto", "destination": ".if-0", "operands": []}
+.if-0:
+    {"operation": "LT", "destination": "t2", "operands": ["t0", "0"]},
+    {"operation": "goto", "destination": ".then-0": "operands": ["t2"]},
+    {"operation": "goto", "destination": ".then-1": "operands": []} 
+.then-0:
+    {"operation": null, "destination": "t3", "operands": ["-1"]},
+    {"operation": "goto", "destination": ".join-0": "operands": []}
+.then-1:
+    {"operation": null, "destination": "t4", "operands": ["1"]},
+    {"operation": "goto", "destination": ".join-0": "operands": []}
+.join-0:
+    {"operation": "phi", "destination": "t5", "operands": ["t1", "t3", "t4"]},
+    {"operation": "MUL, "destination": "t6", "operands": ["t5", "2"]}
+```
+
+**Source**:
+
+```rust
+    int sum = 0;
+    for (int i = 1; i <= 10; i++) {
+        sum += i;
+    }
+    println(sum);
+```
+
+**IR**:
+```
+default:
+    {"operation": null, "destination": "t0", "operands": ["0"]},
+    {"operation": null, "destination": "t1", "operands" ["1"]},
+    {"operation": "goto", "destination": ".loop-cond-0", "operands": []}
+.loop-cond-0:
+    {"operation": "phi", "destination": "t2", "operands": ["t1", "t6"]}
+    {"operation": "LE", "destination": "t3", "operands": ["t2", "10"]}
+    {"operation": "goto", "destination": ".loop-body-0", "operands": ["t3"]}
+    {"operation": "goto", "destination": ".join-0", "operands": []}
+.loop-body-0:
+    {"operation": "phi": "destination": "t4", "operands": ["t0", t5"]}
+    {"operation": "ADD", "destination": "t5", "operands": ["t4", "t2"]}
+    {"operation": "goto", "destination": ".loop-update-0", "operands": []}
+.loop-update-0:
+    {"operation": "ADD", "destination": "t6", "operands": ["t2", "1"]},
+    {"operation": "goto", "destination": ".loop-cond-0", "operands": []}
+.join-0:
+    {"operation": "phi", "destination": "t7", "operands": ["t0", "t5"]}
+    {"operation": "CALL", "destination": null, "operands": ["println", "t7"]}
 ```
