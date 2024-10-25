@@ -24,12 +24,12 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), new VariableToken(TokenType.ID, "main"))
         ));
         List<FunctionBlock> IR = subject.generate(AST);
-        assertEquals(IR.size(), 2);
-        assertEquals(IR.get(0).getName(), "_entry");
-        assertEquals(IR.get(0).getInstructions(), mainCall);
-        assertEquals(IR.get(1).getName(), "main");
-        assertEquals(IR.get(1).getInstructions().size(), 1);
-        assertEquals(IR.get(1).getInstructions().get(0), new Instruction(IROpcode.RETURN, "0"));
+        assertEquals(2, IR.size());
+        assertEquals("_entry", IR.get(0).getName());
+        assertEquals(mainCall, IR.get(0).getInstructions());
+        assertEquals("main", IR.get(1).getName());
+        assertEquals(1, IR.get(1).getInstructions().size());
+        assertEquals(new Instruction(IROpcode.RETURN, "0"), IR.get(1).getInstructions().get(0));
     }
 
     @Test
@@ -49,12 +49,12 @@ public class TestIRGenerator {
             new Instruction("temp-0", null, IROpcode.CALL, "main"),
             new Instruction(IROpcode.RETURN, "temp-0")
         );
-        assertEquals(IR.size(), 2);
-        assertEquals(IR.get(0).getName(), "_entry");
-        assertNotEquals(IR.get(0).getInstructions(), mainCall);
-        assertEquals(IR.get(0).getInstructions(), entryInstructions);
-        assertEquals(IR.get(1).getName(), "main");
-        assertEquals(IR.get(1).getInstructions().size(), 1);
-        assertEquals(IR.get(1).getInstructions().get(0), new Instruction(IROpcode.RETURN, "0"));
+        assertEquals(2, IR.size());
+        assertEquals("_entry", IR.get(0).getName());
+        assertNotEquals(mainCall, IR.get(0).getInstructions());
+        assertEquals(entryInstructions, IR.get(0).getInstructions());
+        assertEquals("main", IR.get(1).getName());
+        assertEquals(1, IR.get(1).getInstructions().size(), 1);
+        assertEquals(new Instruction(IROpcode.RETURN, "0"), IR.get(1).getInstructions().get(0));
     }
 }
