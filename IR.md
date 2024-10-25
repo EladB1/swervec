@@ -179,3 +179,49 @@ IR:
       t2 = num-0 + 1
       return t2
 ```
+
+Structure:
+ - operand is a literal value, temporary variable, or variable
+ - operator is some symbol or keyword that can work on up to two operands
+ - store operation result to variable using `=`
+ - labelled instruction has a string label that can be jumped to from any other instruction
+ - A function block has a list of parameters, a list of instructions, and ends with a return
+   -  parameters have variable names and values
+ - Function calls must have the parameters declared first then called with the number of parameters
+   - if no number, function called without params
+ - loops, conditional blocks replaced with jumps to labelled instructions
+ - keep track of the index of temporary variables as they're used
+ - Use phi function for SSA compliance
+- `_entry` function sets global variables and calls `main` function
+
+
+- Program
+  - Functions
+    - Params 
+    - Instructions
+      - label (optional)
+      - operand
+      - operand (optional)
+      - operator (optional)
+
+
+Source: 
+
+```
+    Array<int> arr[5] = {1, 2, 3, 4};
+    arr[4] = (arr[1] + arr[2]) * arr[3];
+```
+
+IR:
+
+```
+    arr-0 = ArrayInit 5
+    arr-0[0] = 1
+    arr-0[1] = 2
+    arr-0[2] = 3
+    arr-0[3] = 4
+    arr-0[4] = 0;
+    t0 = arr-0[1] + arr-0[2]
+    arr-1 = arr-0
+    arr-1[4] = t0 * arr-0[3]
+```
