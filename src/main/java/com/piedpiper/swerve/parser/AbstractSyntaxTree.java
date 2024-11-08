@@ -11,13 +11,16 @@ import com.piedpiper.swerve.lexer.TokenType;
 import com.piedpiper.swerve.lexer.VariableToken;
 
 import lombok.Data;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Data
 public class AbstractSyntaxTree {
     private String label;
+    @Getter
     private TokenType name = null;
+    @Getter
     private String value = "";
     private Integer lineNumber = 0;
     private List<AbstractSyntaxTree> children = new ArrayList<>();
@@ -79,15 +82,7 @@ public class AbstractSyntaxTree {
     }
 
     public static List<AbstractSyntaxTree> tokensToNodes(Token[] tokens) {
-        return Arrays.asList(tokens).stream().map(AbstractSyntaxTree::new).collect(Collectors.toList());
-    }
-
-    public TokenType getName() {
-        return name;
-    }
-
-    public String getValue() {
-        return value;
+        return Arrays.stream(tokens).map(AbstractSyntaxTree::new).collect(Collectors.toList());
     }
 
     public int getLineNumber() {
@@ -152,6 +147,23 @@ public class AbstractSyntaxTree {
         if (name == null)
             return false;
         return typeTokens.contains(name);
+    }
+
+    /**
+     * Calculate the height of each child node of the current tree and return the max value.
+     * Leaf nodes have a height of 1.
+     * A subtree has a height of 1 + child.getHeight().
+     */
+    public int getHeight() {
+        int max = 0;
+        if (!this.hasChildren())
+            return 1;
+        int depth;
+        for (AbstractSyntaxTree child : this.getChildren()) {
+            depth = child.getHeight() + 1;
+            max = Math.max(max, depth);
+        }
+        return max;
     }
 
     @Override

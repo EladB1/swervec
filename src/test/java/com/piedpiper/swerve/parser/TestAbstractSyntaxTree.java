@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import com.piedpiper.swerve.lexer.StaticToken;
 import com.piedpiper.swerve.lexer.TokenType;
 import com.piedpiper.swerve.lexer.VariableToken;
-import com.piedpiper.swerve.parser.AbstractSyntaxTree;
 
 public class TestAbstractSyntaxTree {
     @Test
@@ -77,6 +76,60 @@ public class TestAbstractSyntaxTree {
     void test_isTypeLabel_false_label() {
         AbstractSyntaxTree tree = new AbstractSyntaxTree("ARRAY-LIT");
         assertFalse(tree.isTypeLabel());
+    }
+
+    @Test
+    void getMaxHeightSingleNode() {
+        AbstractSyntaxTree node = new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "5"));
+        assertEquals(1, node.getHeight());
+    }
+
+    @Test
+    void getMaxHeightSimpleAddition() {
+        AbstractSyntaxTree node = new AbstractSyntaxTree(
+            new VariableToken(TokenType.OP, "+"),
+            new VariableToken(TokenType.NUMBER, "5"),
+            new VariableToken(TokenType.NUMBER, "1")
+        );
+        assertEquals(2, node.getHeight());
+    }
+
+    @Test
+    void getMaxHeightComplexAddition() {
+        // 5 * 2 + 4 / 2
+        AbstractSyntaxTree node = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+            new AbstractSyntaxTree(
+                new VariableToken(TokenType.OP, "*"),
+                new VariableToken(TokenType.NUMBER, "5"),
+                new VariableToken(TokenType.NUMBER, "2")
+            ),
+            new AbstractSyntaxTree(
+                new VariableToken(TokenType.OP, "/"),
+                new VariableToken(TokenType.NUMBER, "4"),
+                new VariableToken(TokenType.NUMBER, "2")
+            )
+        ));
+        assertEquals(3, node.getHeight());
+    }
+
+    @Test
+    void getMaxHeightAsymmetrical() {
+        // 5 + (4 * 3 + 6) / 2
+        AbstractSyntaxTree node = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "5")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "/"), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), List.of(
+                    new AbstractSyntaxTree(
+                        new VariableToken(TokenType.OP, "*"),
+                        new VariableToken(TokenType.NUMBER, "4"),
+                        new VariableToken(TokenType.NUMBER, "3")
+                    ),
+                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "6"))
+                )),
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "2"))
+            ))
+        ));
+        assertEquals(5, node.getHeight());
     }
 
     @Test

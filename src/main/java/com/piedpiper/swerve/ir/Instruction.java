@@ -16,7 +16,7 @@ public class Instruction {
     List<Integer> indexes = null;
     private String operand1 = null;
     private IROpcode operator = null;
-    private String operand2 = null;
+    private String operand2;
 
     public Instruction(String result, List<Integer> indexes, String operand2) {
         this.result = result;
@@ -34,6 +34,12 @@ public class Instruction {
     public Instruction(String result, List<Integer> indexes, String operand1, IROpcode operator, String operand2) {
         this.result = result;
         this.indexes = indexes;
+        this.operand1 = operand1;
+        this.operator = operator;
+        this.operand2 = operand2;
+    }
+
+    public Instruction(String operand1, IROpcode operator, String operand2) {
         this.operand1 = operand1;
         this.operator = operator;
         this.operand2 = operand2;

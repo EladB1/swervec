@@ -10,6 +10,8 @@ public class IRGenerator {
     private int loopIndex = 0;
     private final List<FunctionBlock> functions;
     private boolean inFunction = false;
+    private int tempVarIndex = 1;
+    private final String tempVar = "temp-%d";
     private final String loopStart = ".loop-start-%d";
     private final String loopEnd = ".loop-end-%d";
 
@@ -66,9 +68,13 @@ public class IRGenerator {
         FunctionBlock functionBlock = new FunctionBlock(children.get(0).getValue());
         boolean hasReturnType = false;
         AbstractSyntaxTree functionBody = null;
+        List<AbstractSyntaxTree> params;
         for (int i = 1; i < children.size(); i++) {
             if (children.get(i).matchesLabel("PARAMS")) {
-                // TODO: handle parameters
+                params = children.get(i).getChildren();
+                for (AbstractSyntaxTree param : params) {
+                    functionBlock.addParam(param.getChildren().get(1).getValue());
+                }
             }
             else if (children.get(i).matchesLabel("BLOCK-BODY")) {
                 functionBody = children.get(i);
@@ -82,7 +88,7 @@ public class IRGenerator {
             functionBlock.addMultipleInstructions(generateBlockBody(functionBody.getChildren()));
         }
         if (functionBlock.getName().equals("main") && !hasReturnType) {
-            // TODO: add return 0 to the end of the function body
+            // add return 0 to the end of the main function body if it doesn't have return
             functionBlock.addInstruction(new Instruction(IROpcode.RETURN, "0"));
         }
         inFunction = false;
@@ -91,6 +97,12 @@ public class IRGenerator {
 
     private List<Instruction> generateBlockBody(List<AbstractSyntaxTree> body) {
         List<Instruction> instructions = new ArrayList<>();
+        List<String> arithmeticOperators = List.of("+", "-", "*", "/", "%", "**");
+        for (AbstractSyntaxTree node : body) {
+            if (arithmeticOperators.contains(node.getValue())) {
+                instructions.addAll(generateArithmetic(node, null, null));
+            }
+        }
         return instructions;
     }
 
@@ -100,6 +112,22 @@ public class IRGenerator {
 
         // TODO: Find where to put the end label
         loopIndex++;
+        return instructions;
+    }
+
+    private List<Instruction> generateFunctionCall(List<AbstractSyntaxTree> callDetails) {
+        List<Instruction> instructions = new ArrayList<>();
+        if (callDetails.size() == 1) {
+            return List.of(new Instruction(callDetails.get(0).getValue(), IROpcode.CALL, "0"));
+        }
+        for (AbstractSyntaxTree param : callDetails.get(1).getChildren()) {
+            if (param.hasChildren()) {
+                // TODO
+                return null;
+            }
+            else
+                instructions.add(new Instruction(IROpcode.PARAM, param.getValue()));
+        }
         return instructions;
     }
 
@@ -128,8 +156,65 @@ public class IRGenerator {
         return instructions;
     }
 
-    private List<Instruction> generateArithmetic() {
+    public List<Instruction> generateArithmetic(AbstractSyntaxTree AST, String result, List<Integer> indexes) {
         List<Instruction> instructions = new ArrayList<>();
+        boolean useTempVar = AST.getHeight() > 2;
+        String operand1, operand2;
+        AbstractSyntaxTree left = AST.getChildren().get(0);
+        AbstractSyntaxTree right = AST.getChildren().get(1);
+        String temp;
+        if (useTempVar) {
+            if (left.getHeight() == 1)
+                operand1 = left.getValue();
+            else {
+                List<Instruction> leftInstructions = generateArithmetic(left, null, null);
+                temp = generateTempVar();
+                leftInstructions.get(leftInstructions.size() - 1).setResult(temp);
+                incrementTempVarIndex();
+                operand1 = temp;
+                instructions.addAll(leftInstructions);
+            }
+            if (right.getHeight() == 1)
+                operand2 = right.getValue();
+            else {
+                List<Instruction> rightInstructions = generateArithmetic(right, null, null);
+                temp = generateTempVar();
+                rightInstructions.get(rightInstructions.size() - 1).setResult(temp);
+                incrementTempVarIndex();
+                operand2 = temp;
+                instructions.addAll(rightInstructions);
+            }
+        }
+        else {
+            operand1 = left.getValue();
+            operand2 = right.getValue();
+        }
+        IROpcode operator = operatorToIROpCode(AST);
+        instructions.add(new Instruction(result, indexes, operand1, operator, operand2));
         return instructions;
+    }
+
+    private IROpcode operatorToIROpCode(AbstractSyntaxTree operator) {
+        if (operator.matchesValue("+"))
+            return IROpcode.ADD;
+        if (operator.matchesValue("-"))
+            return IROpcode.SUB;
+        if (operator.matchesValue("*"))
+            return IROpcode.MULTIPLY;
+        if (operator.matchesValue("/"))
+            return IROpcode.DIVIDE;
+        if (operator.matchesValue("%"))
+            return IROpcode.REM;
+        if (operator.matchesValue("**"))
+            return IROpcode.POW;
+        return null;
+    }
+
+    private String generateTempVar() {
+        return String.format(tempVar, tempVarIndex);
+    }
+
+    private void incrementTempVarIndex() {
+        this.tempVarIndex++;
     }
 }
