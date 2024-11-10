@@ -5,6 +5,8 @@ import java.util.List;
 import com.piedpiper.swerve.error.SyntaxError;
 import com.piedpiper.swerve.lexer.Token;
 import com.piedpiper.swerve.lexer.TokenType;
+import static com.piedpiper.swerve.Compiler.assignmentOperators;
+import static com.piedpiper.swerve.Compiler.comparisonOperators;
 
 /* NOTE: Refer to grammar.md for full formal grammar*/
 public class Parser {
@@ -14,9 +16,7 @@ public class Parser {
     private Token next; // use this to look ahead
     List<String> leftUnaryOps = List.of("-", "!", "++", "--");
     List<String> rightUnaryOps = leftUnaryOps.subList(2, 4);
-    List<String> assignmentOps = List.of("=", "+=", "-=", "*=", "/=");
-    List<String> comparisonOps = List.of("<", ">", "<=", ">=", "!=", "==");
-    List<String> addOps = List.of("+", "-", "^", "&");
+    List<String> addOps = List.of("+", "-", "^", "&", "|");
     List<String> multOps = List.of("*", "/", "%");
     
     public Parser(List<Token> tokens) {
@@ -101,7 +101,7 @@ public class Parser {
             else if (isControlFlow(current))
                 node = parseControlFlow();
             else if (isID(current)) {
-                if (isOp(next) && assignmentOps.contains(next.getValue()))
+                if (isOp(next) && assignmentOperators.contains(next.getValue()))
                     node = parseVariableAssignment();
                 else if (next.getName() == TokenType.LEFT_PAREN)
                     node = parseFunctionCall();
@@ -112,7 +112,7 @@ public class Parser {
                     int currPos = position + 2; // skip next
                     Token lookahead = tokens.get(currPos);
                     while (currPos != tokens.size() - 1 && lookahead.getLineNumber() == line) { // look for assignment operator
-                        if (assignmentOps.contains(lookahead.getValue())) {
+                        if (assignmentOperators.contains(lookahead.getValue())) {
                             node = parseVariableAssignment();
                             break;
                         }
@@ -240,10 +240,10 @@ public class Parser {
     // CMPR-EXPR ::= ARITH-EXPR ( CMPR-OP ARITH-EXPR )?
     private AbstractSyntaxTree parseComparisonExpression() {
         AbstractSyntaxTree arithExpr = parseArithmeticExpression();
-        if (atEnd() || !comparisonOps.contains(current.getValue()))
+        if (atEnd() || !comparisonOperators.contains(current.getValue()))
             return arithExpr;
 
-        if (comparisonOps.contains(current.getValue())) {
+        if (comparisonOperators.contains(current.getValue())) {
             AbstractSyntaxTree node = parseExpectedToken(current.getValue(), current);
             node.appendChildren(arithExpr, parseArithmeticExpression());
             return node;
@@ -671,7 +671,7 @@ public class Parser {
     private AbstractSyntaxTree parseVariableAssignment() { // reassignment of already declared variable
         AbstractSyntaxTree left = next.getName() == TokenType.LEFT_SQB ? parseArrayAccess() : parseExpectedToken(TokenType.ID, current);
 
-        if (current.getName() == TokenType.OP && assignmentOps.contains(current.getValue())) {
+        if (current.getName() == TokenType.OP && assignmentOperators.contains(current.getValue())) {
             AbstractSyntaxTree node = parseExpectedToken(current.getValue(), current);
             node.appendChildren(left, parseExpr());
             return node;

@@ -5,8 +5,31 @@ import com.piedpiper.swerve.parser.AbstractSyntaxTree;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static java.util.Map.entry;
 
 public class IRGenerator {
+    private final Map<String, IROpcode> operatorMappings = Map.ofEntries(
+        entry("+", IROpcode.ADD),
+        entry("-", IROpcode.SUB),
+        entry("*", IROpcode.MULTIPLY),
+        entry("/", IROpcode.DIVIDE),
+        entry("%", IROpcode.REM),
+        entry("**", IROpcode.POW),
+        entry("^", IROpcode.XOR),
+        entry("&", IROpcode.BINARY_AND),
+        entry("|", IROpcode.BINARY_OR),
+        entry("<", IROpcode.LESS_THAN),
+        entry("<=", IROpcode.LESS_EQUAL),
+        entry(">", IROpcode.GREATER_THAN),
+        entry(">=", IROpcode.GREATER_EQUAL),
+        entry("==", IROpcode.EQUAL),
+        entry("!=", IROpcode.NOT_EQUAL),
+        entry("!", IROpcode.NOT),
+        entry("&&", IROpcode.AND),
+        entry("||", IROpcode.OR)
+    );
     private int loopIndex = 0;
     private final List<FunctionBlock> functions;
     private boolean inFunction = false;
@@ -53,10 +76,6 @@ public class IRGenerator {
                     functionBlock.addInstruction(instruction);
                 }
             }
-
-            if (node.matchesStaticToken(TokenType.KW_WHILE)) {
-            }
-
         }
         // have the _entry function call main and return main's return code as the program result
         entryFunction.addMultipleInstructions(mainCall);
@@ -97,7 +116,7 @@ public class IRGenerator {
 
     private List<Instruction> generateBlockBody(List<AbstractSyntaxTree> body) {
         List<Instruction> instructions = new ArrayList<>();
-        List<String> arithmeticOperators = List.of("+", "-", "*", "/", "%", "**");
+        List<String> arithmeticOperators = List.of("+", "-", "*", "/", "%", "**", "^", "&", "|");
         for (AbstractSyntaxTree node : body) {
             if (arithmeticOperators.contains(node.getValue())) {
                 instructions.addAll(generateArithmetic(node, null, null));
@@ -195,19 +214,7 @@ public class IRGenerator {
     }
 
     private IROpcode operatorToIROpCode(AbstractSyntaxTree operator) {
-        if (operator.matchesValue("+"))
-            return IROpcode.ADD;
-        if (operator.matchesValue("-"))
-            return IROpcode.SUB;
-        if (operator.matchesValue("*"))
-            return IROpcode.MULTIPLY;
-        if (operator.matchesValue("/"))
-            return IROpcode.DIVIDE;
-        if (operator.matchesValue("%"))
-            return IROpcode.REM;
-        if (operator.matchesValue("**"))
-            return IROpcode.POW;
-        return null;
+        return operatorMappings.get(operator.getValue());
     }
 
     private String generateTempVar() {

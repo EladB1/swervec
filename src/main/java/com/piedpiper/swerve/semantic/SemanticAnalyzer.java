@@ -16,12 +16,13 @@ import com.piedpiper.swerve.symboltable.FunctionSymbol;
 import com.piedpiper.swerve.symboltable.PrototypeSymbol;
 import com.piedpiper.swerve.symboltable.Symbol;
 import com.piedpiper.swerve.symboltable.SymbolTable;
+import static com.piedpiper.swerve.Compiler.assignmentOperators;
+import static com.piedpiper.swerve.Compiler.comparisonOperators;
 
 public class SemanticAnalyzer {
     private final SymbolTable symbolTable = new SymbolTable();
-    private final List<String> nonEqualityComparisons = List.of("<", "<=", ">", ">=");
+    private final List<String> nonEqualityComparisons = comparisonOperators.subList(0, 4);
     private final List<String> arithmeticOperators = List.of("-", "/", "%", "**");
-    private final List<String> assignmentOperators = List.of("=", "+=", "-=", "*=", "/=");
     private final Set<String> translatedCalls = new HashSet<>();
     private boolean inFunc = false;
     private boolean inPrototype = false;

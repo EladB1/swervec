@@ -15,7 +15,10 @@ import com.piedpiper.swerve.parser.AbstractSyntaxTree;
 import com.piedpiper.swerve.parser.Parser;
 import com.piedpiper.swerve.semantic.SemanticAnalyzer;
 
-public class App {
+public class Compiler {
+    public static final List<String> assignmentOperators = List.of("=", "+=", "-=", "*=", "/=");
+    public static final List<String> comparisonOperators = List.of("<", ">", "<=", ">=", "!=", "==");
+
     public static void main(String[] args) {
         if (args.length < 1) {
             System.out.println("A file path is required");
