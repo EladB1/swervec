@@ -5,8 +5,12 @@ import com.piedpiper.swerve.lexer.TokenType;
 import com.piedpiper.swerve.lexer.VariableToken;
 import com.piedpiper.swerve.parser.AbstractSyntaxTree;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -19,11 +23,11 @@ public class TestIRGenerator {
     );
 
     @Test
-    void generateEmptyMain() {
+    void generateIREmptyMain() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), new VariableToken(TokenType.ID, "main"))
         ));
-        List<FunctionBlock> IR = subject.generate(AST);
+        List<FunctionBlock> IR = subject.generateIR(AST);
         assertEquals(2, IR.size());
 
         assertEquals("_entry", IR.get(0).getName());
@@ -35,7 +39,7 @@ public class TestIRGenerator {
     }
 
     @Test
-    void generateGlobalVariableSimple() {
+    void generateIRGlobalVariableSimple() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree("VAR-DECL",
                 new StaticToken(TokenType.KW_CONST),
@@ -45,7 +49,7 @@ public class TestIRGenerator {
             ),
             new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), new VariableToken(TokenType.ID, "main"))
         ));
-        List<FunctionBlock> IR = subject.generate(AST);
+        List<FunctionBlock> IR = subject.generateIR(AST);
         List<Instruction> entryInstructions = List.of(
             new Instruction("x", (List<Integer>) null, "42").withGlobal(true),
             new Instruction("temp-0", null, IROpcode.CALL, "main"),
@@ -63,7 +67,7 @@ public class TestIRGenerator {
     }
 
     @Test
-    void generateEmptyFunctionWithParams() {
+    void generateIREmptyFunctionWithParams() {
         AbstractSyntaxTree AST = new AbstractSyntaxTree("PROGRAM", List.of(
             new AbstractSyntaxTree(new StaticToken(TokenType.KW_FN), List.of(
                 new AbstractSyntaxTree(new VariableToken(TokenType.ID, "test")),
@@ -75,7 +79,7 @@ public class TestIRGenerator {
 
         ));
 
-        List<FunctionBlock> IR = subject.generate(AST);
+        List<FunctionBlock> IR = subject.generateIR(AST);
         assertEquals(3, IR.size());
 
         assertEquals("_entry", IR.get(0).getName());
@@ -94,7 +98,7 @@ public class TestIRGenerator {
     void testSimpleArithmetic() {
         // result = y + 1;
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), new VariableToken(TokenType.ID, "y"), new VariableToken(TokenType.NUMBER, "1"));
-        List<Instruction> IR = subject.generateArithmetic(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
 
         assertEquals(1, IR.size());
         assertEquals(new Instruction("result", null, "y", IROpcode.ADD, "1"), IR.get(0));
@@ -107,7 +111,7 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "/"), new VariableToken(TokenType.ID, "y"), new VariableToken(TokenType.NUMBER, "2")),
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
         ));
-        List<Instruction> IR = subject.generateArithmetic(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
 
         assertEquals(2, IR.size());
         assertEquals(new Instruction("temp-1", null, "y", IROpcode.DIVIDE, "2"), IR.get(0));
@@ -121,7 +125,7 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.ID, "y")),
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.ID, "x"))
         ));
-        List<Instruction> IR = subject.generateArithmetic(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
 
         assertEquals(2, IR.size());
         assertEquals(new Instruction("temp-1", null, "2", IROpcode.MULTIPLY, "x"), IR.get(0));
@@ -135,7 +139,7 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "/"), new VariableToken(TokenType.ID, "y"), new VariableToken(TokenType.NUMBER, "2")),
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.ID, "x"))
         ));
-        List<Instruction> IR = subject.generateArithmetic(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
 
         assertEquals(3, IR.size());
         assertEquals(new Instruction("temp-1", null, "y", IROpcode.DIVIDE, "2"), IR.get(0));
@@ -162,7 +166,7 @@ public class TestIRGenerator {
                 new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.ID, "y"))
             ))
         ));
-        List<Instruction> IR = subject.generateArithmetic(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
         System.out.println(IR);
         assertEquals(9, IR.size());
         assertEquals(new Instruction("temp-1", null, "i", IROpcode.ADD, "1"), IR.get(0));
@@ -174,5 +178,144 @@ public class TestIRGenerator {
         assertEquals(new Instruction("temp-7", null, "2", IROpcode.MULTIPLY, "y"), IR.get(6));
         assertEquals(new Instruction("temp-8", null, "temp-6", IROpcode.ADD, "temp-7"), IR.get(7));
         assertEquals(new Instruction("result", null, "temp-5", IROpcode.DIVIDE, "temp-8"), IR.get(8));
+    }
+
+    private static Stream<Arguments> provideVarDeclarationNoValue() {
+        return Stream.of(
+            Arguments.of(TokenType.KW_INT, "0"),
+            Arguments.of(TokenType.KW_DOUBLE, "0"),
+            Arguments.of(TokenType.KW_BOOL, "false"),
+            Arguments.of(TokenType.KW_STR, "\"\"")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideVarDeclarationNoValue")
+    void testVarDeclarationNoValue(TokenType type, String defaultVal) {
+        List<AbstractSyntaxTree> varDeclaration = List.of(
+            new AbstractSyntaxTree(new StaticToken(type)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "x"))
+        );
+
+        List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
+        assertEquals(1, instructions.size());
+
+        assertEquals(new Instruction("x", (List<Integer>) null, defaultVal), instructions.get(0));
+    }
+
+    @Test
+    void testVarDeclarationWithSimpleValue() {
+        List<AbstractSyntaxTree> varDeclaration = List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_INT)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "x")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3"))
+        );
+
+        List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
+        assertEquals(1, instructions.size());
+
+        assertEquals(new Instruction("x", (List<Integer>) null, "3"), instructions.get(0));
+    }
+
+    @Test
+    void testVarDeclarationWithSimpleExpressionValue() {
+        List<AbstractSyntaxTree> varDeclaration = List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_INT)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "x")),
+            new AbstractSyntaxTree(
+                new VariableToken(TokenType.OP, "/"),
+                new VariableToken(TokenType.NUMBER, "3"),
+                new VariableToken(TokenType.NUMBER, "i")
+            )
+        );
+
+        List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
+        assertEquals(1, instructions.size());
+
+        assertEquals(new Instruction("x", null, "3", IROpcode.DIVIDE, "i"), instructions.get(0));
+    }
+
+    @Test
+    void testVarDeclarationWithComplexExpressionValue() {
+        List<AbstractSyntaxTree> varDeclaration = List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_INT)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "x")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "/"), List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3")),
+                new AbstractSyntaxTree(
+                    new VariableToken(TokenType.OP, "*"),
+                    new VariableToken(TokenType.NUMBER, "i"),
+                    new VariableToken(TokenType.NUMBER, "2")
+                )
+            ))
+        );
+
+        List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
+        assertEquals(2, instructions.size());
+
+        assertEquals(new Instruction("temp-1", null, "i", IROpcode.MULTIPLY, "2"), instructions.get(0));
+        assertEquals(new Instruction("x", null, "3", IROpcode.DIVIDE, "temp-1"), instructions.get(1));
+    }
+
+    @Test
+    void testSimpleUnaryMinus() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("UNARY-OP", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "-")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "i"))
+        ));
+
+        List<Instruction> instructions = subject.generateUnaryExpression(AST);
+
+        assertEquals(1, instructions.size());
+        assertEquals(new Instruction(null, null, "0", IROpcode.SUB, "i"), instructions.get(0));
+    }
+
+    @Test
+    void testSimpleUnaryNot() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("UNARY-OP", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "!")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "isOpen"))
+        ));
+
+        List<Instruction> instructions = subject.generateUnaryExpression(AST);
+
+        assertEquals(1, instructions.size());
+        assertEquals(new Instruction(null, null, IROpcode.NOT, "isOpen"), instructions.get(0));
+    }
+
+    @Test
+    void testComplexUnaryMinus() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("UNARY-OP", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "-")),
+            new AbstractSyntaxTree(
+                new VariableToken(TokenType.OP, "-"),
+                new VariableToken(TokenType.ID, "i"),
+                new VariableToken(TokenType.NUMBER, "1")
+            )
+        ));
+
+        List<Instruction> instructions = subject.generateUnaryExpression(AST);
+
+        assertEquals(2, instructions.size());
+        assertEquals(new Instruction("temp-1", null, "i", IROpcode.SUB, "1"), instructions.get(0));
+        assertEquals(new Instruction(null, null, "0", IROpcode.SUB, "temp-1"), instructions.get(1));
+    }
+
+    @Test
+    void testComplexUnaryNot() {
+        AbstractSyntaxTree AST = new AbstractSyntaxTree("UNARY-OP", List.of(
+            new AbstractSyntaxTree(new VariableToken(TokenType.OP, "!")),
+            new AbstractSyntaxTree(
+                new VariableToken(TokenType.OP, "&&"),
+                new VariableToken(TokenType.ID, "isOpen"),
+                new StaticToken(TokenType.KW_TRUE)
+            )
+        ));
+
+        List<Instruction> instructions = subject.generateUnaryExpression(AST);
+
+        assertEquals(2, instructions.size());
+        assertEquals(new Instruction("temp-1", null, "isOpen", IROpcode.AND, "true"), instructions.get(0));
+        assertEquals(new Instruction(null, null, IROpcode.NOT, "temp-1"), instructions.get(1));
     }
 }

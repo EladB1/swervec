@@ -254,21 +254,19 @@ public class Parser {
 
     // UNARY-OP ::= LEFT-UNARY-OP / ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) ( "++" / "--" )
     private AbstractSyntaxTree parseUnaryOp() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP", current.getLineNumber());
         if (leftUnaryOps.contains(current.getValue()))
             return parseLeftUnaryOp();
-        else {
-            if (isID(current)) {
-                if (next.getName() == TokenType.LEFT_PAREN)
-                    node.appendChildren(parseFunctionCall());
-                else if (next.getName() == TokenType.LEFT_SQB)
-                    node.appendChildren(parseArrayAccess());
-                else
-                    node.appendChildren(parseExpectedToken(TokenType.ID, current));
-            }
-            if (rightUnaryOps.contains(current.getValue()))
-                node.appendChildren(parseExpectedToken(TokenType.OP, current));
+        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP", current.getLineNumber());
+        if (isID(current)) {
+            if (next.getName() == TokenType.LEFT_PAREN)
+                node.appendChildren(parseFunctionCall());
+            else if (next.getName() == TokenType.LEFT_SQB)
+                node.appendChildren(parseArrayAccess());
+            else
+                node.appendChildren(parseExpectedToken(TokenType.ID, current));
         }
+        if (rightUnaryOps.contains(current.getValue()))
+            node.appendChildren(parseExpectedToken(TokenType.OP, current));
         return node;
     }
 
@@ -635,6 +633,8 @@ public class Parser {
 
     // VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
     private AbstractSyntaxTree parseVariableDeclaration() {
+        if (current.getName() == TokenType.KW_ARR)
+            return parseArrayDeclaration(); // let array declaration do the rest
         AbstractSyntaxTree node = new AbstractSyntaxTree("VAR-DECL", current.getLineNumber());
         boolean isConst = false;
         if (current.getName() == TokenType.KW_CONST) {
@@ -647,8 +647,6 @@ public class Parser {
             else
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current));
         }
-        if (current.getName() == TokenType.KW_ARR)
-            return parseArrayDeclaration(); // let array declaration do the rest
         node.appendChildren(parseType());
         if (next != null && next.getValue().equals("=")) {
             node.appendChildren(parseExpectedToken(TokenType.ID, current));
