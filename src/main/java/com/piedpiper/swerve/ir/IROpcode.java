@@ -7,7 +7,7 @@ public enum IROpcode {
     PARAM,
     CALL,
     RETURN,
-    ALLOC,
+    MALLOC,
     ADD,
     SUB,
     MULTIPLY,
@@ -26,6 +26,7 @@ public enum IROpcode {
     GREATER_EQUAL,
     EQUAL,
     NOT_EQUAL,
+    OFFSET,
     PHI,
     NO_OP
 }

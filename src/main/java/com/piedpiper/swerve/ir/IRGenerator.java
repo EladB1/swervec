@@ -2,6 +2,10 @@ package com.piedpiper.swerve.ir;
 
 import com.piedpiper.swerve.lexer.TokenType;
 import com.piedpiper.swerve.parser.AbstractSyntaxTree;
+import com.piedpiper.swerve.semantic.EntityType;
+import com.piedpiper.swerve.semantic.NodeType;
+import com.piedpiper.swerve.symboltable.Symbol;
+import com.piedpiper.swerve.symboltable.SymbolTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +15,7 @@ import static com.piedpiper.swerve.Compiler.assignmentOperators;
 import static java.util.Map.entry;
 
 public class IRGenerator {
+    private final SymbolTable symbolTable;
     private final Map<String, IROpcode> binaryOperators = Map.ofEntries(
         entry("+", IROpcode.ADD),
         entry("-", IROpcode.SUB),
@@ -30,16 +35,30 @@ public class IRGenerator {
         entry("&&", IROpcode.AND),
         entry("||", IROpcode.OR)
     );
-    private int loopIndex = 0;
     private final List<FunctionBlock> functions;
     private boolean inFunction = false;
     private int tempVarIndex = 1;
+    private int ifIndex = 0;
+    private int elseIfIndex = 0;
+    private int loopIndex = 0;
+    private final String elseLabel = ".else-start-%d";
     private final String loopStart = ".loop-start-%d";
     private final String loopEnd = ".loop-end-%d";
+    private final int intBytes = 4;
+    private final int boolBytes = 1;
+    private final int doubleBytes = 8;
+    private final int pointerBytes = 8; // use for Strings and sub-arrays
 
     public IRGenerator() {
+        this.symbolTable = new SymbolTable();
         this.functions = new ArrayList<>(List.of(new FunctionBlock("_entry")));
     }
+
+    public IRGenerator(SymbolTable symbolTable) {
+        this.symbolTable = symbolTable;
+        this.functions = new ArrayList<>(List.of(new FunctionBlock("_entry")));
+    }
+
     // NOTE: Since syntactic and semantic analysis have passed, can assume all inputs are correct programs
     public List<FunctionBlock> generateIR(AbstractSyntaxTree AST) {
         List<Instruction> mainCall = List.of(
@@ -60,11 +79,13 @@ public class IRGenerator {
                 String name =  children.get(offset + 1).getValue();
                 node = children.get(offset + 2);
                 String value = null;
+                if (node.matchesStaticToken(TokenType.KW_NULL))
+                    value = "null";
                 if (node.getName() == TokenType.STRING || node.getName() == TokenType.NUMBER || node.getName() == TokenType.ID)
                     value = node.getValue();
-                if (node.getName() == TokenType.KW_TRUE)
+                if (node.matchesStaticToken(TokenType.KW_TRUE))
                     value = "true";
-                if (node.getName() == TokenType.KW_FALSE)
+                if (node.matchesStaticToken(TokenType.KW_FALSE))
                     value = "false";
                 Instruction instruction = new Instruction(name, null, null, value);
                 if (!inFunction) {
@@ -114,10 +135,16 @@ public class IRGenerator {
     }
 
     private List<Instruction> generateBlockBody(List<AbstractSyntaxTree> body) {
+        return generateBlockBody(body, null);
+    }
+
+    private List<Instruction> generateBlockBody(List<AbstractSyntaxTree> body, String label) {
         List<Instruction> instructions = new ArrayList<>();
         for (AbstractSyntaxTree node : body) {
             instructions.addAll(generate(node));
         }
+        if (label != null)
+            instructions.get(0).setLabel(label);
         return instructions;
     }
 
@@ -137,14 +164,10 @@ public class IRGenerator {
         }
         if (AST.matchesLabel("UNARY-OP")) {
             if (AST.getChildren().get(0).matchesValue("++") || AST.getChildren().get(0).matchesValue("--")) {
-                // increment the operand value
-                // then use it
-                instructions.add(generateIncrementOrDecrement(AST.getChildren(), 1, 0));
+                instructions.add(generatePreIncrementOrDecrement(AST.getChildren()));
             }
-            else if (AST.getChildren().get(1).matchesValue("++") || AST.getChildren().get(1).matchesValue("--")) {
-                // First use the operand value
-                // then increment
-                instructions.add(generateIncrementOrDecrement(AST.getChildren(), 0, 1));
+            else if (isPostOrderUnaryExpression(AST)) {
+                instructions.addAll(generatePostIncrementOrDecrement(AST.getChildren()));
             }
             else
                 instructions.addAll(generateUnaryExpression(AST));
@@ -153,41 +176,134 @@ public class IRGenerator {
             instructions.addAll(generateVarAssign(AST));
         if (AST.matchesLabel("VAR-DECL"))
             instructions.addAll(generateVarDeclaration(AST.getChildren()));
+        if (AST.matchesLabel("FUNC-CALL"))
+            instructions.addAll(generateFunctionCall(AST.getChildren()));
+        if (AST.matchesLabel("COND"))
+            instructions.addAll(generateConditionals(AST.getChildren()));
+        if (AST.matchesStaticToken(TokenType.KW_WHILE))
+            instructions.addAll(generateWhileLoop(AST.getChildren()));
+        if (AST.matchesStaticToken(TokenType.KW_FOR))
+            instructions.addAll(generateForLoop(AST.getChildren()));
+        if (AST.getName() == TokenType.ID && AST.getChildren().get(0).matchesLabel("ARRAY-INDEX"))
+            instructions.addAll(generateArrayIndex(AST.getValue(), AST.getChildren().get(0).getChildren()));
         return instructions;
     }
 
-    private List<Instruction> generateWhileLoop() {
+    private List<Instruction> generateWhileLoop(List<AbstractSyntaxTree> loopDetails) {
+        AbstractSyntaxTree condition = loopDetails.get(0);
+        List<AbstractSyntaxTree> body = loopDetails.get(1).getChildren();
         List<Instruction> instructions = new ArrayList<>();
-        instructions.add(new Instruction(IROpcode.JMP, String.format(loopStart, loopIndex)));
+        String start = String.format(loopStart, loopIndex);
+        String end = String.format(loopEnd, loopIndex);
+        String temp = condition.getValue();
+        instructions.add(new Instruction(IROpcode.JMP, start));
+        instructions.addAll(generate(condition));
+        if (condition.getHeight() > 1) {
+            temp = generateTempVar();
+            instructions.get(instructions.size() - 1).setResult(temp);
+            incrementTempVarIndex();
+        }
+        instructions.get(1).setLabel(start);
+        instructions.add(new Instruction(temp, IROpcode.JMPF, end));
+        instructions.addAll(generateBlockBody(body));
+        instructions.add(new Instruction(end, IROpcode.NO_OP));
+        loopIndex++;
+        return instructions;
+    }
 
-        // TODO: Find where to put the end label
+    private List<Instruction> generateForLoop(List<AbstractSyntaxTree> loopDetails) {
+        List<Instruction> instructions = new ArrayList<>();
+        AbstractSyntaxTree condition;
+        List<AbstractSyntaxTree> body;
+        String start = String.format(loopStart, loopIndex);
+        String end = String.format(loopEnd, loopIndex);
+        String temp = null;
+        // two types of loops: regular (4) and foreach (3)
+        instructions.add(new Instruction(IROpcode.JMP, String.format(loopStart, loopIndex)));
+        if (loopDetails.size() == 3) {
+            // TODO: condition
+            body = loopDetails.get(2).getChildren();
+        }
+        else if (loopDetails.size() == 4) {
+            instructions.addAll(generate(loopDetails.get(0)));
+            condition = loopDetails.get(1);
+            body = loopDetails.get(3).getChildren();
+            instructions.addAll(generate(condition));
+            if (condition.getHeight() > 1) {
+                temp = generateTempVar();
+                instructions.get(instructions.size() - 1).setResult(temp);
+                incrementTempVarIndex();
+            }
+            instructions.get(1).setLabel(start);
+            instructions.add(new Instruction(temp, IROpcode.JMPF, end));
+            instructions.addAll(generateBlockBody(body));
+            instructions.addAll(generate(loopDetails.get(2)));
+            instructions.add(new Instruction(IROpcode.JMP, loopStart));
+        }
+        instructions.add(new Instruction(end, IROpcode.NO_OP));
         loopIndex++;
         return instructions;
     }
 
     private List<Instruction> generateFunctionCall(List<AbstractSyntaxTree> callDetails) {
         List<Instruction> instructions = new ArrayList<>();
+        String operand;
+        // TODO: handle built-ins and overriding functions
         if (callDetails.size() == 1) {
             return List.of(new Instruction(callDetails.get(0).getValue(), IROpcode.CALL, "0"));
         }
-        for (AbstractSyntaxTree param : callDetails.get(1).getChildren()) {
-            if (param.hasChildren()) {
-                // TODO
-                return null;
+        List<AbstractSyntaxTree> params = callDetails.get(1).getChildren();
+        for (AbstractSyntaxTree param : params) {
+            operand = param.getValue();
+            if (param.getHeight() > 1) {
+                operand = generateTempVar();
+                incrementTempVarIndex();
+                instructions.addAll(generate(param));
+                instructions.get(instructions.size() - 1).setResult(operand);
             }
-            else
-                instructions.add(new Instruction(IROpcode.PARAM, param.getValue()));
+            instructions.add(new Instruction(IROpcode.PARAM, operand));
         }
+        instructions.add(new Instruction(callDetails.get(0).getValue(), IROpcode.CALL, String.valueOf(params.size())));
+
         return instructions;
     }
 
-    private List<Instruction> generateForLoop() {
+    private List<Instruction> generateConditionals(List<AbstractSyntaxTree> conditionals) {
         List<Instruction> instructions = new ArrayList<>();
-        return instructions;
-    }
-
-    private List<Instruction> generateConditionals() {
-        List<Instruction> instructions = new ArrayList<>();
+        List<List<Instruction>> blockInstructions = new ArrayList<>();
+        String temp, label;
+        String endLabel = String.format(elseLabel, ifIndex);
+        AbstractSyntaxTree boolExpr;
+        boolean hasElse = false;
+        for (AbstractSyntaxTree condition : conditionals) {
+            label = generateConditionalLabel(condition);
+            if (!condition.matchesStaticToken(TokenType.KW_ELSE)) {
+                boolExpr = condition.getChildren().get(0);
+                instructions.addAll(generate(boolExpr));
+                if (boolExpr.getHeight() > 1) {
+                    temp = generateTempVar();
+                    incrementTempVarIndex();
+                    instructions.get(instructions.size() - 1).setResult(temp);
+                    instructions.add(new Instruction(temp, IROpcode.JMPT, label));
+                }
+                else {
+                    instructions.add(new Instruction(boolExpr.getValue(), IROpcode.JMPT, label));
+                }
+            }
+            else {
+                hasElse = true;
+                instructions.add(new Instruction(IROpcode.JMP, endLabel));
+            }
+            blockInstructions.add(generateBlockBody(condition.getChildren().get(1).getChildren(), generateConditionalLabel(condition)));
+            if (!hasElse) {
+                instructions.add(new Instruction(IROpcode.JMP, endLabel));
+                blockInstructions.add(List.of(new Instruction(endLabel, IROpcode.NO_OP)));
+            }
+            for (List<Instruction> block : blockInstructions) {
+                instructions.addAll(block);
+            }
+        }
+        ifIndex++;
         return instructions;
     }
 
@@ -197,12 +313,7 @@ public class IRGenerator {
         String value = "";
         switch (length) {
             case 2:
-                if (nodes.get(0).getName() == TokenType.KW_INT || nodes.get(0).getName() == TokenType.KW_DOUBLE)
-                    value = "0";
-                else if (nodes.get(0).getName() == TokenType.KW_BOOL)
-                    value = "false";
-                else if (nodes.get(0).getName() == TokenType.KW_STR)
-                    value = "\"\"";
+                value = getDefaultValue(nodes.get(0));
                 instructions.add(new Instruction(nodes.get(1).getValue(), (List<Integer>) null, value));
                 break;
             case 3:
@@ -214,11 +325,6 @@ public class IRGenerator {
                 instructions.get(instructions.size() - 1).setResult(nodes.get(2).getValue());
                 break;
         }
-        return instructions;
-    }
-
-    private List<Instruction> generateArrayDeclaration() {
-        List<Instruction> instructions = new ArrayList<>();
         return instructions;
     }
 
@@ -265,10 +371,15 @@ public class IRGenerator {
             if (left.getHeight() == 1)
                 operand1 = generate(left).get(0).getOperand2();
             else {
-                List<Instruction> leftInstructions = generateBinaryExpression(left, null, null);
-                temp = generateTempVar();
-                leftInstructions.get(leftInstructions.size() - 1).setResult(temp);
-                incrementTempVarIndex();
+                List<Instruction> leftInstructions = generate(left);
+                if (isPostOrderUnaryExpression(left)) {
+                    temp = leftInstructions.get(0).getResult();
+                }
+                else {
+                    temp = generateTempVar();
+                    leftInstructions.get(leftInstructions.size() - 1).setResult(temp);
+                    incrementTempVarIndex();
+                }
                 operand1 = temp;
                 instructions.addAll(leftInstructions);
             }
@@ -276,9 +387,14 @@ public class IRGenerator {
                 operand2 = generate(right).get(0).getOperand2();
             else {
                 List<Instruction> rightInstructions = generate(right);
-                temp = generateTempVar();
-                rightInstructions.get(rightInstructions.size() - 1).setResult(temp);
-                incrementTempVarIndex();
+                if (isPostOrderUnaryExpression(right)) {
+                    temp = rightInstructions.get(0).getResult();
+                }
+                else {
+                    temp = generateTempVar();
+                    rightInstructions.get(rightInstructions.size() - 1).setResult(temp);
+                    incrementTempVarIndex();
+                }
                 operand2 = temp;
                 instructions.addAll(rightInstructions);
             }
@@ -310,15 +426,43 @@ public class IRGenerator {
         return instructions;
     }
 
-    private Instruction generateIncrementOrDecrement(List<AbstractSyntaxTree> nodes, int operand, int operator) {
-        IROpcode action = nodes.get(operator).matchesValue("--") ? IROpcode.SUB : IROpcode.ADD;
-        String value = nodes.get(operand).getValue();
+    private Instruction generatePreIncrementOrDecrement(List<AbstractSyntaxTree> nodes) {
+        IROpcode action = nodes.get(0).matchesValue("--") ? IROpcode.SUB : IROpcode.ADD;
+        String value = nodes.get(1).getValue();
         return new Instruction(value, null, value, action, "1");
+    }
 
+    private List<Instruction> generatePostIncrementOrDecrement(List<AbstractSyntaxTree> nodes) {
+        IROpcode action = nodes.get(1).matchesValue("--") ? IROpcode.SUB : IROpcode.ADD;
+        String value = nodes.get(0).getValue();
+        String temp = generateTempVar();
+        incrementTempVarIndex();
+        return List.of(
+            new Instruction(temp, (List<Integer>) null, value),
+            new Instruction(value, null, value, action, "1")
+        );
     }
 
     private IROpcode operatorToIROpCode(AbstractSyntaxTree operator) {
         return binaryOperators.get(operator.getValue());
+    }
+
+    private String generateConditionalLabel(AbstractSyntaxTree conditional) {
+        String label;
+        int index;
+        if (conditional.matchesStaticToken(TokenType.KW_IF)) {
+            label = ".if-start-%d";
+            index = ifIndex; // increment this at a different point
+        }
+        else if (conditional.matchesStaticToken(TokenType.KW_ELSE)) {
+            label = elseLabel;
+            index = ifIndex;
+        }
+        else {
+            label = ".else-if-start-%d";
+            index = elseIfIndex++;
+        }
+        return String.format(label, index);
     }
 
     private String generateTempVar() {
@@ -328,5 +472,152 @@ public class IRGenerator {
 
     private void incrementTempVarIndex() {
         this.tempVarIndex++;
+    }
+
+    private boolean isPostOrderUnaryExpression(AbstractSyntaxTree AST) {
+        if (!AST.matchesLabel("UNARY-OP"))
+            return false;
+        AbstractSyntaxTree left = AST.getChildren().get(0);
+        return left.matchesValue("++") || left.matchesValue("--");
+    }
+
+    private int getSubtypeSize(EntityType type) {
+        EntityType subType = type.index(1);
+        if (subType.isType(NodeType.INT))
+            return intBytes;
+        else if (subType.isType(NodeType.DOUBLE))
+            return doubleBytes;
+        else if (subType.isType(NodeType.BOOLEAN))
+            return boolBytes;
+        return pointerBytes;
+    }
+
+    public Instruction allocateArray(String array, int size) {
+        return new Instruction(array, null, IROpcode.MALLOC, String.valueOf(size));
+    }
+
+    public List<Instruction> generateArrayDeclaration(List<AbstractSyntaxTree> declaration) {
+        List<Instruction> instructions = new ArrayList<>();
+        String name;
+        if (declaration.get(0).matchesStaticToken(TokenType.KW_CONST)) {
+            name = declaration.get(2).getValue();
+        } else {
+            name = declaration.get(1).getValue();
+        }
+        Symbol symbol = symbolTable.lookup(name);
+        int bytes = getSubtypeSize(symbol.getType());
+        instructions.add(allocateArray(name, symbol.getArraySizes().get(0) * bytes));
+        if (symbol.getValueNodes() != null) {
+            instructions.addAll(generateArrayLiteral(name, symbol.getArraySizes().get(0), symbol.getType(), symbol.getValueNodes()));
+        }
+        return instructions;
+    }
+
+    private List<Instruction> generateArrayIndex(String name, List<AbstractSyntaxTree> nodes) {
+        List<Instruction> instructions = new ArrayList<>();
+        List<Instruction> indexInstructions;
+        String temp;
+        Symbol symbol = symbolTable.lookup(name);
+        int bytes = getSubtypeSize(symbol.getType());
+        // name = array nodes = (0, ARRAY-INDEX->(i, ARRAY-INDEX->(j))
+        boolean addInstructions = false;
+        if (nodes.size() == 1) { // base case
+            indexInstructions = generate(nodes.get(0));
+            if (nodes.get(0).getHeight() > 1) {
+                if (isPostOrderUnaryExpression(nodes.get(0)))
+                    temp = indexInstructions.get(0).getResult();
+                else{
+                    temp = generateTempVar();
+                    incrementTempVarIndex();
+                    indexInstructions.get(indexInstructions.size() - 1).setResult(temp);
+                }
+                addInstructions = true;
+            }
+            else
+                temp = nodes.get(0).getValue();
+            String offset = generateTempVar();
+            incrementTempVarIndex();
+            instructions.add(new Instruction(offset, null, temp, IROpcode.MULTIPLY, String.valueOf(bytes)));
+            if (addInstructions)
+                instructions.addAll(indexInstructions);
+            temp = generateTempVar();
+            incrementTempVarIndex();
+            instructions.add(new Instruction(temp, null, name, IROpcode.OFFSET, offset));
+            return instructions;
+        }
+        // TODO: recurse or iterate to solve height > 1
+        return instructions;
+    }
+
+    public List<Instruction> generateArrayLiteral(String name, int size, EntityType type, AbstractSyntaxTree literal) {
+        List<Instruction> instructions = new ArrayList<>();
+        // ignore nested arrays for now
+        int elemBytes = getSubtypeSize(type);
+        String pointer, temp;
+        List<Instruction> elemInstructions;
+        AbstractSyntaxTree element;
+        int length = literal.getChildren().size();
+        for (int i = 0; i < length; i++) {
+            element = literal.getChildren().get(i);
+            if (element.getHeight() > 1) {
+                if (isPostOrderUnaryExpression(literal)) {
+                    elemInstructions = generatePostIncrementOrDecrement(element.getChildren());
+                    temp = elemInstructions.get(0).getResult();
+                }
+                else {
+                    elemInstructions = generate(element);
+                    if (elemInstructions.get(elemInstructions.size() - 1).getResult() == null) {
+                        temp = generateTempVar();
+                        incrementTempVarIndex();
+                        elemInstructions.get(elemInstructions.size() - 1).setResult(temp);
+                    } else
+                        temp = elemInstructions.get(elemInstructions.size() - 1).getResult();
+                }
+                if (element.getName() == TokenType.ID && element.getChildren().get(0).matchesLabel("ARRAY-INDEX"))
+                    temp = dereferenceArrayPointer(temp);
+                instructions.addAll(elemInstructions);
+            }
+            else
+                temp = generate(element).get(0).getOperand2();
+            pointer = generateTempVar();
+            incrementTempVarIndex();
+            instructions.add(new Instruction(pointer, null, name, IROpcode.OFFSET, String.valueOf(elemBytes * i)));
+            instructions.add(new Instruction(dereferenceArrayPointer(pointer), (List<Integer>) null, temp));
+        }
+        if (length < size) {
+            for (int i = length; i < size; i++) {
+                pointer = generateTempVar();
+                incrementTempVarIndex();
+                temp = getDefaultValue(type);
+                instructions.add(new Instruction(pointer, null, name, IROpcode.OFFSET, String.valueOf(elemBytes * i)));
+                instructions.add(new Instruction(dereferenceArrayPointer(pointer), (List<Integer>) null, temp));
+            }
+        }
+        return instructions;
+    }
+
+    private String dereferenceArrayPointer(String arrayPointer) {
+        return "*" + arrayPointer;
+    }
+
+    private String getDefaultValue(AbstractSyntaxTree node) {
+        if (node.matchesStaticToken(TokenType.KW_INT) || node.matchesStaticToken(TokenType.KW_DOUBLE))
+            return "0";
+        else if (node.matchesStaticToken(TokenType.KW_BOOL))
+            return "false";
+        else if (node.matchesStaticToken(TokenType.KW_STR))
+            return "\"\"";
+        return "null"; // TODO: handle array literal
+    }
+
+    private String getDefaultValue(EntityType type) {
+        EntityType subType = type.index(1);
+        if (subType.isType(NodeType.INT) || subType.isType(NodeType.DOUBLE))
+            return "0";
+        else if (subType.isType(NodeType.BOOLEAN))
+            return "false";
+        else if (subType.isType(NodeType.STRING))
+            return "\"\"";
+        return "null"; // TODO: handle nested array
     }
 }

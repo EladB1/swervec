@@ -4,6 +4,10 @@ import com.piedpiper.swerve.lexer.StaticToken;
 import com.piedpiper.swerve.lexer.TokenType;
 import com.piedpiper.swerve.lexer.VariableToken;
 import com.piedpiper.swerve.parser.AbstractSyntaxTree;
+import com.piedpiper.swerve.semantic.EntityType;
+import com.piedpiper.swerve.semantic.NodeType;
+import com.piedpiper.swerve.symboltable.Symbol;
+import com.piedpiper.swerve.symboltable.SymbolTable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -16,7 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class TestIRGenerator {
-    private final IRGenerator subject = new IRGenerator();
+    private final SymbolTable table = new SymbolTable();
+    private final IRGenerator subject = new IRGenerator(table);
     private final List<Instruction> mainCall = List.of(
         new Instruction("temp-0", null, IROpcode.CALL, "main"),
         new Instruction(IROpcode.RETURN, "temp-0")
@@ -167,7 +172,6 @@ public class TestIRGenerator {
             ))
         ));
         List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
-        System.out.println(IR);
         assertEquals(9, IR.size());
         assertEquals(new Instruction("temp-1", null, "i", IROpcode.ADD, "1"), IR.get(0));
         assertEquals(new Instruction("temp-2", null, "k", IROpcode.ADD, "1"), IR.get(1));
@@ -317,5 +321,80 @@ public class TestIRGenerator {
         assertEquals(2, instructions.size());
         assertEquals(new Instruction("temp-1", null, "isOpen", IROpcode.AND, "true"), instructions.get(0));
         assertEquals(new Instruction(null, null, IROpcode.NOT, "temp-1"), instructions.get(1));
+    }
+
+    @Test
+    void testGenerateArrayDeclaration() {
+        AbstractSyntaxTree literal = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_TRUE)),
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_FALSE))
+        ));
+        AbstractSyntaxTree declaration = new AbstractSyntaxTree("ARRAY-DECL", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_CONST)),
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_BOOL)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "arr")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3")),
+            literal
+        ));
+        table.insert(new Symbol(declaration, List.of(3), new EntityType(NodeType.ARRAY, NodeType.BOOLEAN), 4, 1));
+        List<Instruction> IR = subject.generateArrayDeclaration(declaration.getChildren());
+        assertEquals(7, IR.size());
+        assertEquals(List.of(
+            new Instruction("arr", null, IROpcode.MALLOC, "3"),
+            new Instruction("temp-1", null, "arr", IROpcode.OFFSET, "0"),
+            new Instruction("*temp-1", (List<Integer>) null, "true"),
+            new Instruction("temp-2", null, "arr", IROpcode.OFFSET, "1"),
+            new Instruction("*temp-2", (List<Integer>) null, "false"),
+            new Instruction("temp-3", null, "arr", IROpcode.OFFSET, "2"),
+            new Instruction("*temp-3", (List<Integer>) null, "false")
+        ), IR);
+
+    }
+
+    @Test
+    void testGenerateArrayDeclarationInts() {
+        AbstractSyntaxTree literal = new AbstractSyntaxTree("ARRAY-LIT", List.of(
+            new AbstractSyntaxTree(
+                new VariableToken(TokenType.OP, "+"),
+                new VariableToken(TokenType.ID, "i"),
+                new VariableToken(TokenType.NUMBER, "1")
+            ),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "-5")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "constants"), List.of(
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "0"))
+            ))
+        )); // {i+1, -5, constants[0]}
+        AbstractSyntaxTree declaration = new AbstractSyntaxTree("ARRAY-DECL", List.of(
+            new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+            new AbstractSyntaxTree(new VariableToken(TokenType.ID, "arr")),
+            new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3")),
+            literal
+        ));
+        table.insert(new Symbol(declaration, List.of(4), new EntityType(NodeType.ARRAY, NodeType.INT), 3, 1));
+        Symbol constants = new Symbol(
+            "constants",
+            new EntityType(NodeType.ARRAY, NodeType.INT),
+            true,
+            new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "5")),
+            1
+        );
+        constants.setArraySizes(List.of(4));
+        table.insert(constants);
+        List<Instruction> IR = subject.generateArrayDeclaration(declaration.getChildren());
+        assertEquals(12, IR.size());
+        assertEquals(List.of(
+            new Instruction("arr", null, IROpcode.MALLOC, "16"),
+            new Instruction("temp-1", null, "i", IROpcode.ADD, "1"),
+            new Instruction("temp-2", null, "arr", IROpcode.OFFSET, "0"),
+            new Instruction("*temp-2", (List<Integer>) null, "temp-1"),
+            new Instruction("temp-3", null, "arr", IROpcode.OFFSET, "4"),
+            new Instruction("*temp-3", (List<Integer>) null, "-5"),
+            new Instruction("temp-4", null, "0", IROpcode.MULTIPLY, "4"),
+            new Instruction("temp-5", null, "constants", IROpcode.OFFSET, "temp-4"),
+            new Instruction("temp-6", (List<Integer>) null, "arr", IROpcode.OFFSET, "8"),
+            new Instruction("*temp-6", (List<Integer>) null, "*temp-5"),
+            new Instruction("temp-7", null, "arr", IROpcode.OFFSET, "12"),
+            new Instruction("*temp-7", (List<Integer>) null, "0")
+        ), IR);
     }
 }

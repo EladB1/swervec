@@ -50,6 +50,11 @@ public class Instruction {
         this.operand2 = operand2;
     }
 
+    public Instruction(String label, IROpcode operator) {
+        this.label = label;
+        this.operator = operator;
+    }
+
     @Override
     public String toString() {
         StringBuilder output = new StringBuilder(global ? "global " : "");

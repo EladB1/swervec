@@ -9,11 +9,14 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import com.piedpiper.swerve.error.CompilerError;
+import com.piedpiper.swerve.ir.FunctionBlock;
+import com.piedpiper.swerve.ir.IRGenerator;
 import com.piedpiper.swerve.lexer.Lexer;
 import com.piedpiper.swerve.lexer.Token;
 import com.piedpiper.swerve.parser.AbstractSyntaxTree;
 import com.piedpiper.swerve.parser.Parser;
 import com.piedpiper.swerve.semantic.SemanticAnalyzer;
+import com.piedpiper.swerve.symboltable.SymbolTable;
 
 public class Compiler {
     public static final List<String> assignmentOperators = List.of("=", "+=", "-=", "*=", "/=");
@@ -27,7 +30,6 @@ public class Compiler {
         Path filePath = Paths.get(args[0]).toAbsolutePath();
         try {
             if (Files.exists(filePath)) {
-  
                     List<String> lines = Files.readAllLines(filePath);
                     if (lines.isEmpty())
                         throw new CompilerError("Cannot compile empty file.");
@@ -38,8 +40,12 @@ public class Compiler {
                     Parser parser = new Parser(tokens);
                     AbstractSyntaxTree ast = parser.parse();
                     System.out.println(ast);
-                    SemanticAnalyzer sa = new SemanticAnalyzer();
+                    SymbolTable symbolTable = new SymbolTable();
+                    SemanticAnalyzer sa = new SemanticAnalyzer(symbolTable);
                     sa.analyze(ast);
+                    IRGenerator irGenerator = new IRGenerator(symbolTable);
+                    List<FunctionBlock> IR = irGenerator.generateIR(ast);
+                    System.out.println(IR);
             }
             else {
                 throw new FileNotFoundException("Could not find file '" + filePath + "'");

@@ -102,6 +102,10 @@ public class EntityType {
         this.type = type;
     }
 
+    public EntityType index(int depth) {
+        return  index(depth, 0);
+    }
+
     public EntityType index(int depth, int lineNumber) {
         List<NodeType> types = type;
         EntityType entityType = new EntityType();
