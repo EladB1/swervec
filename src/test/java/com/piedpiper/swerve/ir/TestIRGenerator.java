@@ -23,7 +23,7 @@ public class TestIRGenerator {
     private final SymbolTable table = new SymbolTable();
     private final IRGenerator subject = new IRGenerator(table);
     private final List<Instruction> mainCall = List.of(
-        new Instruction("temp-0", null, IROpcode.CALL, "main"),
+        new Instruction("temp-0", IROpcode.CALL, "main"),
         new Instruction(IROpcode.RETURN, "temp-0")
     );
 
@@ -56,8 +56,8 @@ public class TestIRGenerator {
         ));
         List<FunctionBlock> IR = subject.generateIR(AST);
         List<Instruction> entryInstructions = List.of(
-            new Instruction("x", (List<Integer>) null, "42").withGlobal(true),
-            new Instruction("temp-0", null, IROpcode.CALL, "main"),
+            new Instruction("x", "42").withGlobal(true),
+            new Instruction("temp-0", IROpcode.CALL, "main"),
             new Instruction(IROpcode.RETURN, "temp-0")
         );
         assertEquals(2, IR.size());
@@ -103,10 +103,10 @@ public class TestIRGenerator {
     void testSimpleArithmetic() {
         // result = y + 1;
         AbstractSyntaxTree AST = new AbstractSyntaxTree(new VariableToken(TokenType.OP, "+"), new VariableToken(TokenType.ID, "y"), new VariableToken(TokenType.NUMBER, "1"));
-        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result");
 
         assertEquals(1, IR.size());
-        assertEquals(new Instruction("result", null, "y", IROpcode.ADD, "1"), IR.get(0));
+        assertEquals(new Instruction("result", IROpcode.ADD, "y", "1"), IR.get(0));
     }
 
     @Test
@@ -116,11 +116,11 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "/"), new VariableToken(TokenType.ID, "y"), new VariableToken(TokenType.NUMBER, "2")),
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1"))
         ));
-        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result");
 
         assertEquals(2, IR.size());
-        assertEquals(new Instruction("temp-1", null, "y", IROpcode.DIVIDE, "2"), IR.get(0));
-        assertEquals(new Instruction("result", null, "temp-1", IROpcode.ADD, "1"), IR.get(1));
+        assertEquals(new Instruction("temp-1", IROpcode.DIVIDE, "y", "2"), IR.get(0));
+        assertEquals(new Instruction("result", IROpcode.ADD, "temp-1", "1"), IR.get(1));
     }
 
     @Test
@@ -130,11 +130,11 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.ID, "y")),
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.ID, "x"))
         ));
-        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result");
 
         assertEquals(2, IR.size());
-        assertEquals(new Instruction("temp-1", null, "2", IROpcode.MULTIPLY, "x"), IR.get(0));
-        assertEquals(new Instruction("result", null, "y", IROpcode.ADD, "temp-1"), IR.get(1));
+        assertEquals(new Instruction("temp-1", IROpcode.MULTIPLY, "2", "x"), IR.get(0));
+        assertEquals(new Instruction("result", IROpcode.ADD, "y", "temp-1"), IR.get(1));
     }
 
     @Test
@@ -144,12 +144,12 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "/"), new VariableToken(TokenType.ID, "y"), new VariableToken(TokenType.NUMBER, "2")),
             new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.ID, "x"))
         ));
-        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result");
 
         assertEquals(3, IR.size());
-        assertEquals(new Instruction("temp-1", null, "y", IROpcode.DIVIDE, "2"), IR.get(0));
-        assertEquals(new Instruction("temp-2", null, "2", IROpcode.MULTIPLY, "x"), IR.get(1));
-        assertEquals(new Instruction("result", null, "temp-1", IROpcode.ADD, "temp-2"), IR.get(2));
+        assertEquals(new Instruction("temp-1", IROpcode.DIVIDE, "y", "2"), IR.get(0));
+        assertEquals(new Instruction("temp-2", IROpcode.MULTIPLY, "2", "x"), IR.get(1));
+        assertEquals(new Instruction("result", IROpcode.ADD, "temp-1", "temp-2"), IR.get(2));
     }
 
     @Test
@@ -171,17 +171,17 @@ public class TestIRGenerator {
                 new AbstractSyntaxTree(new VariableToken(TokenType.OP, "*"), new VariableToken(TokenType.NUMBER, "2"), new VariableToken(TokenType.ID, "y"))
             ))
         ));
-        List<Instruction> IR = subject.generateBinaryExpression(AST, "result", null);
+        List<Instruction> IR = subject.generateBinaryExpression(AST, "result");
         assertEquals(9, IR.size());
-        assertEquals(new Instruction("temp-1", null, "i", IROpcode.ADD, "1"), IR.get(0));
-        assertEquals(new Instruction("temp-2", null, "k", IROpcode.ADD, "1"), IR.get(1));
-        assertEquals(new Instruction("temp-3", null, "2", IROpcode.MULTIPLY, "temp-2"), IR.get(2));
-        assertEquals(new Instruction("temp-4", null, "j", IROpcode.SUB, "temp-3"), IR.get(3));
-        assertEquals(new Instruction("temp-5", null, "temp-1", IROpcode.MULTIPLY, "temp-4"), IR.get(4));
-        assertEquals(new Instruction("temp-6", null, "2", IROpcode.MULTIPLY, "x"), IR.get(5));
-        assertEquals(new Instruction("temp-7", null, "2", IROpcode.MULTIPLY, "y"), IR.get(6));
-        assertEquals(new Instruction("temp-8", null, "temp-6", IROpcode.ADD, "temp-7"), IR.get(7));
-        assertEquals(new Instruction("result", null, "temp-5", IROpcode.DIVIDE, "temp-8"), IR.get(8));
+        assertEquals(new Instruction("temp-1", IROpcode.ADD, "i", "1"), IR.get(0));
+        assertEquals(new Instruction("temp-2", IROpcode.ADD, "k", "1"), IR.get(1));
+        assertEquals(new Instruction("temp-3", IROpcode.MULTIPLY, "2", "temp-2"), IR.get(2));
+        assertEquals(new Instruction("temp-4", IROpcode.SUB, "j", "temp-3"), IR.get(3));
+        assertEquals(new Instruction("temp-5", IROpcode.MULTIPLY, "temp-1", "temp-4"), IR.get(4));
+        assertEquals(new Instruction("temp-6", IROpcode.MULTIPLY, "2", "x"), IR.get(5));
+        assertEquals(new Instruction("temp-7", IROpcode.MULTIPLY, "2", "y"), IR.get(6));
+        assertEquals(new Instruction("temp-8", IROpcode.ADD, "temp-6", "temp-7"), IR.get(7));
+        assertEquals(new Instruction("result", IROpcode.DIVIDE, "temp-5", "temp-8"), IR.get(8));
     }
 
     private static Stream<Arguments> provideVarDeclarationNoValue() {
@@ -204,7 +204,7 @@ public class TestIRGenerator {
         List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
         assertEquals(1, instructions.size());
 
-        assertEquals(new Instruction("x", (List<Integer>) null, defaultVal), instructions.get(0));
+        assertEquals(new Instruction("x", defaultVal), instructions.get(0));
     }
 
     @Test
@@ -218,7 +218,7 @@ public class TestIRGenerator {
         List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
         assertEquals(1, instructions.size());
 
-        assertEquals(new Instruction("x", (List<Integer>) null, "3"), instructions.get(0));
+        assertEquals(new Instruction("x", "3"), instructions.get(0));
     }
 
     @Test
@@ -236,7 +236,7 @@ public class TestIRGenerator {
         List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
         assertEquals(1, instructions.size());
 
-        assertEquals(new Instruction("x", null, "3", IROpcode.DIVIDE, "i"), instructions.get(0));
+        assertEquals(new Instruction("x", IROpcode.DIVIDE, "3", "i"), instructions.get(0));
     }
 
     @Test
@@ -257,8 +257,8 @@ public class TestIRGenerator {
         List<Instruction> instructions = subject.generateVarDeclaration(varDeclaration);
         assertEquals(2, instructions.size());
 
-        assertEquals(new Instruction("temp-1", null, "i", IROpcode.MULTIPLY, "2"), instructions.get(0));
-        assertEquals(new Instruction("x", null, "3", IROpcode.DIVIDE, "temp-1"), instructions.get(1));
+        assertEquals(new Instruction("temp-1", IROpcode.MULTIPLY, "i", "2"), instructions.get(0));
+        assertEquals(new Instruction("x", IROpcode.DIVIDE, "3", "temp-1"), instructions.get(1));
     }
 
     @Test
@@ -271,7 +271,7 @@ public class TestIRGenerator {
         List<Instruction> instructions = subject.generateUnaryExpression(AST);
 
         assertEquals(1, instructions.size());
-        assertEquals(new Instruction(null, null, "0", IROpcode.SUB, "i"), instructions.get(0));
+        assertEquals(new Instruction(IROpcode.SUB, "0", "i"), instructions.get(0));
     }
 
     @Test
@@ -301,8 +301,8 @@ public class TestIRGenerator {
         List<Instruction> instructions = subject.generateUnaryExpression(AST);
 
         assertEquals(2, instructions.size());
-        assertEquals(new Instruction("temp-1", null, "i", IROpcode.SUB, "1"), instructions.get(0));
-        assertEquals(new Instruction(null, null, "0", IROpcode.SUB, "temp-1"), instructions.get(1));
+        assertEquals(new Instruction("temp-1", IROpcode.SUB, "i", "1"), instructions.get(0));
+        assertEquals(new Instruction(IROpcode.SUB, "0", "temp-1"), instructions.get(1));
     }
 
     @Test
@@ -319,8 +319,8 @@ public class TestIRGenerator {
         List<Instruction> instructions = subject.generateUnaryExpression(AST);
 
         assertEquals(2, instructions.size());
-        assertEquals(new Instruction("temp-1", null, "isOpen", IROpcode.AND, "true"), instructions.get(0));
-        assertEquals(new Instruction(null, null, IROpcode.NOT, "temp-1"), instructions.get(1));
+        assertEquals(new Instruction("temp-1", IROpcode.AND, "isOpen", "true"), instructions.get(0));
+        assertEquals(new Instruction(IROpcode.NOT, "temp-1"), instructions.get(1));
     }
 
     @Test
@@ -340,13 +340,13 @@ public class TestIRGenerator {
         List<Instruction> IR = subject.generateArrayDeclaration(declaration.getChildren());
         assertEquals(7, IR.size());
         assertEquals(List.of(
-            new Instruction("arr", null, IROpcode.MALLOC, "3"),
-            new Instruction("temp-1", null, "arr", IROpcode.OFFSET, "0"),
-            new Instruction("*temp-1", (List<Integer>) null, "true"),
-            new Instruction("temp-2", null, "arr", IROpcode.OFFSET, "1"),
-            new Instruction("*temp-2", (List<Integer>) null, "false"),
-            new Instruction("temp-3", null, "arr", IROpcode.OFFSET, "2"),
-            new Instruction("*temp-3", (List<Integer>) null, "false")
+            new Instruction("arr", IROpcode.MALLOC, "3"),
+            new Instruction("temp-1", IROpcode.OFFSET, "arr", "0"),
+            new Instruction("*temp-1", "true"),
+            new Instruction("temp-2", IROpcode.OFFSET, "arr","1"),
+            new Instruction("*temp-2", "false"),
+            new Instruction("temp-3", IROpcode.OFFSET, "arr", "2"),
+            new Instruction("*temp-3", "false")
         ), IR);
 
     }
@@ -383,18 +383,18 @@ public class TestIRGenerator {
         List<Instruction> IR = subject.generateArrayDeclaration(declaration.getChildren());
         assertEquals(12, IR.size());
         assertEquals(List.of(
-            new Instruction("arr", null, IROpcode.MALLOC, "16"),
-            new Instruction("temp-1", null, "i", IROpcode.ADD, "1"),
-            new Instruction("temp-2", null, "arr", IROpcode.OFFSET, "0"),
-            new Instruction("*temp-2", (List<Integer>) null, "temp-1"),
-            new Instruction("temp-3", null, "arr", IROpcode.OFFSET, "4"),
-            new Instruction("*temp-3", (List<Integer>) null, "-5"),
-            new Instruction("temp-4", null, "0", IROpcode.MULTIPLY, "4"),
-            new Instruction("temp-5", null, "constants", IROpcode.OFFSET, "temp-4"),
-            new Instruction("temp-6", (List<Integer>) null, "arr", IROpcode.OFFSET, "8"),
-            new Instruction("*temp-6", (List<Integer>) null, "*temp-5"),
-            new Instruction("temp-7", null, "arr", IROpcode.OFFSET, "12"),
-            new Instruction("*temp-7", (List<Integer>) null, "0")
+            new Instruction("arr", IROpcode.MALLOC, "16"),
+            new Instruction("temp-1", IROpcode.ADD, "i", "1"),
+            new Instruction("temp-2", IROpcode.OFFSET, "arr", "0"),
+            new Instruction("*temp-2", "temp-1"),
+            new Instruction("temp-3", IROpcode.OFFSET, "arr", "4"),
+            new Instruction("*temp-3", "-5"),
+            new Instruction("temp-4", IROpcode.MULTIPLY, "0", "4"),
+            new Instruction("temp-5", IROpcode.OFFSET, "constants", "temp-4"),
+            new Instruction("temp-6", IROpcode.OFFSET, "arr", "8"),
+            new Instruction("*temp-6", "*temp-5"),
+            new Instruction("temp-7", IROpcode.OFFSET, "arr", "12"),
+            new Instruction("*temp-7", "0")
         ), IR);
     }
 }

@@ -49,11 +49,6 @@ public class IRGenerator {
     private final int doubleBytes = 8;
     private final int pointerBytes = 8; // use for Strings and sub-arrays
 
-    public IRGenerator() {
-        this.symbolTable = new SymbolTable();
-        this.functions = new ArrayList<>(List.of(new FunctionBlock("_entry")));
-    }
-
     public IRGenerator(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;
         this.functions = new ArrayList<>(List.of(new FunctionBlock("_entry")));
@@ -62,7 +57,7 @@ public class IRGenerator {
     // NOTE: Since syntactic and semantic analysis have passed, can assume all inputs are correct programs
     public List<FunctionBlock> generateIR(AbstractSyntaxTree AST) {
         List<Instruction> mainCall = List.of(
-            new Instruction("temp-0", null, IROpcode.CALL, "main"),
+            new Instruction("temp-0", IROpcode.CALL, "main"),
             new Instruction(IROpcode.RETURN, "temp-0")
         );
         final FunctionBlock entryFunction = functions.get(0);
@@ -87,7 +82,7 @@ public class IRGenerator {
                     value = "true";
                 if (node.matchesStaticToken(TokenType.KW_FALSE))
                     value = "false";
-                Instruction instruction = new Instruction(name, null, null, value);
+                Instruction instruction = new Instruction(name, value);
                 if (!inFunction) {
                     instruction.setGlobal(true);
                     entryFunction.addInstruction(instruction);
@@ -152,15 +147,15 @@ public class IRGenerator {
     private List<Instruction> generate(AbstractSyntaxTree AST) {
         if (AST.getHeight() == 1) {
             if (AST.getName() == TokenType.STRING || AST.getName() == TokenType.NUMBER || AST.getName() == TokenType.ID)
-                return List.of(new Instruction(null, (List<Integer>) null, AST.getValue()));
+                return List.of(new Instruction(AST.getValue()));
             if (AST.getName() == TokenType.KW_TRUE)
-                return List.of(new Instruction(null, (List<Integer>) null, "true"));
+                return List.of(new Instruction("true"));
             if (AST.getName() == TokenType.KW_FALSE)
-                return List.of(new Instruction(null, (List<Integer>) null, "false"));
+                return List.of(new Instruction("false"));
         }
         List<Instruction> instructions = new ArrayList<>();
         if (binaryOperators.containsKey(AST.getValue())) {
-            instructions.addAll(generateBinaryExpression(AST, null, null));
+            instructions.addAll(generateBinaryExpression(AST, null));
         }
         if (AST.matchesLabel("UNARY-OP")) {
             if (AST.getChildren().get(0).matchesValue("++") || AST.getChildren().get(0).matchesValue("--")) {
@@ -310,11 +305,11 @@ public class IRGenerator {
     public List<Instruction> generateVarDeclaration(List<AbstractSyntaxTree> nodes) {
         List<Instruction> instructions = new ArrayList<>();
         int length = nodes.size();
-        String value = "";
+        String value;
         switch (length) {
             case 2:
                 value = getDefaultValue(nodes.get(0));
-                instructions.add(new Instruction(nodes.get(1).getValue(), (List<Integer>) null, value));
+                instructions.add(new Instruction(nodes.get(1).getValue(), value));
                 break;
             case 3:
                 instructions.addAll(generate(nodes.get(length - 1)));
@@ -347,7 +342,7 @@ public class IRGenerator {
             operand = IROpcode.MULTIPLY;
         else
             operand = IROpcode.DIVIDE;
-        instructions.add(new Instruction(name, null, name, operand, temp));
+        instructions.add(new Instruction(name, operand, name, temp));
 
         return instructions;
     }
@@ -357,10 +352,9 @@ public class IRGenerator {
      *
      * @param AST The Abstract syntax tree node
      * @param result The variable name of the result
-     * @param indexes Any array indexes if the result is part of an array
      * @return list of instructions
      */
-    public List<Instruction> generateBinaryExpression(AbstractSyntaxTree AST, String result, List<Integer> indexes) {
+    public List<Instruction> generateBinaryExpression(AbstractSyntaxTree AST, String result) {
         List<Instruction> instructions = new ArrayList<>();
         boolean useTempVar = AST.getHeight() > 2;
         String operand1, operand2;
@@ -369,7 +363,7 @@ public class IRGenerator {
         String temp;
         if (useTempVar) {
             if (left.getHeight() == 1)
-                operand1 = generate(left).get(0).getOperand2();
+                operand1 = generate(left).get(0).getOperand1();
             else {
                 List<Instruction> leftInstructions = generate(left);
                 if (isPostOrderUnaryExpression(left)) {
@@ -384,7 +378,7 @@ public class IRGenerator {
                 instructions.addAll(leftInstructions);
             }
             if (right.getHeight() == 1)
-                operand2 = generate(right).get(0).getOperand2();
+                operand2 = generate(right).get(0).getOperand1();
             else {
                 List<Instruction> rightInstructions = generate(right);
                 if (isPostOrderUnaryExpression(right)) {
@@ -400,11 +394,11 @@ public class IRGenerator {
             }
         }
         else {
-            operand1 = generate(left).get(0).getOperand2();
-            operand2 = generate(right).get(0).getOperand2();
+            operand1 = generate(left).get(0).getOperand1();
+            operand2 = generate(right).get(0).getOperand1();
         }
         IROpcode operator = operatorToIROpCode(AST);
-        instructions.add(new Instruction(result, indexes, operand1, operator, operand2));
+        instructions.add(new Instruction(result, operator, operand1, operand2));
         return instructions;
     }
 
@@ -422,14 +416,14 @@ public class IRGenerator {
         if (children.get(0).matchesValue("!"))
             instructions.add(new Instruction(null, null, IROpcode.NOT, operand));
         else
-            instructions.add(new Instruction(null, null, "0", IROpcode.SUB, operand));
+            instructions.add(new Instruction(IROpcode.SUB, "0", operand));
         return instructions;
     }
 
     private Instruction generatePreIncrementOrDecrement(List<AbstractSyntaxTree> nodes) {
         IROpcode action = nodes.get(0).matchesValue("--") ? IROpcode.SUB : IROpcode.ADD;
         String value = nodes.get(1).getValue();
-        return new Instruction(value, null, value, action, "1");
+        return new Instruction(value, action, value,"1");
     }
 
     private List<Instruction> generatePostIncrementOrDecrement(List<AbstractSyntaxTree> nodes) {
@@ -438,8 +432,8 @@ public class IRGenerator {
         String temp = generateTempVar();
         incrementTempVarIndex();
         return List.of(
-            new Instruction(temp, (List<Integer>) null, value),
-            new Instruction(value, null, value, action, "1")
+            new Instruction(temp, value),
+            new Instruction(value, action, value,"1")
         );
     }
 
@@ -493,7 +487,7 @@ public class IRGenerator {
     }
 
     public Instruction allocateArray(String array, int size) {
-        return new Instruction(array, null, IROpcode.MALLOC, String.valueOf(size));
+        return new Instruction(array, IROpcode.MALLOC, String.valueOf(size));
     }
 
     public List<Instruction> generateArrayDeclaration(List<AbstractSyntaxTree> declaration) {
@@ -537,12 +531,12 @@ public class IRGenerator {
                 temp = nodes.get(0).getValue();
             String offset = generateTempVar();
             incrementTempVarIndex();
-            instructions.add(new Instruction(offset, null, temp, IROpcode.MULTIPLY, String.valueOf(bytes)));
+            instructions.add(new Instruction(offset, IROpcode.MULTIPLY, temp, String.valueOf(bytes)));
             if (addInstructions)
                 instructions.addAll(indexInstructions);
             temp = generateTempVar();
             incrementTempVarIndex();
-            instructions.add(new Instruction(temp, null, name, IROpcode.OFFSET, offset));
+            instructions.add(new Instruction(temp, IROpcode.OFFSET, name, offset));
             return instructions;
         }
         // TODO: recurse or iterate to solve height > 1
@@ -578,19 +572,19 @@ public class IRGenerator {
                 instructions.addAll(elemInstructions);
             }
             else
-                temp = generate(element).get(0).getOperand2();
+                temp = generate(element).get(0).getOperand1();
             pointer = generateTempVar();
             incrementTempVarIndex();
-            instructions.add(new Instruction(pointer, null, name, IROpcode.OFFSET, String.valueOf(elemBytes * i)));
-            instructions.add(new Instruction(dereferenceArrayPointer(pointer), (List<Integer>) null, temp));
+            instructions.add(new Instruction(pointer, IROpcode.OFFSET, name, String.valueOf(elemBytes * i)));
+            instructions.add(new Instruction(dereferenceArrayPointer(pointer), temp));
         }
         if (length < size) {
             for (int i = length; i < size; i++) {
                 pointer = generateTempVar();
                 incrementTempVarIndex();
                 temp = getDefaultValue(type);
-                instructions.add(new Instruction(pointer, null, name, IROpcode.OFFSET, String.valueOf(elemBytes * i)));
-                instructions.add(new Instruction(dereferenceArrayPointer(pointer), (List<Integer>) null, temp));
+                instructions.add(new Instruction(pointer, IROpcode.OFFSET, name, String.valueOf(elemBytes * i)));
+                instructions.add(new Instruction(dereferenceArrayPointer(pointer), temp));
             }
         }
         return instructions;

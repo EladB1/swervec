@@ -14,45 +14,67 @@ public class Instruction {
     private boolean global = false;
     private String result = null;
     List<Integer> indexes = null;
-    private String operand1 = null;
+    private String operand1;
     private IROpcode operator = null;
-    private String operand2;
+    private String operand2 = null;
 
-    public Instruction(String result, List<Integer> indexes, String operand2) {
-        this.result = result;
-        this.indexes = indexes;
-        this.operand2 = operand2;
-    }
-
-    public Instruction(String result, List<Integer> indexes, IROpcode operator, String operand2) {
-        this.result = result;
-        this.indexes = indexes;
-        this.operator = operator;
-        this.operand2 = operand2;
-    }
-
-    public Instruction(String result, List<Integer> indexes, String operand1, IROpcode operator, String operand2) {
-        this.result = result;
-        this.indexes = indexes;
+    public Instruction(String operand1) {
         this.operand1 = operand1;
-        this.operator = operator;
-        this.operand2 = operand2;
-    }
-
-    public Instruction(String operand1, IROpcode operator, String operand2) {
-        this.operand1 = operand1;
-        this.operator = operator;
-        this.operand2 = operand2;
-    }
-
-    public Instruction(IROpcode operator, String operand2) {
-        this.operator = operator;
-        this.operand2 = operand2;
     }
 
     public Instruction(String label, IROpcode operator) {
         this.label = label;
         this.operator = operator;
+    }
+
+    public Instruction(String result, String operand1) {
+        this.result = result;
+        this.operand1 = operand1;
+    }
+
+    public Instruction(String label, String result, String operand1) {
+        this.label = label;
+        this.result = result;
+        this.operand1 = operand1;
+    }
+
+    public Instruction(IROpcode operator, String operand1) {
+        this.operator = operator;
+        this.operand1 = operand1;
+    }
+
+    public Instruction(IROpcode operator, String operand1, String operand2) {
+        this.operator = operator;
+        this.operand1 = operand1;
+        this.operand2 = operand2;
+    }
+
+    public Instruction(String result, IROpcode operator, String operand1) {
+        this.result = result;
+        this.operator = operator;
+        this.operand1 = operand1;
+    }
+
+    public Instruction(String label, String result, IROpcode operator, String operand1) {
+        this.label = label;
+        this.result = result;
+        this.operator = operator;
+        this.operand1 = operand1;
+    }
+
+    public Instruction(String result, IROpcode operator, String operand1, String operand2) {
+        this.result = result;
+        this.operator = operator;
+        this.operand1 = operand1;
+        this.operand2 = operand2;
+    }
+
+    public Instruction(String label, String result, IROpcode operator, String operand1, String operand2) {
+        this.label = label;
+        this.result = result;
+        this.operator = operator;
+        this.operand1 = operand1;
+        this.operand2 = operand2;
     }
 
     @Override
@@ -63,17 +85,18 @@ public class Instruction {
         }
         if (result != null) {
             output.append(result);
-            if (indexes != null) {
-                for (int index : indexes) {
-                    output.append(String.format("[%d]", index));
-                }
-            }
             output.append(" = ");
         }
-        if (operand1 != null)
-            output.append(operand1).append(" ");
+        if (operand1 != null) {
+            if (operator != null && operand2 == null) {
+                output.append(operator).append(" ").append(operand1);
+                return output.toString();
+            }
+            output.append(operand1);
+        }
+
         if (operator != null)
-            output.append(operator).append(" ");
+            output.append(" ").append(operator).append(" ");
         if (operand2 != null)
             output.append(operand2);
         return output.toString();
