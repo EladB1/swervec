@@ -507,39 +507,44 @@ public class IRGenerator {
         return instructions;
     }
 
-    private List<Instruction> generateArrayIndex(String name, List<AbstractSyntaxTree> nodes) {
+    public List<Instruction> generateArrayIndex(String name, List<AbstractSyntaxTree> nodes) {
+        Symbol symbol = symbolTable.lookup(name);
+        return generateArrayIndex(name, nodes, symbol.getType());
+    }
+
+    public List<Instruction> generateArrayIndex(String name, List<AbstractSyntaxTree> nodes, EntityType type) {
         List<Instruction> instructions = new ArrayList<>();
         List<Instruction> indexInstructions;
-        String temp;
-        Symbol symbol = symbolTable.lookup(name);
-        int bytes = getSubtypeSize(symbol.getType());
+        String temp, value;
+        int bytes = getSubtypeSize(type);
         // name = array nodes = (0, ARRAY-INDEX->(i, ARRAY-INDEX->(j))
         boolean addInstructions = false;
-        if (nodes.size() == 1) { // base case
-            indexInstructions = generate(nodes.get(0));
-            if (nodes.get(0).getHeight() > 1) {
-                if (isPostOrderUnaryExpression(nodes.get(0)))
-                    temp = indexInstructions.get(0).getResult();
-                else{
-                    temp = generateTempVar();
-                    incrementTempVarIndex();
-                    indexInstructions.get(indexInstructions.size() - 1).setResult(temp);
-                }
-                addInstructions = true;
+        indexInstructions = generate(nodes.get(0));
+        if (nodes.get(0).getHeight() > 1) {
+            if (isPostOrderUnaryExpression(nodes.get(0)))
+                temp = indexInstructions.get(0).getResult();
+            else{
+                temp = generateTempVar();
+                incrementTempVarIndex();
+                indexInstructions.get(indexInstructions.size() - 1).setResult(temp);
             }
-            else
-                temp = nodes.get(0).getValue();
-            String offset = generateTempVar();
-            incrementTempVarIndex();
-            instructions.add(new Instruction(offset, IROpcode.MULTIPLY, temp, String.valueOf(bytes)));
-            if (addInstructions)
-                instructions.addAll(indexInstructions);
-            temp = generateTempVar();
-            incrementTempVarIndex();
-            instructions.add(new Instruction(temp, IROpcode.OFFSET, name, offset));
-            return instructions;
+            addInstructions = true;
         }
-        // TODO: recurse or iterate to solve height > 1
+        else
+            temp = nodes.get(0).getValue();
+        String offset = generateTempVar();
+        incrementTempVarIndex();
+        instructions.add(new Instruction(offset, IROpcode.MULTIPLY, temp, String.valueOf(bytes)));
+        if (addInstructions)
+            instructions.addAll(indexInstructions);
+        temp = generateTempVar();
+        incrementTempVarIndex();
+        instructions.add(new Instruction(temp, IROpcode.OFFSET, name, offset));
+        value = generateTempVar();
+        incrementTempVarIndex();
+        instructions.add(new Instruction(value, dereferenceArrayPointer(temp)));
+        if (nodes.size() == 2)
+            instructions.addAll(generateArrayIndex(value, nodes.get(1).getChildren(), type.index(1)));
         return instructions;
     }
 
@@ -567,8 +572,6 @@ public class IRGenerator {
                     } else
                         temp = elemInstructions.get(elemInstructions.size() - 1).getResult();
                 }
-                if (element.getName() == TokenType.ID && element.getChildren().get(0).matchesLabel("ARRAY-INDEX"))
-                    temp = dereferenceArrayPointer(temp);
                 instructions.addAll(elemInstructions);
             }
             else

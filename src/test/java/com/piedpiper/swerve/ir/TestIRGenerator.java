@@ -381,7 +381,7 @@ public class TestIRGenerator {
         constants.setArraySizes(List.of(4));
         table.insert(constants);
         List<Instruction> IR = subject.generateArrayDeclaration(declaration.getChildren());
-        assertEquals(12, IR.size());
+        assertEquals(13, IR.size());
         assertEquals(List.of(
             new Instruction("arr", IROpcode.MALLOC, "16"),
             new Instruction("temp-1", IROpcode.ADD, "i", "1"),
@@ -391,10 +391,80 @@ public class TestIRGenerator {
             new Instruction("*temp-3", "-5"),
             new Instruction("temp-4", IROpcode.MULTIPLY, "0", "4"),
             new Instruction("temp-5", IROpcode.OFFSET, "constants", "temp-4"),
-            new Instruction("temp-6", IROpcode.OFFSET, "arr", "8"),
-            new Instruction("*temp-6", "*temp-5"),
-            new Instruction("temp-7", IROpcode.OFFSET, "arr", "12"),
-            new Instruction("*temp-7", "0")
+            new Instruction("temp-6", "*temp-5"),
+            new Instruction("temp-7", IROpcode.OFFSET, "arr", "8"),
+            new Instruction("*temp-7", "temp-6"),
+            new Instruction("temp-8", IROpcode.OFFSET, "arr", "12"),
+            new Instruction("*temp-8", "0")
+        ), IR);
+    }
+
+    @Test
+    void generateArrayIndexOneDimension() {
+        AbstractSyntaxTree index = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "constants"), List.of(
+            new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.NUMBER, "0"))
+        ));
+        Symbol constants = new Symbol(
+            "constants",
+            new EntityType(NodeType.ARRAY, NodeType.INT),
+            true,
+            new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "5")),
+            1
+        );
+        constants.setArraySizes(List.of(4));
+        table.insert(constants);
+
+        List<Instruction> IR = subject.generateArrayIndex(index.getValue(), index.getChildren().get(0).getChildren());
+        assertEquals(3, IR.size());
+
+        assertEquals(List.of(
+            new Instruction("temp-1", IROpcode.MULTIPLY, "0", "4"),
+            new Instruction("temp-2", IROpcode.OFFSET, "constants", "temp-1"),
+            new Instruction("temp-3", "*temp-2")
+        ), IR);
+    }
+
+    @Test
+    void generateArrayIndexMultiDimension() {
+        // arr[0][1][i]
+        AbstractSyntaxTree index = new AbstractSyntaxTree(new VariableToken(TokenType.ID, "arr"), List.of(
+            new AbstractSyntaxTree("ARRAY-INDEX", List.of(
+                new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0")),
+                new AbstractSyntaxTree("ARRAY-INDEX", List.of(
+                    new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "1")),
+                    new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.ID, "i")))
+                ))
+            ))
+        );
+
+        Symbol constants = new Symbol(
+            "arr",
+            new EntityType(NodeType.ARRAY, NodeType.ARRAY, NodeType.ARRAY, NodeType.INT),
+            true,
+            new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                new AbstractSyntaxTree("ARRAY-LIT", List.of(
+                    new AbstractSyntaxTree("ARRAY-LIT")
+                )),
+                new AbstractSyntaxTree("ARRAY-LIT", List.of(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "5"))))
+            )),
+            1
+        );
+        constants.setArraySizes(List.of(4, 4, 4));
+        table.insert(constants);
+
+        List<Instruction> IR = subject.generateArrayIndex(index.getValue(), index.getChildren().get(0).getChildren());
+        assertEquals(9, IR.size());
+
+        assertEquals(List.of(
+            new Instruction("temp-1", IROpcode.MULTIPLY, "0", "8"),
+            new Instruction("temp-2", IROpcode.OFFSET, "arr", "temp-1"),
+            new Instruction("temp-3", "*temp-2"),
+            new Instruction("temp-4", IROpcode.MULTIPLY, "1", "8"),
+            new Instruction("temp-5", IROpcode.OFFSET, "temp-3", "temp-4"),
+            new Instruction("temp-6", "*temp-5"),
+            new Instruction("temp-7", IROpcode.MULTIPLY, "i", "4"),
+            new Instruction("temp-8", IROpcode.OFFSET, "temp-6", "temp-7"),
+            new Instruction("temp-9", "*temp-8")
         ), IR);
     }
 }
