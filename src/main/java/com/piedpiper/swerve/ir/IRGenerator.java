@@ -216,8 +216,47 @@ public class IRGenerator {
         // two types of loops: regular (4) and foreach (3)
         instructions.add(new Instruction(IROpcode.JMP, String.format(loopStart, loopIndex)));
         if (loopDetails.size() == 3) {
-            // TODO: condition
+            String container = loopDetails.get(1).getValue();
+            Symbol symbol = symbolTable.lookup(container);
+            String iterator = generateTempVar();
+            String loopVar = loopDetails.get(0).getChildren().get(loopDetails.get(0).matchesLabel("VAR-ASSIGN") ? 0 : 1).getValue();
+            incrementTempVarIndex();
+            String length = container + "-length";
+            temp = generateTempVar();
+            incrementTempVarIndex();
+            instructions.addAll(List.of(
+                new Instruction(IROpcode.PARAM, container),
+                new Instruction(length, IROpcode.CALL, "length", "1"),
+                new Instruction(iterator, "0"),
+                new Instruction(temp, iterator, IROpcode.LESS_THAN, length).withLabel(start),
+                new Instruction(IROpcode.JMPF, temp, end)
+            ));
+            if (symbol.getType().isType(NodeType.STRING)) {
+                instructions.addAll(List.of(
+                    new Instruction(IROpcode.PARAM, container),
+                    new Instruction(IROpcode.PARAM, iterator),
+                    new Instruction(loopVar, IROpcode.CALL, "at", "2")
+                ));
+            }
+            else {
+                String offset = generateTempVar();
+                incrementTempVarIndex();
+                String addr = generateTempVar();
+                incrementTempVarIndex();
+                // TODO: get byte size
+                int bytes = 8;
+                instructions.addAll(List.of(
+                    new Instruction(offset, IROpcode.MULTIPLY, iterator, String.valueOf(bytes)),
+                    new Instruction(addr, IROpcode.OFFSET, container, offset),
+                    new Instruction(loopVar, dereferenceArrayPointer(addr))
+                ));
+            }
             body = loopDetails.get(2).getChildren();
+            instructions.addAll(generateBlockBody(body));
+            instructions.addAll(List.of(
+                new Instruction(iterator, IROpcode.ADD, iterator, "1"),
+                new Instruction(IROpcode.JMP, start)
+            ));
         }
         else if (loopDetails.size() == 4) {
             instructions.addAll(generate(loopDetails.get(0)));
