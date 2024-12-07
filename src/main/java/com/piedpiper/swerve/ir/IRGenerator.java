@@ -206,59 +206,66 @@ public class IRGenerator {
         return instructions;
     }
 
-    private List<Instruction> generateForLoop(List<AbstractSyntaxTree> loopDetails) {
-        List<Instruction> instructions = new ArrayList<>();
-        AbstractSyntaxTree condition;
+    private List<Instruction> generateForEachLoop(List<AbstractSyntaxTree> loopDetails, String start, String end) {
+        String temp;
         List<AbstractSyntaxTree> body;
-        String start = String.format(loopStart, loopIndex);
-        String end = String.format(loopEnd, loopIndex);
-        String temp = null;
-        // two types of loops: regular (4) and foreach (3)
-        instructions.add(new Instruction(IROpcode.JMP, String.format(loopStart, loopIndex)));
-        if (loopDetails.size() == 3) {
-            String container = loopDetails.get(1).getValue();
-            Symbol symbol = symbolTable.lookup(container);
-            String iterator = generateTempVar();
-            String loopVar = loopDetails.get(0).getChildren().get(loopDetails.get(0).matchesLabel("VAR-ASSIGN") ? 0 : 1).getValue();
-            incrementTempVarIndex();
-            String length = container + "-length";
-            temp = generateTempVar();
-            incrementTempVarIndex();
+        String container = loopDetails.get(1).getValue();
+        Symbol symbol = symbolTable.lookup(container);
+        String iterator = generateTempVar();
+        String loopVar = loopDetails.get(0).getChildren().get(loopDetails.get(0).matchesLabel("VAR-ASSIGN") ? 0 : 1).getValue();
+        incrementTempVarIndex();
+        String length = container + "-length";
+        temp = generateTempVar();
+        incrementTempVarIndex();
+        List<Instruction> instructions = new ArrayList<>(List.of(
+            new Instruction(IROpcode.PARAM, container),
+            new Instruction(length, IROpcode.CALL, "length", "1"),
+            new Instruction(iterator, "0"),
+            new Instruction(temp, iterator, IROpcode.LESS_THAN, length).withLabel(start),
+            new Instruction(IROpcode.JMPF, temp, end)
+        ));
+        if (symbol.getType().isType(NodeType.STRING)) {
             instructions.addAll(List.of(
                 new Instruction(IROpcode.PARAM, container),
-                new Instruction(length, IROpcode.CALL, "length", "1"),
-                new Instruction(iterator, "0"),
-                new Instruction(temp, iterator, IROpcode.LESS_THAN, length).withLabel(start),
-                new Instruction(IROpcode.JMPF, temp, end)
-            ));
-            if (symbol.getType().isType(NodeType.STRING)) {
-                instructions.addAll(List.of(
-                    new Instruction(IROpcode.PARAM, container),
-                    new Instruction(IROpcode.PARAM, iterator),
-                    new Instruction(loopVar, IROpcode.CALL, "at", "2")
-                ));
-            }
-            else {
-                String offset = generateTempVar();
-                incrementTempVarIndex();
-                String addr = generateTempVar();
-                incrementTempVarIndex();
-                // TODO: get byte size
-                int bytes = 8;
-                instructions.addAll(List.of(
-                    new Instruction(offset, IROpcode.MULTIPLY, iterator, String.valueOf(bytes)),
-                    new Instruction(addr, IROpcode.OFFSET, container, offset),
-                    new Instruction(loopVar, dereferenceArrayPointer(addr))
-                ));
-            }
-            body = loopDetails.get(2).getChildren();
-            instructions.addAll(generateBlockBody(body));
-            instructions.addAll(List.of(
-                new Instruction(iterator, IROpcode.ADD, iterator, "1"),
-                new Instruction(IROpcode.JMP, start)
+                new Instruction(IROpcode.PARAM, iterator),
+                new Instruction(loopVar, IROpcode.CALL, "at", "2")
             ));
         }
-        else if (loopDetails.size() == 4) {
+        else {
+            String offset = generateTempVar();
+            incrementTempVarIndex();
+            String addr = generateTempVar();
+            incrementTempVarIndex();
+            int bytes = loopDetails.get(0).matchesLabel("VAR-DECL") ?
+                getTypeSize(loopDetails.get(0).getChildren().get(0)) :
+                getTypeSize(symbolTable.lookup(loopVar).getType());
+
+            instructions.addAll(List.of(
+                new Instruction(offset, IROpcode.MULTIPLY, iterator, String.valueOf(bytes)),
+                new Instruction(addr, IROpcode.OFFSET, container, offset),
+                new Instruction(loopVar, dereferenceArrayPointer(addr))
+            ));
+        }
+        body = loopDetails.get(2).getChildren();
+        instructions.addAll(generateBlockBody(body));
+        instructions.addAll(List.of(
+            new Instruction(iterator, IROpcode.ADD, iterator, "1"),
+            new Instruction(IROpcode.JMP, start)
+        ));
+        return instructions;
+    }
+
+    private List<Instruction> generateForLoop(List<AbstractSyntaxTree> loopDetails) {
+        String start = String.format(loopStart, loopIndex);
+        String end = String.format(loopEnd, loopIndex);
+        List<Instruction> instructions = new ArrayList<>(List.of(new Instruction(IROpcode.JMP, String.format(loopStart, loopIndex))));
+        if (loopDetails.size() == 3)
+            instructions.addAll(generateForEachLoop(loopDetails, start, end));
+        else {
+            AbstractSyntaxTree condition;
+            List<AbstractSyntaxTree> body;
+            String temp = null;
+            // two types of loops: regular (4) and foreach (3)
             instructions.addAll(generate(loopDetails.get(0)));
             condition = loopDetails.get(1);
             body = loopDetails.get(3).getChildren();
@@ -512,6 +519,26 @@ public class IRGenerator {
             return false;
         AbstractSyntaxTree left = AST.getChildren().get(0);
         return left.matchesValue("++") || left.matchesValue("--");
+    }
+
+    private int getTypeSize(AbstractSyntaxTree type) {
+        if (type.matchesStaticToken(TokenType.KW_INT))
+            return intBytes;
+        else if (type.matchesStaticToken(TokenType.KW_DOUBLE))
+            return doubleBytes;
+        else if (type.matchesStaticToken(TokenType.KW_BOOL))
+            return boolBytes;
+        return pointerBytes;
+    }
+
+    private int getTypeSize(EntityType type) {
+        if (type.isType(NodeType.INT))
+            return intBytes;
+        else if (type.isType(NodeType.DOUBLE))
+            return doubleBytes;
+        else if (type.isType(NodeType.BOOLEAN))
+            return boolBytes;
+        return pointerBytes;
     }
 
     private int getSubtypeSize(EntityType type) {
