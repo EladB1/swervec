@@ -57,8 +57,16 @@ public class IRGenerator {
     // NOTE: Since syntactic and semantic analysis have passed, can assume all inputs are correct programs
     public List<FunctionBlock> generateIR(AbstractSyntaxTree AST) {
         List<Instruction> mainCall = List.of(
-            new Instruction("temp-0", IROpcode.CALL, "main"),
-            new Instruction(IROpcode.RETURN, "temp-0")
+            Instruction.builder()
+                .result("temp-0")
+                .operand1("main")
+                .operator(IROpcode.CALL)
+                .operand2("0")
+                .build(),
+            Instruction.builder()
+                .operand1("temp-0")
+                .operator(IROpcode.RETURN)
+                .build()
         );
         final FunctionBlock entryFunction = functions.get(0);
         List<AbstractSyntaxTree> children;
@@ -86,7 +94,6 @@ public class IRGenerator {
         List<AbstractSyntaxTree> params;
         for (int i = 1; i < children.size(); i++) {
             if (children.get(i).matchesLabel("FUNC-PARAMS")) {
-                System.out.println("Reading params");
                 params = children.get(i).getChildren();
                 for (AbstractSyntaxTree param : params) {
                     functionBlock.addParam(param.getChildren().get(1).getValue());
@@ -105,7 +112,12 @@ public class IRGenerator {
         }
         if (functionBlock.getName().equals("main") && !hasReturnType) {
             // add return 0 to the end of the main function body if it doesn't have return
-            functionBlock.addInstruction(new Instruction(IROpcode.RETURN, "0"));
+            functionBlock.addInstruction(
+                Instruction.builder()
+                    .operand1("0")
+                    .operator(IROpcode.RETURN)
+                    .build()
+            );
         }
         inFunction = false;
         return functionBlock;
@@ -129,11 +141,23 @@ public class IRGenerator {
     private List<Instruction> generate(AbstractSyntaxTree AST) {
         if (AST.getHeight() == 1) {
             if (AST.getName() == TokenType.STRING || AST.getName() == TokenType.NUMBER || AST.getName() == TokenType.ID)
-                return List.of(new Instruction(AST.getValue()));
+                return List.of(
+                    Instruction.builder()
+                        .operand1(AST.getValue())
+                        .build()
+                );
             if (AST.getName() == TokenType.KW_TRUE)
-                return List.of(new Instruction("true"));
+                return List.of(
+                    Instruction.builder()
+                        .operand1("true")
+                        .build()
+                );
             if (AST.getName() == TokenType.KW_FALSE)
-                return List.of(new Instruction("false"));
+                return List.of(
+                    Instruction.builder()
+                        .operand1("false")
+                        .build()
+                );
         }
         List<Instruction> instructions = new ArrayList<>();
         if (binaryOperators.containsKey(AST.getValue())) {
@@ -184,7 +208,12 @@ public class IRGenerator {
             else
                 var_name = returnStatement.get(1).getValue();
         }
-        instructions.add(new Instruction(IROpcode.RETURN, var_name));
+        instructions.add(
+            Instruction.builder()
+                .operand1(var_name)
+                .operator(IROpcode.RETURN)
+                .build()
+        );
         return instructions;
     }
 
@@ -195,16 +224,32 @@ public class IRGenerator {
         String start = String.format(loopStart, loopIndex);
         String end = String.format(loopEnd, loopIndex);
         String temp = condition.getValue();
-        instructions.add(new Instruction(IROpcode.JMP, start));
+        instructions.add(
+            Instruction.builder()
+                .operand1(start)
+                .operator(IROpcode.JMP)
+                .build()
+        );
         instructions.addAll(generate(condition));
         if (condition.getHeight() > 1) {
             temp = generateTempVar();
             instructions.get(instructions.size() - 1).setResult(temp);
         }
         instructions.get(1).setLabel(start);
-        instructions.add(new Instruction(IROpcode.JMPF, temp, end));
+        instructions.add(
+            Instruction.builder()
+                .operand1(temp)
+                .operator(IROpcode.JMPF)
+                .operand2(end)
+                .build()
+        );
         instructions.addAll(generateBlockBody(body));
-        instructions.add(new Instruction(end, IROpcode.NO_OP));
+        instructions.add(
+            Instruction.builder()
+                .label(end)
+                .operator(IROpcode.NO_OP)
+                .build()
+        );
         loopIndex++;
         return instructions;
     }
@@ -219,17 +264,49 @@ public class IRGenerator {
         String length = container + "-length";
         temp = generateTempVar();
         List<Instruction> instructions = new ArrayList<>(List.of(
-            new Instruction(IROpcode.PARAM, container),
-            new Instruction(length, IROpcode.CALL, "length", "1"),
-            new Instruction(iterator, "0"),
-            new Instruction(temp, iterator, IROpcode.LESS_THAN, length).withLabel(start),
-            new Instruction(IROpcode.JMPF, temp, end)
+            Instruction.builder()
+                .operator(IROpcode.PARAM)
+                .operand1(container)
+                .build(),
+            Instruction.builder()
+                .result(length)
+                .operand1("length")
+                .operator(IROpcode.CALL)
+                .operand2("1")
+                .build(),
+            Instruction.builder()
+                .result(iterator)
+                .operand1("0")
+                .build(),
+            Instruction.builder()
+                .result(temp)
+                .operand1(iterator)
+                .operator(IROpcode.LESS_THAN)
+                .operand2(length)
+                .label(start)
+                .build(),
+            Instruction.builder()
+                .operand1(temp)
+                .operator(IROpcode.JMPF)
+                .operand2(end)
+                .build()
         ));
         if (symbol.getType().isType(NodeType.STRING)) {
             instructions.addAll(List.of(
-                new Instruction(IROpcode.PARAM, container),
-                new Instruction(IROpcode.PARAM, iterator),
-                new Instruction(loopVar, IROpcode.CALL, "at", "2")
+                Instruction.builder()
+                    .operator(IROpcode.PARAM)
+                    .operand1(container)
+                    .build(),
+                Instruction.builder()
+                    .operator(IROpcode.PARAM)
+                    .operand1(iterator)
+                    .build(),
+                Instruction.builder()
+                    .result(loopVar)
+                    .operand1("at")
+                    .operator(IROpcode.CALL)
+                    .operand2("2")
+                    .build()
             ));
         }
         else {
@@ -240,16 +317,37 @@ public class IRGenerator {
                 getTypeSize(symbolTable.lookup(loopVar).getType());
 
             instructions.addAll(List.of(
-                new Instruction(offset, IROpcode.MULTIPLY, iterator, String.valueOf(bytes)),
-                new Instruction(addr, IROpcode.OFFSET, container, offset),
-                new Instruction(loopVar, dereferenceArrayPointer(addr))
+                Instruction.builder()
+                    .result(offset)
+                    .operand1(iterator)
+                    .operator(IROpcode.MULTIPLY)
+                    .operand2(String.valueOf(bytes))
+                    .build(),
+                Instruction.builder()
+                    .result(addr)
+                    .operand1(container)
+                    .operator(IROpcode.OFFSET)
+                    .operand2(offset)
+                    .build(),
+                Instruction.builder()
+                    .result(loopVar)
+                    .operand1(dereferenceArrayPointer(addr))
+                    .build()
             ));
         }
         body = loopDetails.get(2).getChildren();
         instructions.addAll(generateBlockBody(body));
         instructions.addAll(List.of(
-            new Instruction(iterator, IROpcode.ADD, iterator, "1"),
-            new Instruction(IROpcode.JMP, start)
+            Instruction.builder()
+                .result(iterator)
+                .operand1(iterator)
+                .operator(IROpcode.ADD)
+                .operand2("1")
+                .build(),
+            Instruction.builder()
+                .operand1(start)
+                .operator(IROpcode.JMP)
+                .build()
         ));
         return instructions;
     }
@@ -257,7 +355,12 @@ public class IRGenerator {
     private List<Instruction> generateForLoop(List<AbstractSyntaxTree> loopDetails) {
         String start = String.format(loopStart, loopIndex);
         String end = String.format(loopEnd, loopIndex);
-        List<Instruction> instructions = new ArrayList<>(List.of(new Instruction(IROpcode.JMP, String.format(loopStart, loopIndex))));
+        List<Instruction> instructions = new ArrayList<>(List.of(
+            Instruction.builder()
+                .operand1(start)
+                .operator(IROpcode.JMP)
+                .build()
+        ));
         if (loopDetails.size() == 3)
             instructions.addAll(generateForEachLoop(loopDetails, start, end));
         else {
@@ -274,12 +377,28 @@ public class IRGenerator {
                 instructions.get(instructions.size() - 1).setResult(temp);
             }
             instructions.get(1).setLabel(start);
-            instructions.add(new Instruction(temp, IROpcode.JMPF, end));
+            instructions.add(
+                Instruction.builder()
+                    .operand1(temp)
+                    .operator(IROpcode.JMPF)
+                    .operand2(end)
+                    .build()
+            );
             instructions.addAll(generateBlockBody(body));
             instructions.addAll(generate(loopDetails.get(2)));
-            instructions.add(new Instruction(IROpcode.JMP, loopStart));
+            instructions.add(
+                Instruction.builder()
+                    .operand1(loopStart)
+                    .operator(IROpcode.JMP)
+                    .build()
+            );
         }
-        instructions.add(new Instruction(end, IROpcode.NO_OP));
+        instructions.add(
+            Instruction.builder()
+                .label(end)
+                .operator(IROpcode.NO_OP)
+                .build()
+        );
         loopIndex++;
         return instructions;
     }
@@ -289,7 +408,13 @@ public class IRGenerator {
         String operand;
         // TODO: handle built-ins and overriding functions
         if (callDetails.size() == 1) {
-            return List.of(new Instruction(IROpcode.CALL, callDetails.get(0).getValue(), "0"));
+            return List.of(
+                Instruction.builder()
+                    .operand1(callDetails.get(0).getValue())
+                    .operator(IROpcode.CALL)
+                    .operand2("0")
+                    .build()
+            );
         }
         List<AbstractSyntaxTree> params = callDetails.get(1).getChildren();
         for (AbstractSyntaxTree param : params) {
@@ -299,9 +424,20 @@ public class IRGenerator {
                 instructions.addAll(generate(param));
                 instructions.get(instructions.size() - 1).setResult(operand);
             }
-            instructions.add(new Instruction(IROpcode.PARAM, operand));
+            instructions.add(
+                Instruction.builder()
+                    .operand1(operand)
+                    .operator(IROpcode.PARAM)
+                    .build()
+            );
         }
-        instructions.add(new Instruction(IROpcode.CALL, callDetails.get(0).getValue(), String.valueOf(params.size())));
+        instructions.add(
+            Instruction.builder()
+                .operand1(callDetails.get(0).getValue())
+                .operator(IROpcode.CALL)
+                .operand2(String.valueOf(params.size()))
+                .build()
+        );
         return instructions;
     }
 
@@ -320,20 +456,47 @@ public class IRGenerator {
                 if (boolExpr.getHeight() > 1) {
                     temp = generateTempVar();
                     instructions.get(instructions.size() - 1).setResult(temp);
-                    instructions.add(new Instruction(temp, IROpcode.JMPT, label));
+                    instructions.add(
+                        Instruction.builder()
+                            .operand1(temp)
+                            .operator(IROpcode.JMPT)
+                            .operand2(label)
+                            .build()
+                    );
                 }
                 else {
-                    instructions.add(new Instruction(boolExpr.getValue(), IROpcode.JMPT, label));
+                    instructions.add(
+                        Instruction.builder()
+                            .operand1(boolExpr.getValue())
+                            .operator(IROpcode.JMPT)
+                            .operand2(label)
+                            .build()
+                    );
                 }
             }
             else {
                 hasElse = true;
-                instructions.add(new Instruction(IROpcode.JMP, endLabel));
+                instructions.add(
+                    Instruction.builder()
+                        .operand1(endLabel)
+                        .operator(IROpcode.JMP)
+                        .build()
+                );
             }
             blockInstructions.add(generateBlockBody(condition.getChildren().get(1).getChildren(), generateConditionalLabel(condition)));
             if (!hasElse) {
-                instructions.add(new Instruction(IROpcode.JMP, endLabel));
-                blockInstructions.add(List.of(new Instruction(endLabel, IROpcode.NO_OP)));
+                instructions.add(
+                    Instruction.builder()
+                        .operand1(endLabel)
+                        .operator(IROpcode.JMP)
+                        .build()
+                );
+                blockInstructions.add(List.of(
+                    Instruction.builder()
+                        .label(endLabel)
+                        .operator(IROpcode.NO_OP)
+                        .build()
+                ));
             }
             for (List<Instruction> block : blockInstructions) {
                 instructions.addAll(block);
@@ -350,7 +513,12 @@ public class IRGenerator {
         switch (length) {
             case 2:
                 value = getDefaultValue(nodes.get(0));
-                instructions.add(new Instruction(nodes.get(1).getValue(), value));
+                instructions.add(
+                    Instruction.builder()
+                        .result(nodes.get(1).getValue())
+                        .operand1(value)
+                        .build()
+                );
                 break;
             case 3:
                 instructions.addAll(generate(nodes.get(length - 1)));
@@ -371,18 +539,25 @@ public class IRGenerator {
             instructions.get(instructions.size() - 1).setResult(name);
             return instructions;
         }
-        IROpcode operand;
+        IROpcode operator;
         String temp = generateTempVar();
         instructions.get(instructions.size() - 1).setResult(temp);
         if (AST.matchesValue("+="))
-            operand = IROpcode.ADD;
+            operator = IROpcode.ADD;
         else if (AST.matchesValue("-="))
-            operand = IROpcode.SUB;
+            operator = IROpcode.SUB;
         else if (AST.matchesValue("*="))
-            operand = IROpcode.MULTIPLY;
+            operator = IROpcode.MULTIPLY;
         else
-            operand = IROpcode.DIVIDE;
-        instructions.add(new Instruction(name, operand, name, temp));
+            operator = IROpcode.DIVIDE;
+        instructions.add(
+            Instruction.builder()
+                .result(name)
+                .operand1(name)
+                .operator(operator)
+                .operand2(temp)
+                .build()
+        );
 
         return instructions;
     }
@@ -436,7 +611,14 @@ public class IRGenerator {
             operand2 = generate(right).get(0).getOperand1();
         }
         IROpcode operator = operatorToIROpCode(AST);
-        instructions.add(new Instruction(result, operator, operand1, operand2));
+        instructions.add(
+            Instruction.builder()
+                .result(result)
+                .operand1(operand1)
+                .operator(operator)
+                .operand2(operand2)
+                .build()
+        );
         return instructions;
     }
 
@@ -452,16 +634,32 @@ public class IRGenerator {
             instructions.get(instructions.size() - 1).setResult(operand);
         }
         if (children.get(0).matchesValue("!"))
-            instructions.add(new Instruction(null, null, IROpcode.NOT, operand));
+            instructions.add(
+                Instruction.builder()
+                    .operand1(operand)
+                    .operator(IROpcode.NOT)
+                    .build()
+            );
         else
-            instructions.add(new Instruction(IROpcode.SUB, "0", operand));
+            instructions.add(
+                Instruction.builder()
+                    .operand1("0")
+                    .operator(IROpcode.SUB)
+                    .operand2(operand)
+                    .build()
+            );
         return instructions;
     }
 
     private Instruction generatePreIncrementOrDecrement(List<AbstractSyntaxTree> nodes) {
         IROpcode action = nodes.get(0).matchesValue("--") ? IROpcode.SUB : IROpcode.ADD;
         String value = nodes.get(1).getValue();
-        return new Instruction(value, action, value,"1");
+        return Instruction.builder()
+            .result(value)
+            .operand1(value)
+            .operator(action)
+            .operand2("1")
+            .build();
     }
 
     private List<Instruction> generatePostIncrementOrDecrement(List<AbstractSyntaxTree> nodes) {
@@ -469,8 +667,16 @@ public class IRGenerator {
         String value = nodes.get(0).getValue();
         String temp = generateTempVar();
         return List.of(
-            new Instruction(temp, value),
-            new Instruction(value, action, value,"1")
+            Instruction.builder()
+                .result(temp)
+                .operand1(value)
+                .build(),
+            Instruction.builder()
+                .result(value)
+                .operand1(value)
+                .operator(action)
+                .operand2("1")
+                .build()
         );
     }
 
@@ -499,10 +705,6 @@ public class IRGenerator {
     private String generateTempVar() {
         String tempVar = "temp-%d";
         return String.format(tempVar, tempVarIndex++);
-    }
-
-    private void incrementTempVarIndex() {
-        this.tempVarIndex++;
     }
 
     private boolean isPostOrderUnaryExpression(AbstractSyntaxTree AST) {
@@ -544,7 +746,11 @@ public class IRGenerator {
     }
 
     public Instruction allocateArray(String array, int size) {
-        return new Instruction(array, IROpcode.MALLOC, String.valueOf(size));
+        return Instruction.builder()
+            .result(array)
+            .operand1(String.valueOf(size))
+            .operator(IROpcode.MALLOC)
+            .build();
     }
 
     public List<Instruction> generateArrayDeclaration(List<AbstractSyntaxTree> declaration) {
@@ -589,13 +795,32 @@ public class IRGenerator {
         else
             temp = nodes.get(0).getValue();
         String offset = generateTempVar();
-        instructions.add(new Instruction(offset, IROpcode.MULTIPLY, temp, String.valueOf(bytes)));
+        instructions.add(
+            Instruction.builder()
+                .result(offset)
+                .operand1(temp)
+                .operator(IROpcode.MULTIPLY)
+                .operand2(String.valueOf(bytes))
+                .build()
+        );
         if (addInstructions)
             instructions.addAll(indexInstructions);
         temp = generateTempVar();
-        instructions.add(new Instruction(temp, IROpcode.OFFSET, name, offset));
+        instructions.add(
+            Instruction.builder()
+                .result(temp)
+                .operand1(name)
+                .operator(IROpcode.OFFSET)
+                .operand2(offset)
+                .build()
+        );
         value = generateTempVar();
-        instructions.add(new Instruction(value, dereferenceArrayPointer(temp)));
+        instructions.add(
+            Instruction.builder()
+                .result(value)
+                .operand1(dereferenceArrayPointer(temp))
+                .build()
+        );
         if (nodes.size() == 2)
             instructions.addAll(generateArrayIndex(value, nodes.get(1).getChildren(), type.index(1)));
         return instructions;
@@ -629,15 +854,39 @@ public class IRGenerator {
             else
                 temp = generate(element).get(0).getOperand1();
             pointer = generateTempVar();
-            instructions.add(new Instruction(pointer, IROpcode.OFFSET, name, String.valueOf(elemBytes * i)));
-            instructions.add(new Instruction(dereferenceArrayPointer(pointer), temp));
+            instructions.add(
+                Instruction.builder()
+                    .result(pointer)
+                    .operand1(name)
+                    .operator(IROpcode.OFFSET)
+                    .operand2(String.valueOf(elemBytes * i))
+                    .build()
+            );
+            instructions.add(
+                Instruction.builder()
+                    .result(dereferenceArrayPointer(pointer))
+                    .operand1(temp)
+                    .build()
+            );
         }
         if (length < size) {
             for (int i = length; i < size; i++) {
                 pointer = generateTempVar();
                 temp = getDefaultValue(type);
-                instructions.add(new Instruction(pointer, IROpcode.OFFSET, name, String.valueOf(elemBytes * i)));
-                instructions.add(new Instruction(dereferenceArrayPointer(pointer), temp));
+                instructions.add(
+                    Instruction.builder()
+                        .result(pointer)
+                        .operand1(name)
+                        .operator(IROpcode.OFFSET)
+                        .operand2(String.valueOf(elemBytes * i))
+                        .build()
+                );
+                instructions.add(
+                    Instruction.builder()
+                        .result(dereferenceArrayPointer(pointer))
+                        .operand1(temp)
+                        .build()
+                );
             }
         }
         return instructions;
