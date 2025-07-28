@@ -5,6 +5,8 @@ import java.util.List;
 import com.piedpiper.swerve.error.SyntaxError;
 import com.piedpiper.swerve.lexer.Token;
 import com.piedpiper.swerve.lexer.TokenType;
+import static com.piedpiper.swerve.Compiler.assignmentOperators;
+import static com.piedpiper.swerve.Compiler.comparisonOperators;
 
 /* NOTE: Refer to grammar.md for full formal grammar*/
 public class Parser {
@@ -14,9 +16,7 @@ public class Parser {
     private Token next; // use this to look ahead
     List<String> leftUnaryOps = List.of("-", "!", "++", "--");
     List<String> rightUnaryOps = leftUnaryOps.subList(2, 4);
-    List<String> assignmentOps = List.of("=", "+=", "-=", "*=", "/=");
-    List<String> comparisonOps = List.of("<", ">", "<=", ">=", "!=", "==");
-    List<String> addOps = List.of("+", "-", "^", "&");
+    List<String> addOps = List.of("+", "-", "^", "&", "|");
     List<String> multOps = List.of("*", "/", "%");
     
     public Parser(List<Token> tokens) {
@@ -101,7 +101,7 @@ public class Parser {
             else if (isControlFlow(current))
                 node = parseControlFlow();
             else if (isID(current)) {
-                if (isOp(next) && assignmentOps.contains(next.getValue()))
+                if (isOp(next) && assignmentOperators.contains(next.getValue()))
                     node = parseVariableAssignment();
                 else if (next.getName() == TokenType.LEFT_PAREN)
                     node = parseFunctionCall();
@@ -112,7 +112,7 @@ public class Parser {
                     int currPos = position + 2; // skip next
                     Token lookahead = tokens.get(currPos);
                     while (currPos != tokens.size() - 1 && lookahead.getLineNumber() == line) { // look for assignment operator
-                        if (assignmentOps.contains(lookahead.getValue())) {
+                        if (assignmentOperators.contains(lookahead.getValue())) {
                             node = parseVariableAssignment();
                             break;
                         }
@@ -240,10 +240,10 @@ public class Parser {
     // CMPR-EXPR ::= ARITH-EXPR ( CMPR-OP ARITH-EXPR )?
     private AbstractSyntaxTree parseComparisonExpression() {
         AbstractSyntaxTree arithExpr = parseArithmeticExpression();
-        if (atEnd() || !comparisonOps.contains(current.getValue()))
+        if (atEnd() || !comparisonOperators.contains(current.getValue()))
             return arithExpr;
 
-        if (comparisonOps.contains(current.getValue())) {
+        if (comparisonOperators.contains(current.getValue())) {
             AbstractSyntaxTree node = parseExpectedToken(current.getValue(), current);
             node.appendChildren(arithExpr, parseArithmeticExpression());
             return node;
@@ -254,21 +254,19 @@ public class Parser {
 
     // UNARY-OP ::= LEFT-UNARY-OP / ( ID / NUMBER / ARRAY-ACCESS / FUNC-CALL ) ( "++" / "--" )
     private AbstractSyntaxTree parseUnaryOp() {
-        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP", current.getLineNumber());
         if (leftUnaryOps.contains(current.getValue()))
             return parseLeftUnaryOp();
-        else {
-            if (isID(current)) {
-                if (next.getName() == TokenType.LEFT_PAREN)
-                    node.appendChildren(parseFunctionCall());
-                else if (next.getName() == TokenType.LEFT_SQB)
-                    node.appendChildren(parseArrayAccess());
-                else
-                    node.appendChildren(parseExpectedToken(TokenType.ID, current));
-            }
-            if (rightUnaryOps.contains(current.getValue()))
-                node.appendChildren(parseExpectedToken(TokenType.OP, current));
+        AbstractSyntaxTree node = new AbstractSyntaxTree("UNARY-OP", current.getLineNumber());
+        if (isID(current)) {
+            if (next.getName() == TokenType.LEFT_PAREN)
+                node.appendChildren(parseFunctionCall());
+            else if (next.getName() == TokenType.LEFT_SQB)
+                node.appendChildren(parseArrayAccess());
+            else
+                node.appendChildren(parseExpectedToken(TokenType.ID, current));
         }
+        if (rightUnaryOps.contains(current.getValue()))
+            node.appendChildren(parseExpectedToken(TokenType.OP, current));
         return node;
     }
 
@@ -635,6 +633,8 @@ public class Parser {
 
     // VAR-DECL ::= ("const")? TYPE ID ( "=" EXPR )? / ARRAY-DECL
     private AbstractSyntaxTree parseVariableDeclaration() {
+        if (current.getName() == TokenType.KW_ARR)
+            return parseArrayDeclaration(); // let array declaration do the rest
         AbstractSyntaxTree node = new AbstractSyntaxTree("VAR-DECL", current.getLineNumber());
         boolean isConst = false;
         if (current.getName() == TokenType.KW_CONST) {
@@ -647,8 +647,6 @@ public class Parser {
             else
                 node.appendChildren(parseExpectedToken(TokenType.KW_CONST, current));
         }
-        if (current.getName() == TokenType.KW_ARR)
-            return parseArrayDeclaration(); // let array declaration do the rest
         node.appendChildren(parseType());
         if (next != null && next.getValue().equals("=")) {
             node.appendChildren(parseExpectedToken(TokenType.ID, current));
@@ -671,7 +669,7 @@ public class Parser {
     private AbstractSyntaxTree parseVariableAssignment() { // reassignment of already declared variable
         AbstractSyntaxTree left = next.getName() == TokenType.LEFT_SQB ? parseArrayAccess() : parseExpectedToken(TokenType.ID, current);
 
-        if (current.getName() == TokenType.OP && assignmentOps.contains(current.getValue())) {
+        if (current.getName() == TokenType.OP && assignmentOperators.contains(current.getValue())) {
             AbstractSyntaxTree node = parseExpectedToken(current.getValue(), current);
             node.appendChildren(left, parseExpr());
             return node;

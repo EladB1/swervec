@@ -33,7 +33,7 @@ dependencies {
 
 application {
     // Define the main class for the application.
-    mainClass = 'com.piedpiper.swerve.App'
+    mainClass = 'com.piedpiper.swerve.Compiler'
 }
 
 tasks.named('test') {
@@ -69,7 +69,7 @@ check.dependsOn integration
 
 tasks.named('jar') {
     manifest {
-        attributes['Main-Class'] = 'com.piedpiper.swerve.App'
+        attributes['Main-Class'] = 'com.piedpiper.swerve.Compiler'
     }
 }
 

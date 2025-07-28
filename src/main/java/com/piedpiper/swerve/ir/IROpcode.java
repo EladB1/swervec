@@ -1,0 +1,32 @@
+package com.piedpiper.swerve.ir;
+
+public enum IROpcode {
+    JMP,
+    JMPT,
+    JMPF,
+    PARAM,
+    CALL,
+    RETURN,
+    MALLOC,
+    ADD,
+    SUB,
+    MULTIPLY,
+    DIVIDE,
+    REM,
+    POW,
+    BINARY_AND,
+    BINARY_OR,
+    NOT,
+    AND,
+    OR,
+    XOR,
+    LESS_THAN,
+    LESS_EQUAL,
+    GREATER_THAN,
+    GREATER_EQUAL,
+    EQUAL,
+    NOT_EQUAL,
+    OFFSET,
+    PHI,
+    NO_OP
+}

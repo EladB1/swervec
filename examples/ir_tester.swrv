@@ -1,0 +1,27 @@
+int a = 1 + 1;
+const double PI = 3.14;
+const int radius = 5;
+double area = radius ** 2 * PI;
+double circumference = 2 * PI * radius;
+
+fn func(int x): int {
+    int y = 1;
+    while (y < x * x) {
+        y += x;
+    }
+    return y;
+}
+
+fn test(): int {
+    return 1 + func(3);
+}
+
+fn main(): int {
+    2 * 3;
+    println("hello");
+    int y = test();
+    const Array<int> fib[10] = {1, 1, 2, 3, 5, 8};
+    println(fib[5]);
+    fib[6] = 13;
+    return 0;
+}

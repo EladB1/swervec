@@ -13,9 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
-class TestApp {
+class TestCompiler {
     private void assertError(String[] args, Class<? extends SourceCodeError> errorClass, String message, int lineNumber) {
-        Throwable error = assertThrows(errorClass, () -> App.main(args));
+        Throwable error = assertThrows(errorClass, () -> Compiler.main(args));
         assertEquals("Line " + lineNumber + "\n\t" + message, error.getMessage());
     }
     @ParameterizedTest
@@ -26,7 +26,7 @@ class TestApp {
     })
     void testValidProgram(String src) {
         String[] args = new String[]{src};
-        assertDoesNotThrow(() -> App.main(args));
+        assertDoesNotThrow(() -> Compiler.main(args));
     }
 
     @Test

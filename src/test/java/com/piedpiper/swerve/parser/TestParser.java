@@ -18,8 +18,6 @@ import com.piedpiper.swerve.lexer.StaticToken;
 import com.piedpiper.swerve.lexer.Token;
 import com.piedpiper.swerve.lexer.TokenType;
 import com.piedpiper.swerve.lexer.VariableToken;
-import com.piedpiper.swerve.parser.AbstractSyntaxTree;
-import com.piedpiper.swerve.parser.Parser;
 
 public class TestParser {
     // commonly used tokens
