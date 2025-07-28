@@ -140,17 +140,24 @@ public class SymbolTable {
 
     }
 
-    public Symbol lookup(String symbolName) {
+    public Symbol lookup(String symbolName, boolean checkScopes) {
         if (!table.containsKey(symbolName))
             return null;
         List<Symbol> matchingSymbols = table.get(symbolName);
-        if (matchingSymbols.size() == 1 && isScopeOpen(matchingSymbols.get(0).getScope()))
+        if (matchingSymbols.size() == 1) {
+            if (!checkScopes || (checkScopes && isScopeOpen(matchingSymbols.get(0).getScope())))
                 return matchingSymbols.get(0);
+
+        }
         for (int i = matchingSymbols.size() - 1; i >= 0; i--) {
-            if (isScopeOpen(matchingSymbols.get(i).getScope()))
+            if (!checkScopes || (checkScopes && isScopeOpen(matchingSymbols.get(i).getScope())))
                 return matchingSymbols.get(i); // return the first matching valid scope
         }
         return null;
+    }
+
+    public Symbol lookup(String symbolName) {
+        return lookup(symbolName, true);
     }
 
     public FunctionSymbol lookup(String name, EntityType[] types) {

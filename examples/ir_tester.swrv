@@ -20,5 +20,8 @@ fn main(): int {
     2 * 3;
     println("hello");
     int y = test();
+    const Array<int> fib[10] = {1, 1, 2, 3, 5, 8};
+    println(fib[5]);
+    fib[6] = 13;
     return 0;
 }

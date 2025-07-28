@@ -177,6 +177,8 @@ public class IRGenerator {
             instructions.addAll(generateVarAssign(AST));
         if (AST.matchesLabel("VAR-DECL"))
             instructions.addAll(generateVarDeclaration(AST.getChildren()));
+        if (AST.matchesLabel("ARRAY-DECL"))
+            instructions.addAll(generateArrayDeclaration(AST.getChildren()));
         if (AST.matchesLabel("FUNC-CALL"))
             instructions.addAll(generateFunctionCall(AST.getChildren()));
         if (AST.matchesLabel("COND"))
@@ -533,8 +535,15 @@ public class IRGenerator {
     }
 
     private List<Instruction> generateVarAssign(AbstractSyntaxTree AST) {
-        String name = AST.getChildren().get(0).getValue();
-        List<Instruction> instructions = new ArrayList<>(generate(AST.getChildren().get(1)));
+        List<Instruction> instructions = new ArrayList<>();
+        AbstractSyntaxTree idNode = AST.getChildren().get(0);
+        String name = idNode.getValue();
+        if (idNode.hasChildren() && idNode.getChildren().get(0).matchesLabel("ARRAY-INDEX")) {
+            List<Instruction> arrayIndex = generateArrayIndex(name, idNode.getChildren().get(0).getChildren());
+            name = arrayIndex.get(arrayIndex.size() - 1).getResult();
+            instructions.addAll(arrayIndex);
+        }
+        instructions.addAll(generate(AST.getChildren().get(1)));
         if (AST.matchesValue("=")) {
             instructions.get(instructions.size() - 1).setResult(name);
             return instructions;
@@ -761,7 +770,7 @@ public class IRGenerator {
         } else {
             name = declaration.get(1).getValue();
         }
-        Symbol symbol = symbolTable.lookup(name);
+        Symbol symbol = symbolTable.lookup(name, false);
         int bytes = getSubtypeSize(symbol.getType());
         instructions.add(allocateArray(name, symbol.getArraySizes().get(0) * bytes));
         if (symbol.getValueNodes() != null) {
@@ -771,7 +780,7 @@ public class IRGenerator {
     }
 
     public List<Instruction> generateArrayIndex(String name, List<AbstractSyntaxTree> nodes) {
-        Symbol symbol = symbolTable.lookup(name);
+        Symbol symbol = symbolTable.lookup(name, false);
         return generateArrayIndex(name, nodes, symbol.getType());
     }
 
@@ -786,7 +795,7 @@ public class IRGenerator {
         if (nodes.get(0).getHeight() > 1) {
             if (isPostOrderUnaryExpression(nodes.get(0)))
                 temp = indexInstructions.get(0).getResult();
-            else{
+            else {
                 temp = generateTempVar();
                 indexInstructions.get(indexInstructions.size() - 1).setResult(temp);
             }
