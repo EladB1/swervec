@@ -650,6 +650,45 @@ public class TestSemanticAnalyzer {
     }
 
     /**
+     * handleArrayDeclaration -> case 3
+     * Source code:
+     *  Array<int> a[3 + 4];
+     */
+    @Test
+    void test_handleArrayDeclarationWithNonConstantSize_mutable_missingValue() {
+        AbstractSyntaxTree source = createASTOfMainBody(new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-INDEX", List.of(
+                    new AbstractSyntaxTree(
+                        new VariableToken(TokenType.OP, "+"),
+                        new VariableToken(TokenType.NUMBER, "3"),
+                        new VariableToken(TokenType.NUMBER, "4")
+                    )
+                ))
+            ))
+        );
+        assertDoesNotThrow(() -> semanticAnalyzer.analyze(source));
+    }
+
+    /**
+     * handleArrayDeclaration -> case 3
+     * Source code:
+     *  Array<int> a["a"];
+     */
+    @Test
+    void test_handleArrayDeclaration_invalidSizeTypeShouldThrowException() {
+        AbstractSyntaxTree source = createASTOfMainBody(new AbstractSyntaxTree("ARRAY-DECL", List.of(
+                new AbstractSyntaxTree(new StaticToken(TokenType.KW_ARR), new StaticToken(TokenType.KW_INT)),
+                new AbstractSyntaxTree(new VariableToken(TokenType.ID, "a")),
+                new AbstractSyntaxTree("ARRAY-INDEX", new VariableToken(TokenType.STRING, "\"a\""))
+            ))
+        );
+        IllegalStatementError error = assertThrows(IllegalStatementError.class, () -> semanticAnalyzer.analyze(source));
+        assertEquals("Array size must be type int but was type STRING", error.getMessage());
+    }
+
+    /**
      * handleArrayDeclaration -> case 4
      * Source code:
      *  Array<int> a[3] = {};
