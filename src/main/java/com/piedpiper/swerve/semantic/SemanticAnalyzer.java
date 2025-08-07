@@ -378,7 +378,7 @@ public class SemanticAnalyzer {
         AbstractSyntaxTree current = sizeNode;
         while (current.hasChildren()) {
             if (!evaluateType(sizeNode.getChildren().get(0)).isType(NodeType.INT))
-                throw new IllegalStatementError("Array index must be type integer but was type " + evaluateType(sizeNode), current.getLineNumber());
+                throw new IllegalStatementError("Array size must be type int but was type " + evaluateType(sizeNode.getChildren().get(0)), current.getLineNumber());
             sizes.add(current.getChildren().get(0));
             if (current.getChildren().size() == 2) // first node will be index value, second will be an ARRAY-INDEX node with children
                 current = current.getChildren().get(1);
