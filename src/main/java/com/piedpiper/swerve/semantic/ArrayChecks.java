@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.piedpiper.swerve.error.ArrayBoundsError;
+import com.piedpiper.swerve.lexer.TokenType;
+import com.piedpiper.swerve.lexer.VariableToken;
 import com.piedpiper.swerve.parser.AbstractSyntaxTree;
 
 public class ArrayChecks {
@@ -12,7 +13,7 @@ public class ArrayChecks {
         return arrayNode.getLabel().equals("ARRAY-LIT");
     }
 
-    public static int getMaxDepth(AbstractSyntaxTree arrayNode) {
+    private static int getMaxDepth(AbstractSyntaxTree arrayNode) {
         return getMaxDepth(arrayNode, 1);
     }
 
@@ -26,7 +27,7 @@ public class ArrayChecks {
         return max_depth;
     }
 
-    public static List<List<Integer>> getAllArraySizes(AbstractSyntaxTree arrayNode) {
+    private static List<List<Integer>> getAllArraySizes(AbstractSyntaxTree arrayNode) {
         return getAllArraySizes(arrayNode, new ArrayList<>(), 0);
     }
 
@@ -59,7 +60,7 @@ public class ArrayChecks {
      * @param array
      * @return list of array sizes
      */
-    public static List<Integer> estimateArraySizes(AbstractSyntaxTree array) {
+    private static List<Integer> getAllMaxDepths(AbstractSyntaxTree array) {
         List<List<Integer>> arraySizes = getAllArraySizes(array);
         if (arraySizes.size() == 1)
             return arraySizes.get(0);
@@ -70,13 +71,12 @@ public class ArrayChecks {
         return maxes;
     }
 
-    public static void checkArraySizeMatchesExpectation(AbstractSyntaxTree array, List<Integer> expectedSizes) {
-        List<Integer> actualSizes = estimateArraySizes(array);
-        if (actualSizes.size() > expectedSizes.size()) // less than or equal to is valid
-            throw new ArrayBoundsError("Array value does not match declaration type");
-        for (int i = 0; i < actualSizes.size(); i++) {
-            if (actualSizes.get(i) > expectedSizes.get(i))
-                throw new ArrayBoundsError("Array value size exceeds declared size");
+    public static List<AbstractSyntaxTree> estimateArraySizes(AbstractSyntaxTree array) {
+        List<AbstractSyntaxTree> sizes = new ArrayList<>();
+        List<Integer> depths = getAllMaxDepths(array);
+        for (Integer depth : depths) {
+            sizes.add(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, String.valueOf(depth))));
         }
+        return sizes;
     }
 }

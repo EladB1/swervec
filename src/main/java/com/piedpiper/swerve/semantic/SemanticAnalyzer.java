@@ -11,6 +11,7 @@ import com.piedpiper.swerve.error.ReferenceError;
 import com.piedpiper.swerve.error.TypeError;
 import com.piedpiper.swerve.error.UnreachableCodeError;
 import com.piedpiper.swerve.lexer.TokenType;
+import com.piedpiper.swerve.lexer.VariableToken;
 import com.piedpiper.swerve.parser.AbstractSyntaxTree;
 import com.piedpiper.swerve.symboltable.FunctionSymbol;
 import com.piedpiper.swerve.symboltable.PrototypeSymbol;
@@ -138,7 +139,7 @@ public class SemanticAnalyzer {
         if (declaredType.containsSubType(NodeType.GENERIC) && !(inPrototype || translatingPrototype))
             throw new IllegalStatementError("Cannot declare generic array outside of function definition", node.getLineNumber());
         String name = details.get(offset + 1).getValue();
-        List<Integer> sizes = List.of(0);
+        List<AbstractSyntaxTree> sizes = List.of(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0")));
         switch(details.size()) {
             case 2: // Invalid: Array<type> name;
                 throw new IllegalStatementError("Non-constant array '" + name + "' missing size", node.getLineNumber());
@@ -372,13 +373,13 @@ public class SemanticAnalyzer {
         resetState();
     }
 
-    private List<Integer> handleArraySizes(AbstractSyntaxTree sizeNode) {
-        List<Integer> sizes = new ArrayList<>();
+    private List<AbstractSyntaxTree> handleArraySizes(AbstractSyntaxTree sizeNode) {
+        List<AbstractSyntaxTree> sizes = new ArrayList<>();
         AbstractSyntaxTree current = sizeNode;
         while (current.hasChildren()) {
-            if (!current.getChildren().get(0).isIntegerLiteral() || current.matchesValue("0"))
-                throw new IllegalStatementError("Array index must be a non-zero integer literal", current.getLineNumber());
-            sizes.add(Integer.valueOf(current.getChildren().get(0).getValue()));
+            if (!evaluateType(sizeNode.getChildren().get(0)).isType(NodeType.INT))
+                throw new IllegalStatementError("Array index must be type integer but was type " + evaluateType(sizeNode), current.getLineNumber());
+            sizes.add(current.getChildren().get(0));
             if (current.getChildren().size() == 2) // first node will be index value, second will be an ARRAY-INDEX node with children
                 current = current.getChildren().get(1);
             else
