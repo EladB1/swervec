@@ -1,5 +1,6 @@
 package com.piedpiper.swerve.symboltable;
 
+import com.piedpiper.swerve.lexer.VariableToken;
 import lombok.Data;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ public class Symbol {
     @NonNull
     private Integer scope;
     private boolean isConstant = false;
-    private List<Integer> arraySizes = List.of(0);
+    private List<AbstractSyntaxTree> arraySizes = List.of(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "0")));
     private AbstractSyntaxTree valueNodes = null;
 
     // use this to add builtin variables
@@ -42,7 +43,7 @@ public class Symbol {
     }
 
     // Array declaration?
-    public Symbol(AbstractSyntaxTree arrayDeclaration, List<Integer> arraySizes, @NonNull EntityType type, Integer valueIndex, @NonNull Integer scope) {
+    public Symbol(AbstractSyntaxTree arrayDeclaration, List<AbstractSyntaxTree> arraySizes, @NonNull EntityType type, Integer valueIndex, @NonNull Integer scope) {
         this.scope = scope;
         this.arraySizes = arraySizes;
         this.type = type;
