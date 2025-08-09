@@ -6,6 +6,7 @@ import com.piedpiper.swerve.semantic.EntityType;
 import com.piedpiper.swerve.semantic.NodeType;
 import com.piedpiper.swerve.symboltable.Symbol;
 import com.piedpiper.swerve.symboltable.SymbolTable;
+import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ public class IRGenerator {
     private int ifIndex = 0;
     private int elseIfIndex = 0;
     private int loopIndex = 0;
+    private int arrayFillIndex = 0;
     private final String elseLabel = ".else-start-%d";
     private final String loopStart = ".loop-start-%d";
     private final String loopEnd = ".loop-end-%d";
@@ -205,7 +207,7 @@ public class IRGenerator {
                 var_name = generateTempVar();
                 
                 instructions.addAll(generate(returnStatement.get(1)));
-                instructions.get(instructions.size() - 1).setResult(var_name);
+                getLastInstruction(instructions).setResult(var_name);
             }
             else
                 var_name = returnStatement.get(1).getValue();
@@ -235,7 +237,7 @@ public class IRGenerator {
         instructions.addAll(generate(condition));
         if (condition.getHeight() > 1) {
             temp = generateTempVar();
-            instructions.get(instructions.size() - 1).setResult(temp);
+            getLastInstruction(instructions).setResult(temp);
         }
         instructions.get(1).setLabel(start);
         instructions.add(
@@ -376,7 +378,7 @@ public class IRGenerator {
             instructions.addAll(generate(condition));
             if (condition.getHeight() > 1) {
                 temp = generateTempVar();
-                instructions.get(instructions.size() - 1).setResult(temp);
+                getLastInstruction(instructions).setResult(temp);
             }
             instructions.get(1).setLabel(start);
             instructions.add(
@@ -424,7 +426,7 @@ public class IRGenerator {
             if (param.getHeight() > 1) {
                 operand = generateTempVar();
                 instructions.addAll(generate(param));
-                instructions.get(instructions.size() - 1).setResult(operand);
+                getLastInstruction(instructions).setResult(operand);
             }
             instructions.add(
                 Instruction.builder()
@@ -457,7 +459,7 @@ public class IRGenerator {
                 instructions.addAll(generate(boolExpr));
                 if (boolExpr.getHeight() > 1) {
                     temp = generateTempVar();
-                    instructions.get(instructions.size() - 1).setResult(temp);
+                    getLastInstruction(instructions).setResult(temp);
                     instructions.add(
                         Instruction.builder()
                             .operand1(temp)
@@ -524,11 +526,11 @@ public class IRGenerator {
                 break;
             case 3:
                 instructions.addAll(generate(nodes.get(length - 1)));
-                instructions.get(instructions.size() - 1).setResult(nodes.get(1).getValue());
+                getLastInstruction(instructions).setResult(nodes.get(1).getValue());
                 break;
             case 4:
                 instructions.addAll(generate(nodes.get(length - 1)));
-                instructions.get(instructions.size() - 1).setResult(nodes.get(2).getValue());
+                getLastInstruction(instructions).setResult(nodes.get(2).getValue());
                 break;
         }
         return instructions;
@@ -545,12 +547,12 @@ public class IRGenerator {
         }
         instructions.addAll(generate(AST.getChildren().get(1)));
         if (AST.matchesValue("=")) {
-            instructions.get(instructions.size() - 1).setResult(name);
+            getLastInstruction(instructions).setResult(name);
             return instructions;
         }
         IROpcode operator;
         String temp = generateTempVar();
-        instructions.get(instructions.size() - 1).setResult(temp);
+        getLastInstruction(instructions).setResult(temp);
         if (AST.matchesValue("+="))
             operator = IROpcode.ADD;
         else if (AST.matchesValue("-="))
@@ -640,7 +642,7 @@ public class IRGenerator {
         if (useTempVar) {
             instructions.addAll(generate(right));
             operand = generateTempVar();
-            instructions.get(instructions.size() - 1).setResult(operand);
+            getLastInstruction(instructions).setResult(operand);
         }
         if (children.get(0).matchesValue("!"))
             instructions.add(
@@ -754,16 +756,15 @@ public class IRGenerator {
         return pointerBytes;
     }
 
-    public Instruction allocateArray(String array, int size) {
+    public Instruction allocateArray(String array, String size) {
         return Instruction.builder()
             .result(array)
-            .operand1(String.valueOf(size))
+            .operand1(size)
             .operator(IROpcode.MALLOC)
             .build();
     }
 
     public List<Instruction> generateArrayDeclaration(List<AbstractSyntaxTree> declaration) {
-        List<Instruction> instructions = new ArrayList<>();
         String name;
         if (declaration.get(0).matchesStaticToken(TokenType.KW_CONST)) {
             name = declaration.get(2).getValue();
@@ -772,9 +773,42 @@ public class IRGenerator {
         }
         Symbol symbol = symbolTable.lookup(name, false);
         int bytes = getSubtypeSize(symbol.getType());
-        instructions.add(allocateArray(name, symbol.getArraySizes().get(0) * bytes));
+        List<Instruction> instructions = new ArrayList<>(generateArraySizing(symbol, String.valueOf(bytes)));
+        String capacity = getLastInstruction(instructions).getOperand1();
+        String size = getLastInstruction(instructions).getResult();
+        instructions.add(allocateArray(name, size));
         if (symbol.getValueNodes() != null) {
-            instructions.addAll(generateArrayLiteral(name, symbol.getArraySizes().get(0), symbol.getType(), symbol.getValueNodes()));
+            instructions.addAll(generateArrayLiteral(name, capacity, symbol.getType(), symbol.getValueNodes()));
+        }
+        return instructions;
+    }
+
+    public List<Instruction> generateArraySizing(Symbol symbol, String bytes) {
+        // TODO: handle multidimensional arrays
+        List<Instruction> instructions = new ArrayList<>();
+        List<AbstractSyntaxTree> arraySizes = symbol.getArraySizes();
+        if (arraySizes.size() == 1) {
+            instructions.addAll(generate(arraySizes.get(0)));
+            if (instructions.size() == 1 && instructions.get(0).getResult() == null) {
+                instructions = new ArrayList<>(List.of(
+                    Instruction.builder()
+                        .result(generateTempVar())
+                        .operand1(instructions.get(0).getOperand1())
+                        .operator(IROpcode.MULTIPLY)
+                        .operand2(bytes)
+                        .build()
+                ));
+            }
+            else {
+                instructions.add(
+                    Instruction.builder()
+                        .result(generateTempVar())
+                        .operand1(getLastInstruction(instructions).getResult())
+                        .operator(IROpcode.MULTIPLY)
+                        .operand2(bytes)
+                        .build()
+                );
+            }
         }
         return instructions;
     }
@@ -797,7 +831,7 @@ public class IRGenerator {
                 temp = indexInstructions.get(0).getResult();
             else {
                 temp = generateTempVar();
-                indexInstructions.get(indexInstructions.size() - 1).setResult(temp);
+                getLastInstruction(indexInstructions).setResult(temp);
             }
             addInstructions = true;
         }
@@ -835,7 +869,7 @@ public class IRGenerator {
         return instructions;
     }
 
-    public List<Instruction> generateArrayLiteral(String name, int size, EntityType type, AbstractSyntaxTree literal) {
+    public List<Instruction> generateArrayLiteral(String name, String size, EntityType type, AbstractSyntaxTree literal) {
         List<Instruction> instructions = new ArrayList<>();
         // ignore nested arrays for now
         int elemBytes = getSubtypeSize(type);
@@ -878,26 +912,65 @@ public class IRGenerator {
                     .build()
             );
         }
-        if (length < size) {
-            for (int i = length; i < size; i++) {
-                pointer = generateTempVar();
-                temp = getDefaultValue(type);
-                instructions.add(
-                    Instruction.builder()
-                        .result(pointer)
-                        .operand1(name)
-                        .operator(IROpcode.OFFSET)
-                        .operand2(String.valueOf(elemBytes * i))
-                        .build()
-                );
-                instructions.add(
-                    Instruction.builder()
-                        .result(dereferenceArrayPointer(pointer))
-                        .operand1(temp)
-                        .build()
-                );
-            }
-        }
+        // add instructions to fill out rest of array with default values
+        String loopVar = generateTempVar();
+        String condition = generateTempVar();
+        String arrayOffset = generateTempVar();
+        temp = generateTempVar();
+
+        String start = String.format(".fill-array-start-%d", arrayFillIndex);
+        String end = String.format(".fill-array-end-%d", arrayFillIndex++);
+
+        Instruction startLoop = Instruction.builder()
+            .operand1(start)
+            .operator(IROpcode.JMP)
+            .build();
+        instructions.addAll(List.of(
+            Instruction.builder()
+                .result(loopVar)
+                .operand1(String.valueOf(length))
+                .build(),
+            startLoop,
+            Instruction.builder()
+                .label(start)
+                .result(condition)
+                .operand1(loopVar)
+                .operator(IROpcode.LESS_THAN)
+                .operand2(size)
+                .build(),
+            Instruction.builder()
+                .operand1(condition)
+                .operator(IROpcode.JMPF)
+                .operand2(end)
+                .build(),
+            Instruction.builder()
+                .result(temp)
+                .operator(IROpcode.MULTIPLY)
+                .operand2(String.valueOf(elemBytes))
+                .build(),
+            Instruction.builder()
+                .result(arrayOffset)
+                .operand1(name)
+                .operator(IROpcode.OFFSET)
+                .operand2(temp)
+                .build(),
+            Instruction.builder()
+                .result(dereferenceArrayPointer(arrayOffset))
+                .operand1(getDefaultValue(type))
+                .build(),
+            Instruction.builder()
+                .result(loopVar)
+                .operand1(loopVar)
+                .operator(IROpcode.ADD)
+                .operand2("1")
+                .build(),
+            startLoop,
+            Instruction.builder()
+                .label(end)
+                .operator(IROpcode.NO_OP)
+                .build()
+        ));
+
         return instructions;
     }
 
@@ -924,5 +997,13 @@ public class IRGenerator {
         else if (subType.isType(NodeType.STRING))
             return "\"\"";
         return "null"; // TODO: handle nested array
+    }
+
+    private Instruction getFirstInstruction(List<Instruction> instructions) {
+        return instructions.get(0);
+    }
+
+    private Instruction getLastInstruction(List<Instruction> instructions) {
+        return instructions.get(instructions.size() - 1);
     }
 }

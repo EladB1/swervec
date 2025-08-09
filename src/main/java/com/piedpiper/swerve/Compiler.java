@@ -45,7 +45,9 @@ public class Compiler {
                     sa.analyze(ast);
                     IRGenerator irGenerator = new IRGenerator(symbolTable);
                     List<FunctionBlock> IR = irGenerator.generateIR(ast);
-                    System.out.println(IR);
+                    for (FunctionBlock block : IR) {
+                        System.out.println(block);
+                    }
             }
             else {
                 throw new FileNotFoundException("Could not find file '" + filePath + "'");
