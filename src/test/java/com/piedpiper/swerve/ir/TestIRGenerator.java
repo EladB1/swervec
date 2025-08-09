@@ -579,9 +579,9 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3")),
             literal
         ));
-        table.insert(new Symbol(declaration, List.of(3), new EntityType(NodeType.ARRAY, NodeType.BOOLEAN), 4, 1));
+        table.insert(new Symbol(declaration, List.of(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3"))), new EntityType(NodeType.ARRAY, NodeType.BOOLEAN), 4, 1));
         List<Instruction> IR = subject.generateArrayDeclaration(declaration.getChildren());
-        assertEquals(7, IR.size());
+        assertEquals(5, IR.size());
         assertEquals(List.of(
             Instruction.builder()
                 .result("arr")
@@ -607,16 +607,6 @@ public class TestIRGenerator {
             Instruction.builder()
                 .result("*temp-2")
                 .operand1("false")
-                .build(),
-            Instruction.builder()
-                .result("temp-3")
-                .operand1("arr")
-                .operator(IROpcode.OFFSET)
-                .operand2("2")
-                .build(),
-            Instruction.builder()
-                .result("*temp-3")
-                .operand1("false")
                 .build()
         ), IR);
 
@@ -641,7 +631,7 @@ public class TestIRGenerator {
             new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "3")),
             literal
         ));
-        table.insert(new Symbol(declaration, List.of(4), new EntityType(NodeType.ARRAY, NodeType.INT), 3, 1));
+        table.insert(new Symbol(declaration, List.of(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "4"))), new EntityType(NodeType.ARRAY, NodeType.INT), 3, 1));
         Symbol constants = new Symbol(
             "constants",
             new EntityType(NodeType.ARRAY, NodeType.INT),
@@ -649,14 +639,14 @@ public class TestIRGenerator {
             new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "5")),
             1
         );
-        constants.setArraySizes(List.of(4));
+        constants.setArraySizes(List.of(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "4"))));
         table.insert(constants);
         List<Instruction> IR = subject.generateArrayDeclaration(declaration.getChildren());
-        assertEquals(13, IR.size());
+        assertEquals(10, IR.size());
         assertEquals(List.of(
             Instruction.builder()
                 .result("arr")
-                .operand1("16")
+                .operand1("4")
                 .operator(IROpcode.MALLOC)
                 .build(),
             Instruction.builder()
@@ -679,7 +669,7 @@ public class TestIRGenerator {
                 .result("temp-3")
                 .operand1("arr")
                 .operator(IROpcode.OFFSET)
-                .operand2("4")
+                .operand2("1")
                 .build(),
             Instruction.builder()
                 .result("*temp-3")
@@ -687,39 +677,23 @@ public class TestIRGenerator {
                 .build(),
             Instruction.builder()
                 .result("temp-4")
-                .operand1("0")
-                .operator(IROpcode.MULTIPLY)
-                .operand2("4")
+                .operand1("constants")
+                .operator(IROpcode.OFFSET)
+                .operand2("0")
                 .build(),
             Instruction.builder()
                 .result("temp-5")
-                .operand1("constants")
-                .operator(IROpcode.OFFSET)
-                .operand2("temp-4")
+                .operand1("*0")
                 .build(),
             Instruction.builder()
                 .result("temp-6")
-                .operand1("*temp-5")
-                .build(),
-            Instruction.builder()
-                .result("temp-7")
                 .operand1("arr")
                 .operator(IROpcode.OFFSET)
-                .operand2("8")
+                .operand2("2")
                 .build(),
             Instruction.builder()
-                .result("*temp-7")
-                .operand1("temp-6")
-                .build(),
-            Instruction.builder()
-                .result("temp-8")
-                .operand1("arr")
-                .operator(IROpcode.OFFSET)
-                .operand2("12")
-                .build(),
-            Instruction.builder()
-                .result("*temp-8")
-                .operand1("0")
+                .result("*temp-6")
+                .operand1("temp-5")
                 .build()
         ), IR);
     }
@@ -736,28 +710,22 @@ public class TestIRGenerator {
             new AbstractSyntaxTree("ARRAY-LIT", new VariableToken(TokenType.NUMBER, "5")),
             1
         );
-        constants.setArraySizes(List.of(4));
+        constants.setArraySizes(List.of(new AbstractSyntaxTree(new VariableToken(TokenType.NUMBER, "4"))));
         table.insert(constants);
 
         List<Instruction> IR = subject.generateArrayIndex(index.getValue(), index.getChildren().get(0).getChildren());
-        assertEquals(3, IR.size());
+        assertEquals(2, IR.size());
 
         assertEquals(List.of(
             Instruction.builder()
                 .result("temp-1")
-                .operand1("0")
-                .operator(IROpcode.MULTIPLY)
-                .operand2("4")
+                .operand1("constants")
+                .operator(IROpcode.OFFSET)
+                .operand2("0")
                 .build(),
             Instruction.builder()
                 .result("temp-2")
-                .operand1("constants")
-                .operator(IROpcode.OFFSET)
-                .operand2("temp-1")
-                .build(),
-            Instruction.builder()
-                .result("temp-3")
-                .operand1("*temp-2")
+                .operand1("*0")
                 .build()
         ), IR);
     }
@@ -787,60 +755,43 @@ public class TestIRGenerator {
             )),
             1
         );
-        constants.setArraySizes(List.of(4, 4, 4));
+        VariableToken size = new VariableToken(TokenType.NUMBER, "4");
+        constants.setArraySizes(List.of(new AbstractSyntaxTree(size), new AbstractSyntaxTree(size), new AbstractSyntaxTree(size)));
         table.insert(constants);
 
         List<Instruction> IR = subject.generateArrayIndex(index.getValue(), index.getChildren().get(0).getChildren());
-        assertEquals(9, IR.size());
+        assertEquals(6, IR.size());
 
         assertEquals(List.of(
             Instruction.builder()
                 .result("temp-1")
-                .operand1("0")
-                .operator(IROpcode.MULTIPLY)
-                .operand2("8")
+                .operand1("arr")
+                .operator(IROpcode.OFFSET)
+                .operand2("0")
                 .build(),
             Instruction.builder()
                 .result("temp-2")
-                .operand1("arr")
-                .operator(IROpcode.OFFSET)
-                .operand2("temp-1")
+                .operand1("*0")
                 .build(),
             Instruction.builder()
                 .result("temp-3")
-                .operand1("*temp-2")
+                .operand1("temp-2")
+                .operator(IROpcode.OFFSET)
+                .operand2("1")
                 .build(),
             Instruction.builder()
                 .result("temp-4")
-                .operand1("1")
-                .operator(IROpcode.MULTIPLY)
-                .operand2("8")
+                .operand1("*1")
                 .build(),
             Instruction.builder()
                 .result("temp-5")
-                .operand1("temp-3")
+                .operand1("temp-4")
                 .operator(IROpcode.OFFSET)
-                .operand2("temp-4")
+                .operand2("i")
                 .build(),
             Instruction.builder()
                 .result("temp-6")
-                .operand1("*temp-5")
-                .build(),
-            Instruction.builder()
-                .result("temp-7")
-                .operand1("i")
-                .operator(IROpcode.MULTIPLY)
-                .operand2("4")
-                .build(),
-            Instruction.builder()
-                .result("temp-8")
-                .operand1("temp-6")
-                .operator(IROpcode.OFFSET)
-                .operand2("temp-7")
-                .build(),
-            Instruction.builder()
-                .result("temp-9")
-                .operand1("*temp-8")
+                .operand1("*i")
                 .build()
         ), IR);
     }

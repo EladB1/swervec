@@ -758,6 +758,7 @@ public class IRGenerator {
         return generateArrayIndex(name, nodes, symbol.getType());
     }
 
+    // TODO: Fix/Investigate this
     public List<Instruction> generateArrayIndex(String name, List<AbstractSyntaxTree> nodes, EntityType type) {
         List<Instruction> instructions = new ArrayList<>();
         List<Instruction> indexInstructions;
