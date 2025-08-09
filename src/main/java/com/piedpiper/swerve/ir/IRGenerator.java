@@ -6,7 +6,6 @@ import com.piedpiper.swerve.semantic.EntityType;
 import com.piedpiper.swerve.semantic.NodeType;
 import com.piedpiper.swerve.symboltable.Symbol;
 import com.piedpiper.swerve.symboltable.SymbolTable;
-import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,10 +45,6 @@ public class IRGenerator {
     private final String elseLabel = ".else-start-%d";
     private final String loopStart = ".loop-start-%d";
     private final String loopEnd = ".loop-end-%d";
-    private final int intBytes = 4;
-    private final int boolBytes = 1;
-    private final int doubleBytes = 8;
-    private final int pointerBytes = 8; // use for Strings and sub-arrays
 
     public IRGenerator(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;
@@ -314,24 +309,14 @@ public class IRGenerator {
             ));
         }
         else {
-            String offset = generateTempVar();
             String addr = generateTempVar();
-            int bytes = loopDetails.get(0).matchesLabel("VAR-DECL") ?
-                getTypeSize(loopDetails.get(0).getChildren().get(0)) :
-                getTypeSize(symbolTable.lookup(loopVar).getType());
 
             instructions.addAll(List.of(
-                Instruction.builder()
-                    .result(offset)
-                    .operand1(iterator)
-                    .operator(IROpcode.MULTIPLY)
-                    .operand2(String.valueOf(bytes))
-                    .build(),
                 Instruction.builder()
                     .result(addr)
                     .operand1(container)
                     .operator(IROpcode.OFFSET)
-                    .operand2(offset)
+                    .operand2(iterator)
                     .build(),
                 Instruction.builder()
                     .result(loopVar)
@@ -725,45 +710,6 @@ public class IRGenerator {
         return left.matchesValue("++") || left.matchesValue("--");
     }
 
-    private int getTypeSize(AbstractSyntaxTree type) {
-        if (type.matchesStaticToken(TokenType.KW_INT))
-            return intBytes;
-        else if (type.matchesStaticToken(TokenType.KW_DOUBLE))
-            return doubleBytes;
-        else if (type.matchesStaticToken(TokenType.KW_BOOL))
-            return boolBytes;
-        return pointerBytes;
-    }
-
-    private int getTypeSize(EntityType type) {
-        if (type.isType(NodeType.INT))
-            return intBytes;
-        else if (type.isType(NodeType.DOUBLE))
-            return doubleBytes;
-        else if (type.isType(NodeType.BOOLEAN))
-            return boolBytes;
-        return pointerBytes;
-    }
-
-    private int getSubtypeSize(EntityType type) {
-        EntityType subType = type.index(1);
-        if (subType.isType(NodeType.INT))
-            return intBytes;
-        else if (subType.isType(NodeType.DOUBLE))
-            return doubleBytes;
-        else if (subType.isType(NodeType.BOOLEAN))
-            return boolBytes;
-        return pointerBytes;
-    }
-
-    public Instruction allocateArray(String array, String size) {
-        return Instruction.builder()
-            .result(array)
-            .operand1(size)
-            .operator(IROpcode.MALLOC)
-            .build();
-    }
-
     public List<Instruction> generateArrayDeclaration(List<AbstractSyntaxTree> declaration) {
         String name;
         if (declaration.get(0).matchesStaticToken(TokenType.KW_CONST)) {
@@ -772,44 +718,38 @@ public class IRGenerator {
             name = declaration.get(1).getValue();
         }
         Symbol symbol = symbolTable.lookup(name, false);
-        int bytes = getSubtypeSize(symbol.getType());
-        List<Instruction> instructions = new ArrayList<>(generateArraySizing(symbol, String.valueOf(bytes)));
+        List<Instruction> instructions = new ArrayList<>(generateArrayAllocation(symbol));
         String capacity = getLastInstruction(instructions).getOperand1();
-        String size = getLastInstruction(instructions).getResult();
-        instructions.add(allocateArray(name, size));
         if (symbol.getValueNodes() != null) {
             instructions.addAll(generateArrayLiteral(name, capacity, symbol.getType(), symbol.getValueNodes()));
         }
         return instructions;
     }
 
-    public List<Instruction> generateArraySizing(Symbol symbol, String bytes) {
+    public List<Instruction> generateArrayAllocation(Symbol symbol) {
         // TODO: handle multidimensional arrays
         List<Instruction> instructions = new ArrayList<>();
+        String name = symbol.getName();
         List<AbstractSyntaxTree> arraySizes = symbol.getArraySizes();
-        if (arraySizes.size() == 1) {
-            instructions.addAll(generate(arraySizes.get(0)));
-            if (instructions.size() == 1 && instructions.get(0).getResult() == null) {
-                instructions = new ArrayList<>(List.of(
-                    Instruction.builder()
-                        .result(generateTempVar())
-                        .operand1(instructions.get(0).getOperand1())
-                        .operator(IROpcode.MULTIPLY)
-                        .operand2(bytes)
-                        .build()
-                ));
+        String size = "1";
+        for (AbstractSyntaxTree arraySize : arraySizes) {
+            if (arraySize.getHeight() == 1) {
+                size = arraySize.getValue();
             }
             else {
-                instructions.add(
-                    Instruction.builder()
-                        .result(generateTempVar())
-                        .operand1(getLastInstruction(instructions).getResult())
-                        .operator(IROpcode.MULTIPLY)
-                        .operand2(bytes)
-                        .build()
-                );
+                instructions.addAll(generate(arraySize));
+                if (getLastInstruction(instructions).getResult() == null) {
+                    size = generateTempVar();
+                    getLastInstruction(instructions).setResult(size);
+                }
             }
         }
+        instructions.add(Instruction.builder()
+            .result(name)
+            .operand1(size)
+            .operator(IROpcode.MALLOC)
+            .build()
+        );
         return instructions;
     }
 
@@ -822,7 +762,6 @@ public class IRGenerator {
         List<Instruction> instructions = new ArrayList<>();
         List<Instruction> indexInstructions;
         String temp, value;
-        int bytes = getSubtypeSize(type);
         // name = array nodes = (0, ARRAY-INDEX->(i, ARRAY-INDEX->(j))
         boolean addInstructions = false;
         indexInstructions = generate(nodes.get(0));
@@ -837,24 +776,15 @@ public class IRGenerator {
         }
         else
             temp = nodes.get(0).getValue();
+        if (addInstructions)
+            instructions.addAll(indexInstructions);
         String offset = generateTempVar();
         instructions.add(
             Instruction.builder()
                 .result(offset)
-                .operand1(temp)
-                .operator(IROpcode.MULTIPLY)
-                .operand2(String.valueOf(bytes))
-                .build()
-        );
-        if (addInstructions)
-            instructions.addAll(indexInstructions);
-        temp = generateTempVar();
-        instructions.add(
-            Instruction.builder()
-                .result(temp)
                 .operand1(name)
                 .operator(IROpcode.OFFSET)
-                .operand2(offset)
+                .operand2(temp)
                 .build()
         );
         value = generateTempVar();
@@ -872,7 +802,6 @@ public class IRGenerator {
     public List<Instruction> generateArrayLiteral(String name, String size, EntityType type, AbstractSyntaxTree literal) {
         List<Instruction> instructions = new ArrayList<>();
         // ignore nested arrays for now
-        int elemBytes = getSubtypeSize(type);
         String pointer, temp;
         List<Instruction> elemInstructions;
         AbstractSyntaxTree element;
@@ -902,7 +831,7 @@ public class IRGenerator {
                     .result(pointer)
                     .operand1(name)
                     .operator(IROpcode.OFFSET)
-                    .operand2(String.valueOf(elemBytes * i))
+                    .operand2(String.valueOf(i))
                     .build()
             );
             instructions.add(
@@ -912,11 +841,23 @@ public class IRGenerator {
                     .build()
             );
         }
-        // add instructions to fill out rest of array with default values
+        // NOTE: Can fill unused array capacity with default values but may prefer to do that at runtime rather than in IR
+        //instructions.addAll(fillArrayWithDefaultValues(name, size, type, String.valueOf(length)));
+        return instructions;
+    }
+
+    /**
+     * Generate instructions for automatically filling unused array elements with default values
+     * @param name Name of the variable
+     * @param size Capacity of the array
+     * @param type Array subtype
+     * @param startIndex Where is the first unused element
+     * @return List<Instruction>
+     */
+    private List<Instruction> fillArrayWithDefaultValues(String name, String size, EntityType type, String startIndex) {
         String loopVar = generateTempVar();
         String condition = generateTempVar();
         String arrayOffset = generateTempVar();
-        temp = generateTempVar();
 
         String start = String.format(".fill-array-start-%d", arrayFillIndex);
         String end = String.format(".fill-array-end-%d", arrayFillIndex++);
@@ -925,10 +866,11 @@ public class IRGenerator {
             .operand1(start)
             .operator(IROpcode.JMP)
             .build();
-        instructions.addAll(List.of(
+
+        return new ArrayList<>(List.of(
             Instruction.builder()
                 .result(loopVar)
-                .operand1(String.valueOf(length))
+                .operand1(startIndex)
                 .build(),
             startLoop,
             Instruction.builder()
@@ -944,15 +886,10 @@ public class IRGenerator {
                 .operand2(end)
                 .build(),
             Instruction.builder()
-                .result(temp)
-                .operator(IROpcode.MULTIPLY)
-                .operand2(String.valueOf(elemBytes))
-                .build(),
-            Instruction.builder()
                 .result(arrayOffset)
                 .operand1(name)
                 .operator(IROpcode.OFFSET)
-                .operand2(temp)
+                .operand2(loopVar)
                 .build(),
             Instruction.builder()
                 .result(dereferenceArrayPointer(arrayOffset))
@@ -970,8 +907,6 @@ public class IRGenerator {
                 .operator(IROpcode.NO_OP)
                 .build()
         ));
-
-        return instructions;
     }
 
     private String dereferenceArrayPointer(String arrayPointer) {
